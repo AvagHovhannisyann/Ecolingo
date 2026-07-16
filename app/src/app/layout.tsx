@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { href: "/", label: "Path" },
     { href: "/review", label: "Review" },
     { href: "/lab", label: "Visual Lab" },
+    { href: "/exam", label: "Exam Plan" },
     { href: "/progress", label: "Progress" },
   ];
   return (
