@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { SyncBadge } from "@/components/SyncBadge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,9 +35,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <header className="border-b border-gray-200">
           <div className="mx-auto flex max-w-3xl items-center justify-between p-4">
-            <Link href="/" className="font-semibold">
-              Ecolingo <span className="font-normal text-gray-500">· ECON 13210 demo</span>
-            </Link>
+            <div>
+              <Link href="/" className="font-semibold">
+                Ecolingo <span className="font-normal text-gray-500">· ECON 13210 demo</span>
+              </Link>
+              <span className="ml-2">
+                <SyncBadge />
+              </span>
+            </div>
             <nav aria-label="Primary" className="hidden gap-2 sm:flex">
               {nav.map((n) => (
                 <Link key={n.href} href={n.href} className="min-h-12 rounded-xl px-3 py-3 text-sm hover:bg-gray-100">

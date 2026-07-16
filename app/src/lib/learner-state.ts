@@ -49,6 +49,8 @@ export interface LearnerState {
   plan: StudyPlanInput;
   completedLessonIds: string[];
   auditLog: AuditEntry[];
+  /** total evidence events ever recorded (monotonic; auditLog keeps the tail) */
+  auditSeq: number;
   xp: number;
 }
 
@@ -62,6 +64,7 @@ export function defaultLearnerState(): LearnerState {
     plan: { examDateISO: null, minutesPerDay: 20, noStudyDays: [] },
     completedLessonIds: [],
     auditLog: [],
+    auditSeq: 0,
     xp: 0,
   };
 }
@@ -106,6 +109,7 @@ export function recordEvidence(state: LearnerState, e: EvidenceEvent): LearnerSt
         correct: e.correct,
       },
     ].slice(-200),
+    auditSeq: state.auditSeq + 1,
     // XP for meaningful completion only: correct, unguessed evidence (IDEA-121)
     xp: state.xp + (e.correct ? Math.round(10 * (1 - audit.guessLikelihood) * audit.signalQuality) : 2),
   };
