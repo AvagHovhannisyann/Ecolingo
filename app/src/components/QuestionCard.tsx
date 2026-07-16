@@ -14,7 +14,7 @@
 import { useMemo, useState } from "react";
 import type { EvidenceEvent, Question } from "@/lib/engine/types";
 import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring";
-import { misconceptions, getConcept, getEquation } from "@/content/econ13210";
+import { course, misconceptions, getConcept, getEquation } from "@/content/econ13210";
 import { MathTex } from "./MathTex";
 import { ExplainPanel } from "./ExplainPanel";
 
@@ -116,9 +116,8 @@ export function QuestionCard({
 
   const concept = getConcept(question.conceptSlug);
   const equation =
-    question.conceptSlug === "fundamental-equation" || question.conceptSlug === "steady-state"
-      ? getEquation("eq-fundamental")
-      : null;
+    course.equations.find((e) => e.conceptSlug === question.conceptSlug) ??
+    (question.conceptSlug === "steady-state" ? getEquation("eq-fundamental") : null);
 
   const answered = result !== null;
   const answerReady = buildAnswer() !== null;

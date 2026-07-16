@@ -31,7 +31,7 @@ One complete learning loop, prioritized per the delivery contract:
 cd app
 npm install
 npm run dev        # http://localhost:3000
-npx vitest run     # engine test suite (68 tests, incl. TEST-ECON-001..008/015)
+npx vitest run     # engine test suite (70 tests, incl. TEST-ECON-001..008/015)
 npm run build      # production build
 ```
 

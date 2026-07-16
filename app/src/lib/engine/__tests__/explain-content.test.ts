@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeterministicExplainProvider } from "../../ai/explain";
-import { concepts, conceptEdges, course, getConcept, getEquation, misconceptions, questions, solowLesson } from "../../../content/econ13210";
+import { concepts, conceptEdges, course, getConcept, getEquation, misconceptions, questions } from "../../../content/econ13210";
 import type { LessonStepType } from "../types";
 
 const provider = new DeterministicExplainProvider();
@@ -55,17 +55,44 @@ describe("Explain provider honours grounding rules (spec §10)", () => {
 });
 
 describe("ECON 13210 seed content integrity", () => {
-  it("lesson contains the full six-step anatomy in canonical order (LESSON-01..06)", () => {
-    const types = solowLesson.steps.map((s) => s.type);
+  it("every lesson contains the full six-step anatomy in canonical order (LESSON-01..06)", () => {
     const expected: LessonStepType[] = ["core_idea", "intuition", "visual", "math", "guided", "mastery_check"];
-    expect(types).toEqual(expected);
-    for (const s of solowLesson.steps) expect(s.completionCriterion).toBeTruthy();
+    expect(course.lessons.length).toBeGreaterThanOrEqual(2);
+    for (const lesson of course.lessons) {
+      expect(lesson.steps.map((s) => s.type)).toEqual(expected);
+      for (const s of lesson.steps) expect(s.completionCriterion).toBeTruthy();
+    }
   });
 
-  it("the mastery check is a transfer question (LESSON-06: new context, not memorization)", () => {
-    const check = solowLesson.steps.find((s) => s.type === "mastery_check");
-    const q = questions.find((x) => check && "questionId" in check && x.id === check.questionId);
-    expect(q?.transferDistance).toBeGreaterThan(0);
+  it("every visual step carries deterministic target + success descriptions", () => {
+    for (const lesson of course.lessons) {
+      for (const s of lesson.steps) {
+        if (s.type === "visual") {
+          expect(s.targetDescription.length).toBeGreaterThan(0);
+          expect(s.successDescription.length).toBeGreaterThan(0);
+          expect(s.target.value).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it("every mastery check is a transfer question (LESSON-06: new context, not memorization)", () => {
+    for (const lesson of course.lessons) {
+      const check = lesson.steps.find((s) => s.type === "mastery_check");
+      const q = questions.find((x) => check && "questionId" in check && x.id === check.questionId);
+      expect(q?.transferDistance).toBeGreaterThan(0);
+    }
+  });
+
+  it("every lesson step question id and equation id resolves", () => {
+    const qIds = new Set(questions.map((q) => q.id));
+    const eqIds = new Set(course.equations.map((e) => e.id));
+    for (const lesson of course.lessons) {
+      for (const s of lesson.steps) {
+        if ("questionId" in s) expect(qIds.has(s.questionId)).toBe(true);
+        if (s.type === "math") expect(eqIds.has(s.equationId)).toBe(true);
+      }
+    }
   });
 
   it("prerequisite graph is a DAG over known concepts (MOAT-02)", () => {

@@ -19,7 +19,31 @@ export interface AuditEntry {
   correct: boolean;
 }
 
+/**
+ * Personalization profile (§7 onboarding + §22). Explicit, learner-editable,
+ * and consumed only through declared adaptation points (e.g. lesson step
+ * order). Never rewrites teacher-approved content (GATE-004).
+ */
+export interface LearnerProfile {
+  role: "student" | "teacher" | "independent" | null;
+  objective: "understand" | "exam" | "catch_up" | "weak_area" | "assignment" | null;
+  explanationOrder: "visual_first" | "math_first" | "text_first";
+  readingLevel: "standard" | "simpler";
+  onboarded: boolean;
+}
+
+export function defaultProfile(): LearnerProfile {
+  return {
+    role: null,
+    objective: null,
+    explanationOrder: "visual_first",
+    readingLevel: "standard",
+    onboarded: false,
+  };
+}
+
 export interface LearnerState {
+  profile: LearnerProfile;
   masteryBySlug: Record<string, MasteryState>;
   prevIntervals: Record<string, number>;
   plan: StudyPlanInput;
@@ -32,6 +56,7 @@ const KEY = "ecolingo.learner.v1";
 
 export function defaultLearnerState(): LearnerState {
   return {
+    profile: defaultProfile(),
     masteryBySlug: {},
     prevIntervals: {},
     plan: { examDateISO: null, minutesPerDay: 20, noStudyDays: [] },
@@ -46,7 +71,13 @@ export function loadLearnerState(): LearnerState {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return defaultLearnerState();
-    return { ...defaultLearnerState(), ...(JSON.parse(raw) as LearnerState) };
+    const parsed = JSON.parse(raw) as Partial<LearnerState>;
+    // migrate older stored shapes: missing fields fall back to defaults
+    return {
+      ...defaultLearnerState(),
+      ...parsed,
+      profile: { ...defaultProfile(), ...(parsed.profile ?? {}) },
+    };
   } catch {
     return defaultLearnerState();
   }
@@ -97,6 +128,12 @@ export function completeLesson(state: LearnerState, lessonId: string): LearnerSt
 
 export function updatePlan(state: LearnerState, plan: StudyPlanInput): LearnerState {
   const next = { ...state, plan };
+  saveLearnerState(next);
+  return next;
+}
+
+export function updateProfile(state: LearnerState, profile: Partial<LearnerProfile>): LearnerState {
+  const next = { ...state, profile: { ...state.profile, ...profile } };
   saveLearnerState(next);
   return next;
 }

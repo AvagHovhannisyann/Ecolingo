@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const nav = [
     { href: "/", label: "Path" },
     { href: "/review", label: "Review" },
-    { href: "/lab/solow", label: "Visual Lab" },
+    { href: "/lab", label: "Visual Lab" },
     { href: "/progress", label: "Progress" },
   ];
   return (

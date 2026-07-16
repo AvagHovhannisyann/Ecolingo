@@ -8,7 +8,7 @@
 
 import { concepts, misconceptions } from "@/content/econ13210";
 import { dominantMisconception, retentionAt } from "@/lib/engine/mastery";
-import { resetLearnerState } from "@/lib/learner-state";
+import { resetLearnerState, updateProfile } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { Achievements } from "./Achievements";
 
@@ -100,6 +100,40 @@ export function ProgressClient() {
           </ul>
         </details>
       )}
+
+      <section aria-label="Personalization" className="mt-6 rounded-2xl border border-gray-200 p-4">
+        <h2 className="text-sm font-medium">Personalization — you&apos;re in control (edit anytime)</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">
+            Explanation order (changes lesson step order only)
+            <select
+              className="mt-1 block w-full rounded-xl border border-gray-400 p-3"
+              value={state.profile.explanationOrder}
+              onChange={(e) =>
+                mutateLearnerState((s) =>
+                  updateProfile(s, { explanationOrder: e.target.value as typeof s.profile.explanationOrder })
+                )
+              }
+            >
+              <option value="visual_first">Picture first</option>
+              <option value="math_first">Mathematics first</option>
+              <option value="text_first">Plain words first</option>
+            </select>
+          </label>
+          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-gray-300 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={state.profile.readingLevel === "simpler"}
+              onChange={(e) =>
+                mutateLearnerState((s) =>
+                  updateProfile(s, { readingLevel: e.target.checked ? "simpler" : "standard" })
+                )
+              }
+            />
+            Prefer simpler wording where available
+          </label>
+        </div>
+      </section>
 
       <div className="mt-6">
         <button

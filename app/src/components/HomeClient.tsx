@@ -10,7 +10,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { concepts, solowLesson } from "@/content/econ13210";
+import { concepts, conceptEdges, course } from "@/content/econ13210";
+import type { Lesson } from "@/lib/engine/types";
 import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
@@ -30,12 +31,28 @@ export function HomeClient() {
     plan: state.plan,
   });
   const due = dueNow(queue, nowISO);
-  const lessonDone = state.completedLessonIds.includes(solowLesson.id);
+
+  /**
+   * Prerequisite gating (MOAT-02): a lesson unlocks once every "requires"
+   * prerequisite of its concept has real mastery evidence. A prerequisite
+   * only blocks if the course can actually teach it (some lesson covers it) —
+   * otherwise the path could deadlock on concepts with no lesson yet.
+   */
+  const teachableSlugs = new Set(course.lessons.map((l) => l.conceptSlug));
+  const isUnlocked = (lesson: Lesson) =>
+    conceptEdges
+      .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires" && teachableSlugs.has(e.prereqSlug))
+      .every((e) => (state.masteryBySlug[e.prereqSlug]?.evidenceCount ?? 0) > 0);
+
+  const remainingLessons = course.lessons.filter((l) => !state.completedLessonIds.includes(l.id));
+  const unlockedLessons = remainingLessons.filter(isUnlocked);
+  const lockedLessons = remainingLessons.filter((l) => !isUnlocked(l));
   const today = planToday(
     due,
-    lessonDone ? [] : [{ id: solowLesson.id, estimatedMinutes: solowLesson.estimatedMinutes }],
+    unlockedLessons.map((l) => ({ id: l.id, estimatedMinutes: l.estimatedMinutes })),
     state.plan.minutesPerDay
   );
+  const plannedLessons = unlockedLessons.filter((l) => today.lessons.some((t) => t.id === l.id));
 
   return (
     <div>
@@ -60,6 +77,18 @@ export function HomeClient() {
       <div className="mt-4">
         <UnverifiedBanner />
       </div>
+
+      {!state.profile.onboarded && (
+        <Link
+          href="/onboarding"
+          className="mt-4 block rounded-2xl border border-gray-900 p-4 hover:bg-gray-50"
+        >
+          <span className="font-medium">Personalize your path →</span>
+          <span className="block text-sm text-gray-600">
+            2 minutes: your goal, schedule, and how you like ideas explained. Every step is skippable.
+          </span>
+        </Link>
+      )}
 
       {/* study plan settings (IDEA-010/011, editable later per §7) */}
       <details className="mt-4 rounded-2xl border border-gray-300 p-4">
@@ -103,20 +132,32 @@ export function HomeClient() {
       <h2 className="mt-6 text-lg font-semibold">Today ({today.minutesPlanned} min planned)</h2>
 
       <ul className="mt-3 space-y-3">
-        {!lessonDone && (
-          <li>
+        {plannedLessons.map((lesson) => (
+          <li key={lesson.id}>
             <Link
-              href={`/lesson/${solowLesson.id}`}
+              href={`/lesson/${lesson.id}`}
               className="block rounded-2xl border border-gray-900 p-4 hover:bg-gray-50"
             >
-              <span className="text-xs uppercase tracking-wide text-gray-500">New lesson · {solowLesson.estimatedMinutes} min</span>
-              <span className="block font-medium">{solowLesson.title}</span>
+              <span className="text-xs uppercase tracking-wide text-gray-500">New lesson · {lesson.estimatedMinutes} min</span>
+              <span className="block font-medium">{lesson.title}</span>
               <span className="block text-sm text-gray-600">
                 Core idea → intuition → interactive model → math → practice → transfer check
               </span>
             </Link>
           </li>
-        )}
+        ))}
+        {lockedLessons.map((lesson) => {
+          const prereqs = conceptEdges
+            .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires")
+            .map((e) => concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
+          return (
+            <li key={lesson.id} className="rounded-2xl border border-gray-200 p-4 opacity-70">
+              <span className="text-xs uppercase tracking-wide text-gray-500">🔒 Locked · {lesson.estimatedMinutes} min</span>
+              <span className="block font-medium">{lesson.title}</span>
+              <span className="block text-sm text-gray-600">Unlocks after: {prereqs.join(", ")}</span>
+            </li>
+          );
+        })}
         {today.reviews.map((r) => {
           const c = concepts.find((x) => x.slug === r.conceptSlug);
           return (
@@ -131,7 +172,7 @@ export function HomeClient() {
             </li>
           );
         })}
-        {lessonDone && today.reviews.length === 0 && (
+        {plannedLessons.length === 0 && lockedLessons.length === 0 && today.reviews.length === 0 && (
           <li className="rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
             Nothing due right now. Your next review is already scheduled —{" "}
             <Link href="/review" className="underline">

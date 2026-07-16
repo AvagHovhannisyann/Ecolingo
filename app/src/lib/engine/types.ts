@@ -74,10 +74,14 @@ export interface TextStep extends LessonStepBase {
 
 export interface VisualStep extends LessonStepBase {
   type: "visual";
-  lab: "solow";
+  lab: "solow" | "budget";
   prompt: string;
   /** target the learner must reach, checked deterministically */
   target: { param: "s" | "n" | "delta" | "alpha" | "A"; comparator: "gte" | "lte"; value: number };
+  /** shown while the target is not yet reached */
+  targetDescription: string;
+  /** shown once the deterministic target predicate is satisfied */
+  successDescription: string;
 }
 
 export interface MathStep extends LessonStepBase {

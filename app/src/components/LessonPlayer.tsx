@@ -8,7 +8,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { EvidenceEvent, Lesson, LessonStep } from "@/lib/engine/types";
 import { course, getConcept, getEquation, getQuestion } from "@/content/econ13210";
 import { completeLesson, recordEvidence } from "@/lib/learner-state";
@@ -36,7 +36,27 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const [finished, setFinished] = useState(false);
 
   const concept = getConcept(lesson.conceptSlug);
-  const steps = lesson.steps;
+
+  /**
+   * LESSON-04 adaptation: the equation appears after intuition unless the
+   * learner prefers math-first. Order changes only — content is never
+   * rewritten (GATE-004).
+   */
+  const mathFirst = state?.profile.explanationOrder === "math_first";
+  const steps = useMemo(() => {
+    if (!mathFirst) return lesson.steps;
+    const reordered = [...lesson.steps];
+    const mathIdx = reordered.findIndex((s) => s.type === "math");
+    const visualIdx = reordered.findIndex((s) => s.type === "visual");
+    if (mathIdx > visualIdx && visualIdx >= 0) {
+      const [mathStep] = reordered.splice(mathIdx, 1);
+      reordered.splice(visualIdx, 0, mathStep);
+    }
+    return reordered;
+  }, [lesson.steps, mathFirst]);
+  const simpler = state?.profile.readingLevel === "simpler";
+  const lessonEquation =
+    course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ?? getEquation("eq-fundamental");
   const step = steps[stepIndex];
 
   const advance = () => {
@@ -108,9 +128,11 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       <div className="mt-2">
         {(step.type === "core_idea" || step.type === "intuition") && (
           <div>
-            <p className="text-base leading-relaxed">{step.body.standard}</p>
+            <p className="text-base leading-relaxed">
+              {simpler && step.body.simpler ? step.body.simpler : step.body.standard}
+            </p>
             <CitationChips citations={course.citations.filter((c) => step.citationIds.includes(c.id))} />
-            <ExplainPanel concept={concept} equation={getEquation("eq-fundamental")} simplerVariant={step.body.simpler ?? null} />
+            <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} />
             <button type="button" onClick={advance} className="mt-4 min-h-12 rounded-xl bg-gray-900 px-6 text-white">
               Continue
             </button>
@@ -148,7 +170,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
               }}
             />
             <p className="mt-2 text-sm" role="status" aria-live="polite">
-              {visualTargetHit ? "✓ Target reached — you moved s and only the s·f(k) curve responded." : "Target: raise s to at least 0.45."}
+              {visualTargetHit ? step.successDescription : step.targetDescription}
             </p>
             <button
               type="button"
