@@ -18,7 +18,8 @@ export type SyncStatus = "local_only" | "syncing" | "synced" | "error";
 let status: SyncStatus = "local_only";
 const statusListeners = new Set<(s: SyncStatus) => void>();
 
-function setStatus(s: SyncStatus) {
+/** exported so the teacher-content sync shares one status channel (D-009) */
+export function setStatus(s: SyncStatus) {
   status = s;
   for (const l of statusListeners) l(s);
 }

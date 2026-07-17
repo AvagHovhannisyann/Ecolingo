@@ -31,6 +31,24 @@ describe("sectionize (deterministic ingestion, GATE-001 substrate)", () => {
     expect(doc.sections[0].pageStart).toBe(1);
   });
 
+  it("recovers sections from bare heading lines (PDF/plaintext, no markdown, no blank lines)", () => {
+    // mimics pdfjs output: heading on its own line, body wrapped onto lines,
+    // no '#' markers and no blank-line paragraph breaks
+    const raw = [
+      "The steady state",
+      "The steady state is the level of capital per worker at which actual investment exactly equals break-even investment so capital per worker stops changing over time.",
+      "The Golden Rule of saving",
+      "The Golden Rule saving rate maximizes steady-state consumption per worker and for a Cobb-Douglas production function it equals the capital share alpha in the model.",
+    ].join("\n");
+    const doc = sectionize("Lecture (PDF text)", raw, NOW);
+    expect(doc.sections.map((s) => s.heading)).toEqual(["The steady state", "The Golden Rule of saving"]);
+    // each concept should now match its own distinct section, not one blob
+    const proposals = proposeLinks(doc, concepts);
+    const steady = proposals.find((p) => p.conceptSlug === "steady-state")!;
+    const golden = proposals.find((p) => p.conceptSlug === "golden-rule")!;
+    expect(steady.sectionId).not.toBe(golden.sectionId);
+  });
+
   it("estimates page ranges monotonically", () => {
     const doc = sectionize(SAMPLE_LECTURE_TITLE, SAMPLE_LECTURE_MD, NOW);
     for (let i = 1; i < doc.sections.length; i++) {

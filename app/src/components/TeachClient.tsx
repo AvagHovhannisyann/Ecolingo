@@ -14,6 +14,7 @@ import { useRef, useState } from "react";
 import { concepts } from "@/content/econ13210";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "@/content/econ13210/sample-lecture";
 import { proposeLinks, sectionize, type ProposedLink, type TeacherDoc } from "@/lib/engine/ingest";
+import { extractPdfText } from "@/lib/pdf-text";
 import { linkKey } from "@/lib/teacher-state";
 import { addDoc, approveLink, rejectLink, removeDoc } from "@/lib/teacher-state";
 import { mutateTeacherState, useTeacherState } from "@/lib/teacher-store";
@@ -74,6 +75,7 @@ export function TeachClient() {
   const [pasted, setPasted] = useState("");
   const [pasteTitle, setPasteTitle] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   if (!teacher) return <p className="p-4 text-sm text-gray-500">Loading teacher workspace…</p>;
 
@@ -88,11 +90,29 @@ export function TeachClient() {
   };
 
   const onFile = async (file: File) => {
-    if (!/\.(md|txt|markdown)$/i.test(file.name)) {
-      setUploadError("For now uploads are .md / .txt (PDF parsing lands with the production ingestion service).");
+    setUploadError(null);
+    const baseTitle = file.name.replace(/\.(md|txt|markdown|pdf)$/i, "");
+    if (/\.pdf$/i.test(file.name)) {
+      setBusy("Reading PDF…");
+      try {
+        const text = await extractPdfText(file);
+        if (!text.trim()) {
+          setUploadError("No selectable text found in that PDF — it may be a scan. Try an OCR'd file or paste the text.");
+          return;
+        }
+        ingest(baseTitle, text);
+      } catch {
+        setUploadError("Couldn't read that PDF. Try re-exporting it, or paste the text instead.");
+      } finally {
+        setBusy(null);
+      }
       return;
     }
-    ingest(file.name.replace(/\.(md|txt|markdown)$/i, ""), await file.text());
+    if (!/\.(md|txt|markdown)$/i.test(file.name)) {
+      setUploadError("Uploads are .pdf, .md, or .txt. For a scanned PDF, paste the text instead.");
+      return;
+    }
+    ingest(baseTitle, await file.text());
   };
 
   const pendingByDoc = teacher.docs.map((doc) => {
@@ -138,7 +158,7 @@ export function TeachClient() {
           <input
             ref={fileRef}
             type="file"
-            accept=".md,.txt,.markdown"
+            accept=".pdf,.md,.txt,.markdown"
             className="sr-only"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -146,8 +166,13 @@ export function TeachClient() {
               e.target.value = "";
             }}
           />
-          <button type="button" onClick={() => fileRef.current?.click()} className="btn-primary min-h-12 px-5 text-white">
-            Upload .md / .txt
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy !== null}
+            className="btn-primary min-h-12 px-5 text-white disabled:opacity-50"
+          >
+            {busy ?? "Upload PDF / .md / .txt"}
           </button>
           <button
             type="button"

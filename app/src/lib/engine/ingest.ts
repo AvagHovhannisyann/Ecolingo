@@ -63,43 +63,93 @@ export function keyTerms(text: string): string[] {
   ];
 }
 
+type Part = { heading: string; text: string; offset: number };
+
+/** markdown ATX headings (#/##/###) — the strongest structural signal */
+function markdownHeadingParts(norm: string): Part[] {
+  const parts: Part[] = [];
+  const matches = [...norm.matchAll(/^#{1,3}\s+(.+)$/gm)];
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const start = m.index! + m[0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index! : norm.length;
+    const body = norm.slice(start, end).trim();
+    if (body) parts.push({ heading: m[1].trim(), text: body, offset: m.index! });
+  }
+  return parts;
+}
+
+/**
+ * A standalone line that reads like a heading: short, title-ish, no terminal
+ * sentence punctuation, and followed by a substantially longer body line. This
+ * recovers section structure from PDF-extracted or plain text that has line
+ * breaks but no markdown and no blank-line paragraphs.
+ */
+function isHeadingLine(line: string, next: string | undefined): boolean {
+  const t = line.trim();
+  if (t.length < 3 || t.length > 70) return false;
+  const words = t.split(/\s+/);
+  if (words.length > 10) return false;
+  if (/[.,;:!?]$/.test(t)) return false;
+  if (!/[A-Za-z]/.test(t)) return false;
+  return !!next && next.trim().length >= 60; // real body line follows
+}
+
+function headingLineParts(norm: string): Part[] {
+  const lines = norm.split("\n");
+  // character offset of each line start, for page estimation
+  const offsets: number[] = [];
+  let acc = 0;
+  for (const l of lines) {
+    offsets.push(acc);
+    acc += l.length + 1;
+  }
+  const headingIdx = lines
+    .map((l, i) => (isHeadingLine(l, lines.slice(i + 1).find((x) => x.trim().length > 0)) ? i : -1))
+    .filter((i) => i >= 0);
+  if (headingIdx.length < 2) return [];
+  const parts: Part[] = [];
+  for (let h = 0; h < headingIdx.length; h++) {
+    const start = headingIdx[h];
+    const end = h + 1 < headingIdx.length ? headingIdx[h + 1] : lines.length;
+    const body = lines.slice(start + 1, end).join("\n").trim();
+    if (body) parts.push({ heading: lines[start].trim(), text: body, offset: offsets[start] });
+  }
+  return parts;
+}
+
+/** last resort: merge blank-line blocks into ~1200-char even chunks */
+function paragraphBlockParts(norm: string): Part[] {
+  const parts: Part[] = [];
+  const blocks = norm.split(/\n\s*\n/);
+  let buf = "";
+  let bufOffset = 0;
+  let offset = 0;
+  for (const b of blocks) {
+    if (!buf) bufOffset = offset;
+    buf = buf ? buf + "\n\n" + b : b;
+    offset += b.length + 2;
+    if (buf.length >= 1200) {
+      parts.push({ heading: buf.split("\n")[0].slice(0, 60), text: buf, offset: bufOffset });
+      buf = "";
+    }
+  }
+  if (buf.trim()) parts.push({ heading: buf.split("\n")[0].slice(0, 60), text: buf, offset: bufOffset });
+  return parts;
+}
+
 /**
  * Split raw text/markdown into sections. Markdown headings (#/##/###) win;
- * documents without headings fall back to blank-line paragraph blocks merged
- * to ~1200 chars so every section stays skimmable in the review queue.
+ * otherwise heading-like standalone lines (PDF/plaintext); otherwise blank-line
+ * paragraph blocks merged to ~1200 chars so every section stays skimmable.
  */
 export function sectionize(title: string, raw: string, uploadedAtISO: string): TeacherDoc {
   const norm = raw.replace(/\r\n/g, "\n").trim();
   const docId = `doc-${stableId(title + ":" + norm.length + ":" + norm.slice(0, 64))}`;
 
-  const parts: { heading: string; text: string; offset: number }[] = [];
-  const headingRe = /^#{1,3}\s+(.+)$/gm;
-  const matches = [...norm.matchAll(headingRe)];
-
-  if (matches.length >= 2) {
-    for (let i = 0; i < matches.length; i++) {
-      const m = matches[i];
-      const start = m.index! + m[0].length;
-      const end = i + 1 < matches.length ? matches[i + 1].index! : norm.length;
-      const body = norm.slice(start, end).trim();
-      if (body) parts.push({ heading: m[1].trim(), text: body, offset: m.index! });
-    }
-  } else {
-    const blocks = norm.split(/\n\s*\n/);
-    let buf = "";
-    let bufOffset = 0;
-    let offset = 0;
-    for (const b of blocks) {
-      if (!buf) bufOffset = offset;
-      buf = buf ? buf + "\n\n" + b : b;
-      offset += b.length + 2;
-      if (buf.length >= 1200) {
-        parts.push({ heading: buf.split("\n")[0].slice(0, 60), text: buf, offset: bufOffset });
-        buf = "";
-      }
-    }
-    if (buf.trim()) parts.push({ heading: buf.split("\n")[0].slice(0, 60), text: buf, offset: bufOffset });
-  }
+  let parts = markdownHeadingParts(norm);
+  if (parts.length < 2) parts = headingLineParts(norm); // PDF/plaintext with bare heading lines
+  if (parts.length < 2) parts = paragraphBlockParts(norm); // last resort: even chunks
 
   const sections: DocSection[] = parts.map((p, i) => ({
     id: `${docId}-s${i + 1}`,
