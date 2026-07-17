@@ -51,14 +51,14 @@ export function BankClient() {
           <button
             type="button"
             onClick={() => setAttemptKey((k) => k + 1)}
-            className="min-h-12 rounded-xl border border-gray-400 px-4 text-sm"
+            className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm"
           >
             Fresh attempt
           </button>
           <button
             type="button"
             onClick={() => setActiveId(null)}
-            className="min-h-12 rounded-xl border border-gray-400 px-4 text-sm"
+            className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm"
           >
             Back to the bank
           </button>
@@ -77,7 +77,7 @@ export function BankClient() {
           width={1344}
           height={768}
           priority
-          className="h-32 w-full object-cover sm:h-44"
+          className="art-enter h-32 w-full object-cover sm:h-44"
         />
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
           <h1 className="text-xl font-semibold">Question Bank</h1>

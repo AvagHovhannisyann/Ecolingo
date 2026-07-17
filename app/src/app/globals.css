@@ -24,3 +24,136 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ---------------------------------------------------------------------------
+   Motion system — implements the functional behaviours specified in spec §16
+   with the spec's own values. The full motion *design* language belongs to
+   Fabel (D-001); these are the engineering-owned interaction affordances.
+   Every rule lives behind prefers-reduced-motion: no-preference, so reduced-
+   motion users get instant state changes with no animation (IDEA-175) and
+   no meaning is carried by motion alone.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  /* Button press (§16): down 3px, scale 0.985, 100–140ms, gentle spring back */
+  .btn-press {
+    transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .btn-press:active:not(:disabled) {
+    transform: translateY(3px) scale(0.985);
+    transition-duration: 100ms;
+  }
+
+  /* Correct answer (§16): border turns green + card lifts slightly, ~500ms */
+  .feedback-correct {
+    animation: correct-lift 550ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes correct-lift {
+    0% {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+    35% {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+    100% {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+  }
+
+  /* check mark draws itself (§16) */
+  .check-draw {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: check-draw 450ms 120ms ease-out forwards;
+  }
+  @keyframes check-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* tiny celebration particles (§16) — pure decoration, hidden from AT */
+  .particle {
+    animation: particle-pop 600ms ease-out forwards;
+  }
+  @keyframes particle-pop {
+    0% {
+      transform: translate(0, 0) scale(0.4);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--px, 0px), var(--py, -18px)) scale(1);
+      opacity: 0;
+    }
+  }
+
+  /* Incorrect answer (§16): gentle horizontal shake, no loud negativity */
+  .feedback-incorrect {
+    animation: gentle-shake 360ms ease-in-out;
+  }
+  @keyframes gentle-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    50% {
+      transform: translateX(4px);
+    }
+    75% {
+      transform: translateX(-2px);
+    }
+  }
+
+  /* Graph choreography (§16): never animate everything at once — first curve
+     draws, then the second fades in (a fade, not a draw: a stroke-draw would
+     override its dash pattern, which is a non-colour distinction, IDEA-174),
+     then the equilibrium marker appears. */
+  .curve-draw-1 {
+    stroke-dasharray: 1600;
+    stroke-dashoffset: 1600;
+    animation: curve-draw 700ms ease-out forwards;
+  }
+  @keyframes curve-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .curve-fade-2 {
+    opacity: 0;
+    animation: curve-fade 450ms 500ms ease-out forwards;
+  }
+  @keyframes curve-fade {
+    to {
+      opacity: 1;
+    }
+  }
+  .equilibrium-appear {
+    opacity: 0;
+    animation: equilibrium-appear 300ms 1050ms ease-out forwards;
+  }
+  @keyframes equilibrium-appear {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* soft entrance for page-header art and lesson-complete celebration */
+  .art-enter {
+    animation: art-enter 500ms ease-out;
+  }
+  @keyframes art-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

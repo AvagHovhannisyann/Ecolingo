@@ -62,7 +62,7 @@ export function ExplainPanel({
             type="button"
             onClick={() => run(mode)}
             aria-pressed={activeMode === mode}
-            className={`min-h-12 rounded-xl border px-3 text-sm ${
+            className={`btn-press min-h-12 rounded-xl border px-3 text-sm ${
               activeMode === mode ? "border-gray-900 bg-gray-900 text-white" : "border-gray-400"
             }`}
           >
@@ -104,7 +104,7 @@ export function ExplainPanel({
             ) : (
               <button
                 type="button"
-                className="min-h-12 rounded-xl border border-gray-300 px-3 text-xs text-gray-700"
+                className="btn-press min-h-12 rounded-xl border border-gray-300 px-3 text-xs text-gray-700"
                 onClick={() => setReported(true)}
               >
                 Report as confusing or incorrect

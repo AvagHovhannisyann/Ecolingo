@@ -56,7 +56,7 @@ export function ExamPlanClient() {
           width={1344}
           height={768}
           priority
-          className="h-32 w-full object-cover sm:h-40"
+          className="art-enter h-32 w-full object-cover sm:h-40"
         />
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
           <h1 className="text-xl font-semibold">Exam plan</h1>

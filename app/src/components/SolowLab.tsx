@@ -90,7 +90,7 @@ export function SolowLab({
         </h3>
         <button
           type="button"
-          className="min-h-12 rounded-xl border border-gray-400 px-3 text-sm"
+          className="btn-press min-h-12 rounded-xl border border-gray-400 px-3 text-sm"
           onClick={() => setView(view === "numeric" ? "symbolic" : "numeric")}
           aria-pressed={view === "symbolic"}
         >
@@ -115,18 +115,20 @@ export function SolowLab({
         </text>
 
         {/* curves: solid = actual investment, dashed = break-even */}
-        <path d={curvePath((k) => actualInvestment(k, params))} fill="none" stroke={investColor} strokeWidth="2.5" />
+        {/* §16 staged graph entrance: solid curve draws, dashed fades, k* appears last */}
+        <path d={curvePath((k) => actualInvestment(k, params))} fill="none" stroke={investColor} strokeWidth="2.5" className="curve-draw-1" />
         <path
           d={curvePath((k) => breakEvenInvestment(k, params))}
           fill="none"
           stroke={breakevenColor}
           strokeWidth="2.5"
           strokeDasharray="7 5"
+          className="curve-fade-2"
         />
 
         {/* steady state marker */}
         <line x1={x(kStar)} y1={y(actualInvestment(kStar, params))} x2={x(kStar)} y2={H - PAD.b} stroke="currentColor" strokeWidth="1" strokeDasharray="2 3" />
-        <circle cx={x(kStar)} cy={y(actualInvestment(kStar, params))} r="5" fill="currentColor" />
+        <circle cx={x(kStar)} cy={y(actualInvestment(kStar, params))} r="5" fill="currentColor" className="equilibrium-appear" />
         <text x={x(kStar)} y={H - PAD.b + 16} textAnchor="middle" fontSize="12">
           k*
         </text>

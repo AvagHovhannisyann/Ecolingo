@@ -31,3 +31,4 @@ palette as the color constraint.
 
 Prompts are recorded in the Higgsfield job metadata (retrievable by job ID).
 All images were reviewed to contain no text, no charts, no axes, and no numbers.
+| `video/world-2-solow-ambient.mp4` | Home hero ambient loop (decorative; reduced-motion + decode-error users get the still) | Higgsfield MCP | kling3_0_turbo image-to-video (720p, 5s, from world-2 art) | `44aa4d15-2902-4e12-9eaa-190a3b510f6b` | 2026-07-17 |

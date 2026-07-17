@@ -203,7 +203,7 @@ export function QuestionCard({
                 type="button"
                 disabled={answered || tokenOrder.includes(tok.id)}
                 onClick={() => setTokenOrder((xs) => [...xs, tok.id])}
-                className="min-h-12 rounded-xl border border-gray-400 px-3 disabled:opacity-40"
+                className="btn-press min-h-12 rounded-xl border border-gray-400 px-3 disabled:opacity-40"
               >
                 <MathTex latex={tok.latex} />
               </button>
@@ -212,7 +212,7 @@ export function QuestionCard({
               type="button"
               disabled={answered || tokenOrder.length === 0}
               onClick={() => setTokenOrder((xs) => xs.slice(0, -1))}
-              className="min-h-12 rounded-xl border border-gray-300 px-3 text-sm disabled:opacity-40"
+              className="btn-press min-h-12 rounded-xl border border-gray-300 px-3 text-sm disabled:opacity-40"
             >
               Undo
             </button>
@@ -265,7 +265,7 @@ export function QuestionCard({
                 disabled={answered}
                 aria-pressed={activeSlot === s.id}
                 onClick={() => setActiveSlot(s.id)}
-                className={`min-h-12 rounded-xl border px-4 ${
+                className={`btn-press min-h-12 rounded-xl border px-4 ${
                   activeSlot === s.id ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
                 }`}
               >
@@ -318,7 +318,7 @@ export function QuestionCard({
                 type="button"
                 aria-pressed={confidence === c}
                 onClick={() => setConfidence(c)}
-                className={`min-h-12 rounded-xl border px-3 text-sm ${confidence === c ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"}`}
+                className={`btn-press min-h-12 rounded-xl border px-3 text-sm ${confidence === c ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"}`}
               >
                 {["Guessing", "Unsure", "Fairly sure", "Certain"][c - 1]}
               </button>
@@ -334,12 +334,12 @@ export function QuestionCard({
             type="button"
             onClick={submit}
             disabled={!answerReady}
-            className="min-h-12 rounded-xl bg-gray-900 px-5 text-white disabled:opacity-40"
+            className="btn-press min-h-12 rounded-xl bg-gray-900 px-5 text-white disabled:opacity-40"
           >
             Check
           </button>
           {hintsAllowed && !hintShown && (
-            <button type="button" onClick={() => setHintShown(true)} className="min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
+            <button type="button" onClick={() => setHintShown(true)} className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
               I need a hint
             </button>
           )}
@@ -354,12 +354,33 @@ export function QuestionCard({
       {/* feedback (IDEA-097/099/101) */}
       {result && (
         <div
-          className={`mt-3 rounded-xl border p-3 ${result.correct ? "border-green-600 bg-green-50" : "border-orange-400 bg-orange-50"}`}
+          className={`mt-3 rounded-xl border p-3 ${
+            result.correct
+              ? "feedback-correct border-green-600 bg-green-50"
+              : "feedback-incorrect border-orange-400 bg-orange-50"
+          }`}
           role="status"
         >
           {result.correct ? (
-            <p className="text-sm">
-              ✓ Correct.
+            <p className="relative text-sm">
+              {/* §16 correct-answer choreography: check draws itself + tiny particles (decorative) */}
+              <svg viewBox="0 0 20 20" className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden="true">
+                <path
+                  d="M3.5 10.5l4 4 9-9"
+                  fill="none"
+                  stroke="#15803d"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="check-draw"
+                />
+              </svg>
+              <span aria-hidden="true" className="pointer-events-none absolute -top-1 left-2">
+                <span className="particle absolute h-1.5 w-1.5 rounded-full bg-green-600" style={{ "--px": "-10px", "--py": "-14px" } as React.CSSProperties} />
+                <span className="particle absolute h-1.5 w-1.5 rounded-full bg-yellow-400" style={{ "--px": "2px", "--py": "-18px" } as React.CSSProperties} />
+                <span className="particle absolute h-1.5 w-1.5 rounded-full bg-sky-500" style={{ "--px": "12px", "--py": "-12px" } as React.CSSProperties} />
+              </span>
+              <span className="sr-only">✓ </span>Correct.
               {confidence !== null && confidence <= 2 && " You were surer than you thought — your understanding is ahead of your confidence."}
             </p>
           ) : (
@@ -375,7 +396,7 @@ export function QuestionCard({
                   <strong>Likely mix-up:</strong> {activeMisconception.description}
                 </p>
               )}
-              <button type="button" onClick={retry} className="mt-2 min-h-12 rounded-xl border border-gray-400 px-4">
+              <button type="button" onClick={retry} className="mt-2 btn-press min-h-12 rounded-xl border border-gray-400 px-4">
                 Try again
               </button>
             </div>

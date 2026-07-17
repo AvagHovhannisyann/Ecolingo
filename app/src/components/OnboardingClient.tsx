@@ -48,7 +48,7 @@ export function OnboardingClient() {
         width={1344}
         height={768}
         priority
-        className="mb-4 h-32 w-full rounded-2xl border border-gray-200 object-cover"
+        className="art-enter mb-4 h-32 w-full rounded-2xl border border-gray-200 object-cover"
       />
       <nav aria-label="Onboarding progress" className="flex gap-1">
         {STEPS.map((s, i) => (
@@ -204,12 +204,12 @@ export function OnboardingClient() {
       )}
 
       <div className="mt-6 flex items-center justify-between">
-        <button type="button" onClick={next} className="min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
+        <button type="button" onClick={next} className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
           Skip for now
         </button>
         {/* the diagnostic advances through its own Finish button */}
         {step !== "diagnostic" && (
-          <button type="button" onClick={next} className="min-h-12 rounded-xl bg-gray-900 px-6 text-white">
+          <button type="button" onClick={next} className="btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white">
             {isLast ? "Start learning" : "Continue"}
           </button>
         )}

@@ -62,7 +62,7 @@ export function ReviewClient() {
         <div className="mt-4">
           <QuestionCard key={`${active.conceptSlug}-${q.id}`} question={q} onEvidence={(e, r) => handleEvidence(active, e, r.correct)} />
         </div>
-        <button type="button" onClick={() => setActive(null)} className="mt-4 min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
+        <button type="button" onClick={() => setActive(null)} className="mt-4 btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
           Back to queue
         </button>
       </div>
@@ -80,7 +80,7 @@ export function ReviewClient() {
           width={1344}
           height={768}
           priority
-          className="h-32 w-full object-cover sm:h-40"
+          className="art-enter h-32 w-full object-cover sm:h-40"
         />
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
           <h1 className="text-xl font-semibold">Review — practice before you forget</h1>
@@ -110,7 +110,7 @@ export function ReviewClient() {
                   <button
                     type="button"
                     onClick={() => setActive(item)}
-                    className="mt-3 min-h-12 rounded-xl bg-gray-900 px-5 text-white"
+                    className="mt-3 btn-press min-h-12 rounded-xl bg-gray-900 px-5 text-white"
                   >
                     Review now
                   </button>

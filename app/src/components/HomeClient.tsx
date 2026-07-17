@@ -8,7 +8,7 @@
  * never a truth-critical visual (GATE-002).
  */
 
-import Image from "next/image";
+import { AmbientHero } from "./AmbientHero";
 import Link from "next/link";
 import { concepts, conceptEdges, course } from "@/content/econ13210";
 import type { Lesson } from "@/lib/engine/types";
@@ -56,23 +56,15 @@ export function HomeClient() {
 
   return (
     <div>
-      {/* World header — Higgsfield course-world art (decorative) */}
-      <div className="relative overflow-hidden rounded-2xl border border-gray-200">
-        <Image
-          src="/worlds/world-2-solow.webp"
-          alt=""
-          role="presentation"
-          width={2688}
-          height={1536}
-          priority
-          className="h-40 w-full object-cover sm:h-56"
-        />
+      {/* World header — Higgsfield ambient loop over the course-world art
+          (decorative; falls back to the still for reduced-motion users) */}
+      <AmbientHero videoSrc="/video/world-2-solow-ambient.mp4" imageSrc="/worlds/world-2-solow.webp">
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
           <p className="text-xs uppercase tracking-wide opacity-80">World 2</p>
           <h1 className="text-xl font-semibold">Solow growth</h1>
           <p className="text-sm opacity-90">hard ideas. made intuitive.</p>
         </div>
-      </div>
+      </AmbientHero>
 
       <div className="mt-4">
         <UnverifiedBanner />

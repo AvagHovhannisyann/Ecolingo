@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <nav aria-label="Primary" className="hidden gap-2 sm:flex">
               {navDesktop.map((n) => (
-                <Link key={n.href} href={n.href} className="min-h-12 rounded-xl px-3 py-3 text-sm hover:bg-gray-100">
+                <Link key={n.href} href={n.href} className="btn-press min-h-12 rounded-xl px-3 py-3 text-sm hover:bg-gray-100">
                   {n.label}
                 </Link>
               ))}

@@ -97,7 +97,7 @@ export function DiagnosticStep({
               type="button"
               aria-pressed={confidence === c}
               onClick={() => setConfidence(c)}
-              className={`min-h-12 rounded-xl border px-3 text-sm ${
+              className={`btn-press min-h-12 rounded-xl border px-3 text-sm ${
                 confidence === c ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
               }`}
             >
@@ -111,7 +111,7 @@ export function DiagnosticStep({
         type="button"
         onClick={submit}
         disabled={item.kind === "numeric" ? !numericRaw.trim() : !optionId}
-        className="mt-4 min-h-12 rounded-xl bg-gray-900 px-6 text-white disabled:opacity-40"
+        className="mt-4 btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white disabled:opacity-40"
       >
         {index + 1 < DIAGNOSTIC_ITEMS.length ? "Next" : "Finish diagnostic"}
       </button>
