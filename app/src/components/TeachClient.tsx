@@ -15,6 +15,7 @@ import { concepts } from "@/content/econ13210";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "@/content/econ13210/sample-lecture";
 import { proposeLinks, sectionize, type ProposedLink, type TeacherDoc } from "@/lib/engine/ingest";
 import { extractPdfText } from "@/lib/pdf-text";
+import { suggestLinksForDoc } from "@/lib/ai/suggest-links";
 import { linkKey } from "@/lib/teacher-state";
 import { addDoc, approveLink, rejectLink, removeDoc } from "@/lib/teacher-state";
 import { mutateTeacherState, useTeacherState } from "@/lib/teacher-store";
@@ -33,24 +34,40 @@ function ProposalCard({
   const concept = concepts.find((c) => c.slug === link.conceptSlug);
   const section = doc.sections.find((s) => s.id === link.sectionId);
   if (!concept || !section) return null;
+  const isAi = link.origin === "ai";
   return (
-    <li className="card p-4">
+    <li className={`card p-4 ${isAi ? "border-[var(--lavender)]" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-bold">
           {concept.name} <span aria-hidden>→</span>{" "}
           <span className="text-[var(--model-blue-deep)]">§ {section.heading}</span>
         </p>
-        <span className="stat-chip text-xs" title="Fraction of the concept's key terms found in this section">
-          match {Math.round(link.score * 100)}%
-        </span>
+        {isAi ? (
+          <span
+            className="rounded-full bg-[#f4f1ff] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender)]"
+            title="Suggested by the AI curriculum assistant — approve to make it a real source"
+          >
+            ✦ AI-suggested
+          </span>
+        ) : (
+          <span className="stat-chip text-xs" title="Fraction of the concept's key terms found in this section">
+            match {Math.round(link.score * 100)}%
+          </span>
+        )}
       </div>
       <p className="mt-1 text-xs text-gray-600">
-        Matched terms: {link.matchedTerms.map((t) => (
-          <code key={t} className="mr-1 rounded bg-[var(--mist-gray)] px-1">
-            {t}
-          </code>
-        ))}
-        · est. p. {section.pageStart}
+        {isAi ? (
+          <>Why: {link.reason || "the section explains this concept"}</>
+        ) : (
+          <>
+            Matched terms: {link.matchedTerms.map((t) => (
+              <code key={t} className="mr-1 rounded bg-[var(--mist-gray)] px-1">
+                {t}
+              </code>
+            ))}
+          </>
+        )}
+        {" · "}est. p. {section.pageStart}
         {section.pageEnd !== section.pageStart ? `–${section.pageEnd}` : ""}
       </p>
       <blockquote className="mt-2 border-l-4 border-[var(--mist-gray-deep)] pl-3 text-sm text-gray-700">
@@ -76,8 +93,40 @@ export function TeachClient() {
   const [pasteTitle, setPasteTitle] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // AI-suggested links, keyed by doc id (session-only; approving persists them)
+  const [aiByDoc, setAiByDoc] = useState<Record<string, ProposedLink[]>>({});
+  const [aiBusyDoc, setAiBusyDoc] = useState<string | null>(null);
+  const [aiNote, setAiNote] = useState<string | null>(null);
 
   if (!teacher) return <p className="p-4 text-sm text-gray-500">Loading teacher workspace…</p>;
+
+  const runAiSuggest = async (doc: TeacherDoc) => {
+    setAiBusyDoc(doc.id);
+    setAiNote(null);
+    try {
+      const suggestions = await suggestLinksForDoc(doc);
+      setAiByDoc((m) => ({ ...m, [doc.id]: suggestions }));
+      // count only the ones that add something new to the queue (not already a
+      // keyword proposal, not already approved/rejected) so the note is honest
+      const keywordKeys = new Set(proposeLinks(doc, concepts).map((p) => linkKey(p, doc.id)));
+      const approvedKeys = new Set(teacher.approvedLinks.map((l) => linkKey(l)));
+      const fresh = suggestions.filter((p) => {
+        const k = linkKey(p, doc.id);
+        return !keywordKeys.has(k) && !approvedKeys.has(k) && !teacher.rejectedKeys.includes(k);
+      });
+      if (suggestions.length === 0) {
+        setAiNote("The AI found no additional links beyond the keyword matches.");
+      } else if (fresh.length === 0) {
+        setAiNote("The AI agreed with the keyword matches — no new links to add.");
+      } else {
+        setAiNote(`The AI added ${fresh.length} new suggestion${fresh.length === 1 ? "" : "s"} to the queue below.`);
+      }
+    } catch {
+      setAiNote("Couldn't reach the AI assistant just now — the keyword proposals are still here.");
+    } finally {
+      setAiBusyDoc(null);
+    }
+  };
 
   const ingest = (title: string, raw: string) => {
     setUploadError(null);
@@ -117,7 +166,11 @@ export function TeachClient() {
 
   const pendingByDoc = teacher.docs.map((doc) => {
     const approvedKeys = new Set(teacher.approvedLinks.map((l) => linkKey(l)));
-    const proposals = proposeLinks(doc, concepts).filter((p) => {
+    const keyword = proposeLinks(doc, concepts);
+    const keywordKeys = new Set(keyword.map((p) => linkKey(p, doc.id)));
+    // merge AI suggestions, skipping any the keyword matcher already found
+    const ai = (aiByDoc[doc.id] ?? []).filter((p) => !keywordKeys.has(linkKey(p, doc.id)));
+    const proposals = [...keyword, ...ai].filter((p) => {
       const key = linkKey(p, doc.id);
       return !approvedKeys.has(key) && !teacher.rejectedKeys.includes(key);
     });
@@ -228,16 +281,35 @@ export function TeachClient() {
                   📄 <strong>{doc.title}</strong> — {doc.sections.length} sections, ~
                   {Math.max(1, Math.round(doc.charCount / 2800))} pages
                 </span>
-                <button
-                  type="button"
-                  onClick={() => mutateTeacherState((s) => removeDoc(s, doc.id))}
-                  className="btn-danger min-h-12 px-4 text-sm text-white"
-                >
-                  Remove
-                </button>
+                <span className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={aiBusyDoc !== null}
+                    onClick={() => runAiSuggest(doc)}
+                    className="btn-secondary min-h-12 px-4 text-sm disabled:opacity-50"
+                    title="Ask the AI curriculum assistant for semantic matches the keyword matcher misses"
+                  >
+                    {aiBusyDoc === doc.id ? "Thinking…" : "✦ Suggest links with AI"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => mutateTeacherState((s) => removeDoc(s, doc.id))}
+                    className="btn-danger min-h-12 px-4 text-sm text-white"
+                  >
+                    Remove
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
+          {aiNote && (
+            <p className="mt-2 text-xs text-gray-600" role="status">
+              {aiNote}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            AI suggestions are advisory — they enter the review queue and still need your approval to become a source.
+          </p>
         </div>
       )}
 

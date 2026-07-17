@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { concepts } from "../../../content/econ13210";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "../../../content/econ13210/sample-lecture";
-import { citationFromLink, keyTerms, proposeLinks, sectionize, stableId } from "../ingest";
+import { citationFromLink, keyTerms, proposeLinks, sanitizeAiSuggestions, sectionize, stableId } from "../ingest";
 
 const NOW = "2026-07-17T10:00:00.000Z";
 
@@ -111,5 +111,48 @@ describe("helpers", () => {
 
   it("keyTerms drops stopwords and short tokens", () => {
     expect(keyTerms("the rate of the model")).toEqual(["rate", "model"]);
+  });
+});
+
+describe("sanitizeAiSuggestions (D-011: hallucinated links can't reach the queue)", () => {
+  const slugs = new Set(["steady-state", "golden-rule"]);
+  const sections = new Set(["doc-1-s1", "doc-1-s2"]);
+
+  it("keeps only suggestions whose concept AND section both exist", () => {
+    const raw = [
+      { conceptSlug: "steady-state", sectionId: "doc-1-s1", reason: "explains k*" },
+      { conceptSlug: "made-up-concept", sectionId: "doc-1-s1", reason: "nope" }, // bad slug
+      { conceptSlug: "golden-rule", sectionId: "doc-9-s9", reason: "nope" }, // bad section
+    ];
+    const out = sanitizeAiSuggestions(raw, slugs, sections);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ conceptSlug: "steady-state", sectionId: "doc-1-s1", origin: "ai" });
+  });
+
+  it("dedupes repeated pairs and marks every result as ai-origin", () => {
+    const raw = [
+      { conceptSlug: "steady-state", sectionId: "doc-1-s1", reason: "a" },
+      { conceptSlug: "steady-state", sectionId: "doc-1-s1", reason: "b" },
+    ];
+    const out = sanitizeAiSuggestions(raw, slugs, sections);
+    expect(out).toHaveLength(1);
+    expect(out.every((l) => l.origin === "ai" && l.matchedTerms.length === 0)).toBe(true);
+  });
+
+  it("is empty for non-array / garbage input", () => {
+    expect(sanitizeAiSuggestions(null, slugs, sections)).toEqual([]);
+    expect(sanitizeAiSuggestions("[]", slugs, sections)).toEqual([]);
+    expect(sanitizeAiSuggestions([{ nope: true }, 42, "x"], slugs, sections)).toEqual([]);
+  });
+
+  it("caps the number of suggestions and trims long reasons", () => {
+    const raw = Array.from({ length: 20 }, (_, i) => ({
+      conceptSlug: "steady-state",
+      sectionId: i % 2 ? "doc-1-s1" : "doc-1-s2",
+      reason: "x".repeat(500),
+    }));
+    const out = sanitizeAiSuggestions(raw, slugs, sections, 5);
+    expect(out.length).toBeLessThanOrEqual(5);
+    expect(out.every((l) => (l.reason?.length ?? 0) <= 180)).toBe(true);
   });
 });

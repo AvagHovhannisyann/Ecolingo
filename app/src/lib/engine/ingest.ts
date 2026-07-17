@@ -36,6 +36,42 @@ export interface ProposedLink {
   /** 0..1 — fraction of the concept's key terms found in the section */
   score: number;
   matchedTerms: string[];
+  /** "keyword" = deterministic overlap; "ai" = model-suggested (still gated) */
+  origin?: "keyword" | "ai";
+  /** one-line rationale, only for AI suggestions */
+  reason?: string;
+}
+
+/**
+ * Validate raw AI link suggestions against allowlists (GATE-001 substrate).
+ * The model may only point at concepts and sections that actually exist — any
+ * hallucinated slug or section id is dropped, so a fabricated link can never
+ * even reach the review queue, let alone become a citation. Deterministic:
+ * dedupes, caps count, trims the rationale.
+ */
+export function sanitizeAiSuggestions(
+  raw: unknown,
+  allowedConceptSlugs: Set<string>,
+  allowedSectionIds: Set<string>,
+  max = 12
+): ProposedLink[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: ProposedLink[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    const conceptSlug = typeof r.conceptSlug === "string" ? r.conceptSlug : "";
+    const sectionId = typeof r.sectionId === "string" ? r.sectionId : "";
+    if (!allowedConceptSlugs.has(conceptSlug) || !allowedSectionIds.has(sectionId)) continue;
+    const key = `${sectionId}:${conceptSlug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const reason = typeof r.reason === "string" ? r.reason.trim().slice(0, 180) : "";
+    out.push({ conceptSlug, sectionId, score: 0, matchedTerms: [], origin: "ai", reason });
+    if (out.length >= max) break;
+  }
+  return out;
 }
 
 const CHARS_PER_PAGE = 2800;
