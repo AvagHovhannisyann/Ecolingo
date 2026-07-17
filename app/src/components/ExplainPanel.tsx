@@ -2,8 +2,9 @@
 
 /**
  * Universal Explain button + panel (spec §10, IDEA-061..065/069/071).
- * Provider is the deterministic grounded fallback in the slice (D-004);
- * a live tutor agent implements the same interface in Phase 3.
+ * Provider is the live OpenRouter tutor (D-010) with a deterministic grounded
+ * fallback (D-004): equations/graphs stay code-rendered (GATE-002) and
+ * citations stay deterministic (GATE-001) whichever path answers.
  */
 
 import Link from "next/link";
@@ -40,14 +41,25 @@ export function ExplainPanel({
 }) {
   const [output, setOutput] = useState<ExplainOutput | null>(null);
   const [activeMode, setActiveMode] = useState<ExplainMode | null>(null);
+  const [loadingMode, setLoadingMode] = useState<ExplainMode | null>(null);
   const [reported, setReported] = useState(false);
 
   const run = async (mode: ExplainMode) => {
     const citations = course.citations.filter((c) => concept.citationIds.includes(c.id));
-    const result = await explainProvider.explain({ mode, concept, equation, citations, misconception, simplerVariant });
-    setOutput(result);
     setActiveMode(mode);
+    setLoadingMode(mode);
+    setOutput(null);
     setReported(false);
+    try {
+      const result = await explainProvider.explain({ mode, concept, equation, citations, misconception, simplerVariant });
+      // ignore a stale response if the learner clicked another mode meanwhile
+      setLoadingMode((cur) => {
+        if (cur === mode) setOutput(result);
+        return cur === mode ? null : cur;
+      });
+    } catch {
+      setLoadingMode((cur) => (cur === mode ? null : cur));
+    }
   };
 
   const modes: { mode: ExplainMode; label: string }[] =
@@ -71,8 +83,27 @@ export function ExplainPanel({
         ))}
       </div>
 
-      {output && (
+      {loadingMode && (
+        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-gray-200 p-4 text-sm text-gray-600" role="status">
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--growth-green)]" aria-hidden />
+          Thinking through it for you…
+        </div>
+      )}
+
+      {output && !loadingMode && (
         <div className="mt-3 rounded-2xl border border-gray-300 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span
+              className="rounded-full bg-[var(--growth-green-tint)] px-2 py-0.5 text-[11px] font-semibold text-[var(--growth-green-deep)]"
+              title={
+                output.generatedBy === "ai"
+                  ? "Written just now by the live tutor, grounded in the course facts"
+                  : "Offline explanation from the built-in deterministic tutor"
+              }
+            >
+              {output.generatedBy === "ai" ? "✦ AI tutor" : "Offline tutor"}
+            </span>
+          </div>
           {output.uncertainty !== "grounded" && (
             <p className="mb-2 text-xs text-amber-800">
               {output.uncertainty === "partially_grounded"

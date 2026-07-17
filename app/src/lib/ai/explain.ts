@@ -37,6 +37,8 @@ export interface ExplainOutput {
   citations: Citation[];
   /** honesty about grounding — surfaced as a banner (IDEA-182) */
   uncertainty: "grounded" | "partially_grounded" | "not_in_sources";
+  /** whether the prose came from the live tutor or the deterministic fallback */
+  generatedBy?: "ai" | "deterministic";
 }
 
 export interface ExplainProvider {
@@ -101,8 +103,56 @@ export class DeterministicExplainProvider implements ExplainProvider {
     }
 
     // GATE-001: only pass through real, attached citations; never fabricate.
-    return { segments, citations: input.citations, uncertainty };
+    return { segments, citations: input.citations, uncertainty, generatedBy: "deterministic" };
   }
 }
 
-export const explainProvider: ExplainProvider = new DeterministicExplainProvider();
+/**
+ * Live tutor provider (D-010). It calls the same-origin /api/explain route
+ * (which holds the OpenRouter key server-side) for grounded explanatory PROSE,
+ * then layers that prose over the deterministic output — keeping every
+ * truth-critical segment code-rendered (equations, graph refs; GATE-002) and
+ * every citation deterministic (GATE-001). Any failure returns the
+ * deterministic result unchanged, so the Explain button never breaks (GATE-009).
+ */
+export class LLMExplainProvider implements ExplainProvider {
+  private readonly det = new DeterministicExplainProvider();
+
+  async explain(input: ExplainInput): Promise<ExplainOutput> {
+    const base = this.det.explain(input);
+    // never send truth-critical modes' correctness to the model — math/graph
+    // segments below are always the code-rendered ones regardless.
+    try {
+      const res = await fetch("/api/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: input.mode,
+          conceptName: input.concept.name,
+          definition: input.concept.definition,
+          equationLatex: input.equation?.latex ?? null,
+          equationMeaning: input.equation?.components.map((c) => c.meaning).join("; ") ?? null,
+          misconception: input.misconception?.description ?? null,
+          sourceLabels: input.citations.map((c) => c.label),
+        }),
+      });
+      if (!res.ok) return { ...base, generatedBy: "deterministic" };
+      const data = (await res.json()) as { text?: string };
+      const text = typeof data.text === "string" ? data.text.trim() : "";
+      if (!text) return { ...base, generatedBy: "deterministic" };
+      // AI prose first; keep only the deterministic non-text (truth-critical)
+      // segments — equations and graph references are never model-authored.
+      const nonProse = base.segments.filter((s) => s.kind !== "text");
+      return {
+        segments: [t(text), ...nonProse],
+        citations: base.citations,
+        uncertainty: base.uncertainty,
+        generatedBy: "ai",
+      };
+    } catch {
+      return { ...base, generatedBy: "deterministic" };
+    }
+  }
+}
+
+export const explainProvider: ExplainProvider = new LLMExplainProvider();

@@ -1,0 +1,120 @@
+/**
+ * Live tutor-agent endpoint (docs/04-ai-orchestration.md §20.5, decision D-010).
+ *
+ * SERVER-SIDE ONLY: the OpenRouter key never leaves the server — the browser
+ * calls this same-origin route, which proxies to OpenRouter. The response is
+ * grounded explanatory PROSE only. Truth-critical artifacts are never taken
+ * from the model: equations/graphs stay code-rendered (GATE-002) and citations
+ * are attached deterministically by the client from approved sources, never by
+ * the model (GATE-001). On any failure this returns 502/503 and the client
+ * falls back to the deterministic provider — no silent failure (GATE-009).
+ */
+
+import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+
+// Primary is chosen for the free tier's reliability+latency (see D-010); the
+// rest are availability fallbacks. The deterministic provider is the client's
+// final fallback, so total failure here is still safe.
+const MODELS = [
+  process.env.OPENROUTER_MODEL || "google/gemma-4-26b-a4b-it:free",
+  "openai/gpt-oss-20b:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+];
+
+const MODE_INSTRUCTION: Record<string, string> = {
+  simpler: "Re-explain the concept in the simplest possible language, 1–2 sentences.",
+  three_sentences: "Explain the concept in exactly three short sentences.",
+  step_by_step: "Explain the reasoning in 2–4 short numbered steps.",
+  intuition: "Give the intuition with a concrete everyday analogy, 2 sentences.",
+  mathematics: "Explain what the equation means in words, 1–2 sentences. Do NOT restate the equation — it is shown separately.",
+  example: "Give one short worked-example sentence. Do NOT invent specific numbers unless they appear in the provided facts.",
+  graph: "In one sentence, say what to look for on the graph. The graph is shown separately.",
+  why_wrong: "Gently explain the likely misconception and how to fix it, 2 sentences. Never shame the learner.",
+};
+
+interface Body {
+  mode?: string;
+  conceptName?: string;
+  definition?: string;
+  equationLatex?: string | null;
+  equationMeaning?: string | null;
+  misconception?: string | null;
+  sourceLabels?: string[];
+}
+
+export async function POST(req: Request) {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) {
+    // no provider configured → tell the client to use its deterministic fallback
+    return NextResponse.json({ error: "no_provider" }, { status: 503 });
+  }
+
+  let body: Body;
+  try {
+    body = (await req.json()) as Body;
+  } catch {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
+
+  const mode = String(body.mode ?? "");
+  const instruction = MODE_INSTRUCTION[mode];
+  if (!instruction || !body.definition) {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
+
+  // Grounding block: the model may use ONLY these facts. It must not cite
+  // sources (the client attaches real citations) and must not invent numbers.
+  const facts = [
+    `Concept: ${body.conceptName ?? ""}`.trim(),
+    `Definition (authoritative, do not contradict): ${body.definition}`,
+    body.equationLatex ? `Equation (LaTeX, already shown to the learner): ${body.equationLatex}` : "",
+    body.equationMeaning ? `Equation meaning: ${body.equationMeaning}` : "",
+    body.misconception ? `The learner's likely misconception: ${body.misconception}` : "",
+    body.sourceLabels?.length ? `(Grounded in the teacher's material: ${body.sourceLabels.join("; ")})` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const system =
+    "You are Ecolingo's economics tutor for an intro macro course. Explain using ONLY the provided facts; never add outside claims, never invent numbers, never cite or name sources or page numbers (the app attaches citations itself). Be warm, plain, and concise. Output plain prose only — no markdown headers, no LaTeX, no bullet characters.";
+  const user = `${facts}\n\nTask: ${instruction}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  try {
+    for (const model of MODELS) {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+            "X-Title": "Ecolingo",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 220,
+            temperature: 0.3,
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content: user },
+            ],
+          }),
+        });
+        if (!res.ok) continue; // 429/5xx → try the next model
+        const data = await res.json();
+        const text: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
+        if (text) return NextResponse.json({ text, model });
+      } catch {
+        // abort or network error → try next model (or fall through to 502)
+        if (controller.signal.aborted) break;
+      }
+    }
+    return NextResponse.json({ error: "upstream_unavailable" }, { status: 502 });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
