@@ -243,6 +243,35 @@ export const questions: Question[] = [
     answerKey: { correctOptionId: "a" },
   },
   {
+    id: "q-solow-diagram-1",
+    conceptSlug: "steady-state",
+    type: "diagram_label",
+    stem: "Label the three marked elements of the Solow diagram.",
+    difficulty: 2,
+    expectedSeconds: 45,
+    transferDistance: 0,
+    provenance: "ai_draft",
+    hint: "The curved line bends because of diminishing returns; the straight line's slope is (n+δ).",
+    citationIds: [PENDING_CITATION.id],
+    slots: [
+      { id: "slot-curve", description: "marker 1: the curved solid line" },
+      { id: "slot-line", description: "marker 2: the straight dashed line" },
+      { id: "slot-cross", description: "marker 3: the crossing point" },
+    ],
+    labels: [
+      { id: "lab-actual", text: "s\\,f(k) \\text{ — actual investment}" },
+      { id: "lab-breakeven", text: "(n+\\delta)k \\text{ — break-even investment}" },
+      { id: "lab-kstar", text: "k^{*} \\text{ — steady state}" },
+    ],
+    answerKey: {
+      slotToLabel: {
+        "slot-curve": "lab-actual",
+        "slot-line": "lab-breakeven",
+        "slot-cross": "lab-kstar",
+      },
+    },
+  },
+  {
     id: "q-golden-multi-1",
     conceptSlug: "golden-rule",
     type: "mc_multi",

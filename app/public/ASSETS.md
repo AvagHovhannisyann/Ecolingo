@@ -24,5 +24,10 @@ palette as the color constraint.
 | `art/achievement-streak.webp` | "On a roll" badge | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `2be88b14-0dbd-46c4-84a7-60303ab0c1f7` | 2026-07-16 |
 | `art/achievement-mastery.webp` | "Concept mastered" badge | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `24cc3a1c-1a2d-4f25-94fe-1603410eb52d` | 2026-07-16 |
 
+| `art/onboarding-checkin.webp` | Onboarding header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `da13ffdf-27f3-4c99-9590-fd659d606c11` | 2026-07-17 |
+| `art/bank-header.webp` | Question Bank header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `88222a90-247b-420e-b4fe-764a7f508eca` | 2026-07-17 |
+| `art/review-header.webp` | Review page header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `83de1aed-937d-4309-80a8-5a4b556519e9` | 2026-07-17 |
+| `art/exam-header.webp` | Exam Plan header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `e6070401-3596-4e8b-9b87-ea3d1b998e1b` | 2026-07-17 |
+
 Prompts are recorded in the Higgsfield job metadata (retrievable by job ID).
-Both images were reviewed to contain no text, no charts, no axes, and no numbers.
+All images were reviewed to contain no text, no charts, no axes, and no numbers.

@@ -30,6 +30,9 @@ export interface LearnerProfile {
   explanationOrder: "visual_first" | "math_first" | "text_first";
   readingLevel: "standard" | "simpler";
   onboarded: boolean;
+  /** diagnostic results in [0,1]; null until taken (IDEA-005/006) */
+  mathReadiness: number | null;
+  graphReading: number | null;
 }
 
 export function defaultProfile(): LearnerProfile {
@@ -39,6 +42,8 @@ export function defaultProfile(): LearnerProfile {
     explanationOrder: "visual_first",
     readingLevel: "standard",
     onboarded: false,
+    mathReadiness: null,
+    graphReading: null,
   };
 }
 

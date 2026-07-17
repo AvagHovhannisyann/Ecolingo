@@ -17,6 +17,7 @@ import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring
 import { course, misconceptions, getConcept, getEquation } from "@/content/econ13210";
 import { MathTex } from "./MathTex";
 import { ExplainPanel } from "./ExplainPanel";
+import { MiniSolowDiagram } from "./MiniSolowDiagram";
 
 function shuffled<T>(xs: T[], seed: number): T[] {
   const a = [...xs];
@@ -50,6 +51,8 @@ export function QuestionCard({
   const [numericRaw, setNumericRaw] = useState("");
   const [tokenOrder, setTokenOrder] = useState<string[]>([]);
   const [itemOrder, setItemOrder] = useState<string[]>([]);
+  const [slotToLabel, setSlotToLabel] = useState<Record<string, string>>({});
+  const [activeSlot, setActiveSlot] = useState<string | null>(null);
 
   const shuffledTokens = useMemo(
     () => (question.type === "equation_assembly" ? shuffled(question.tokens, 7) : []),
@@ -72,6 +75,10 @@ export function QuestionCard({
         return tokenOrder.length === question.tokens.length ? { type: "equation_assembly", orderedTokenIds: tokenOrder } : null;
       case "causal_order":
         return itemOrder.length === question.items.length ? { type: "causal_order", orderedItemIds: itemOrder } : null;
+      case "diagram_label":
+        return Object.keys(slotToLabel).length === question.slots.length
+          ? { type: "diagram_label", slotToLabel }
+          : null;
       default:
         return null;
     }
@@ -107,6 +114,8 @@ export function QuestionCard({
     setNumericRaw("");
     setTokenOrder([]);
     setItemOrder([]);
+    setSlotToLabel({});
+    setActiveSlot(null);
   };
 
   const activeMisconception =
@@ -236,6 +245,65 @@ export function QuestionCard({
               </button>
             );
           })}
+        </div>
+      )}
+
+      {question.type === "diagram_label" && (
+        <div className="mt-3">
+          {/* the diagram itself is code-rendered from the model math — it is
+              the answer key, so it is never a generated image (GATE-002) */}
+          <MiniSolowDiagram
+            slotMarkers
+            ariaLabel="Solow diagram with three numbered markers: marker 1 on the curved solid line, marker 2 on the straight dashed line, marker 3 at their crossing point."
+          />
+          <p className="mt-2 text-sm text-gray-700">Pick a marker, then tap the label that belongs to it:</p>
+          <div className="mt-2 flex gap-2" role="group" aria-label="Diagram markers">
+            {question.slots.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                disabled={answered}
+                aria-pressed={activeSlot === s.id}
+                onClick={() => setActiveSlot(s.id)}
+                className={`min-h-12 rounded-xl border px-4 ${
+                  activeSlot === s.id ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
+                }`}
+              >
+                {i + 1}
+                {slotToLabel[s.id] ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 space-y-2">
+            {question.labels.map((l) => {
+              const assignedTo = Object.entries(slotToLabel).find(([, v]) => v === l.id)?.[0];
+              const slotIdx = assignedTo ? question.slots.findIndex((s) => s.id === assignedTo) : -1;
+              return (
+                <button
+                  key={l.id}
+                  type="button"
+                  disabled={answered || !activeSlot}
+                  onClick={() => {
+                    if (!activeSlot) return;
+                    setSlotToLabel((m) => {
+                      const next = { ...m };
+                      // a label belongs to at most one marker
+                      for (const k of Object.keys(next)) if (next[k] === l.id) delete next[k];
+                      next[activeSlot] = l.id;
+                      return next;
+                    });
+                    setActiveSlot(null);
+                  }}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-gray-300 p-3 text-left text-sm disabled:opacity-50"
+                >
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs">
+                    {slotIdx >= 0 ? slotIdx + 1 : "·"}
+                  </span>
+                  <MathTex latex={l.text} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

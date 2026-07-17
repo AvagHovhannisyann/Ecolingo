@@ -7,18 +7,21 @@
  * targets, single column).
  */
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { updatePlan, updateProfile, type LearnerProfile } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
+import { DiagnosticStep } from "./DiagnosticStep";
 
-type StepId = "role" | "objective" | "schedule" | "preferences";
-const STEPS: StepId[] = ["role", "objective", "schedule", "preferences"];
+type StepId = "role" | "objective" | "schedule" | "diagnostic" | "preferences";
+const STEPS: StepId[] = ["role", "objective", "schedule", "diagnostic", "preferences"];
 
 export function OnboardingClient() {
   const router = useRouter();
   const state = useLearnerState();
   const [stepIndex, setStepIndex] = useState(0);
+  const [diagnosticNote, setDiagnosticNote] = useState<string | null>(null);
   if (!state) return <p className="p-4 text-sm text-gray-500">Loading…</p>;
 
   const step = STEPS[stepIndex];
@@ -37,6 +40,16 @@ export function OnboardingClient() {
 
   return (
     <div className="mx-auto max-w-md">
+      {/* Higgsfield onboarding art (approved decorative slot §17.2) */}
+      <Image
+        src="/art/onboarding-checkin.webp"
+        alt=""
+        role="presentation"
+        width={1344}
+        height={768}
+        priority
+        className="mb-4 h-32 w-full rounded-2xl border border-gray-200 object-cover"
+      />
       <nav aria-label="Onboarding progress" className="flex gap-1">
         {STEPS.map((s, i) => (
           <span
@@ -133,6 +146,32 @@ export function OnboardingClient() {
         </StepShell>
       )}
 
+      {step === "diagnostic" && (
+        <StepShell
+          title="A 2-minute check-in"
+          why="Four quick questions on math and graph reading. No grade — the result only tunes where lessons start, and you'll confirm every suggestion on the next step."
+        >
+          <DiagnosticStep
+            onDone={(result, defaults) => {
+              setProfile({
+                mathReadiness: result.mathReadiness,
+                graphReading: result.graphReading,
+                readingLevel: defaults.readingLevel,
+                explanationOrder: defaults.explanationOrder,
+              });
+              setDiagnosticNote(result.calibrationNote);
+              setStepIndex((i) => i + 1);
+            }}
+          />
+        </StepShell>
+      )}
+
+      {step === "preferences" && diagnosticNote && (
+        <p className="mt-4 rounded-xl bg-gray-100 p-3 text-sm" role="status">
+          {diagnosticNote}
+        </p>
+      )}
+
       {step === "preferences" && (
         <StepShell
           title="How do you like ideas explained?"
@@ -168,9 +207,12 @@ export function OnboardingClient() {
         <button type="button" onClick={next} className="min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
           Skip for now
         </button>
-        <button type="button" onClick={next} className="min-h-12 rounded-xl bg-gray-900 px-6 text-white">
-          {isLast ? "Start learning" : "Continue"}
-        </button>
+        {/* the diagnostic advances through its own Finish button */}
+        {step !== "diagnostic" && (
+          <button type="button" onClick={next} className="min-h-12 rounded-xl bg-gray-900 px-6 text-white">
+            {isLast ? "Start learning" : "Continue"}
+          </button>
+        )}
       </div>
       <p className="mt-3 text-xs text-gray-500">
         Everything here is optional and editable later under Progress → personalization.

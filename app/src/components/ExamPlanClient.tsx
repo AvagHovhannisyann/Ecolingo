@@ -9,6 +9,7 @@
  * a predicted score (the calibrated readiness score is post-MVP, IDEA-120).
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { concepts } from "@/content/econ13210";
 import { retentionAt } from "@/lib/engine/mastery";
@@ -46,7 +47,22 @@ export function ExamPlanClient() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Exam plan</h1>
+      {/* Higgsfield summit-basecamp art (approved decorative slot §17.2) */}
+      <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-200">
+        <Image
+          src="/art/exam-header.webp"
+          alt=""
+          role="presentation"
+          width={1344}
+          height={768}
+          priority
+          className="h-32 w-full object-cover sm:h-40"
+        />
+        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+          <h1 className="text-xl font-semibold">Exam plan</h1>
+          <p className="text-sm opacity-90">Every checkpoint on the trail to the summit.</p>
+        </div>
+      </div>
 
       <div className="mt-3 rounded-2xl border border-gray-300 p-4">
         {exam ? (

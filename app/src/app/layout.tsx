@@ -20,11 +20,19 @@ export const viewport: Viewport = {
  * in docs/02-prd.md §6: top nav on wide screens, bottom nav on mobile.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const nav = [
+  // desktop shows the full IA (§8.1); mobile keeps four one-thumb tabs (§8.2)
+  const navDesktop = [
     { href: "/", label: "Path" },
     { href: "/review", label: "Review" },
     { href: "/lab", label: "Visual Lab" },
+    { href: "/bank", label: "Question Bank" },
     { href: "/exam", label: "Exam Plan" },
+    { href: "/progress", label: "Progress" },
+  ];
+  const navMobile = [
+    { href: "/", label: "Path" },
+    { href: "/review", label: "Review" },
+    { href: "/lab", label: "Labs" },
     { href: "/progress", label: "Progress" },
   ];
   return (
@@ -44,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </span>
             </div>
             <nav aria-label="Primary" className="hidden gap-2 sm:flex">
-              {nav.map((n) => (
+              {navDesktop.map((n) => (
                 <Link key={n.href} href={n.href} className="min-h-12 rounded-xl px-3 py-3 text-sm hover:bg-gray-100">
                   {n.label}
                 </Link>
@@ -60,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           aria-label="Primary mobile"
           className="fixed inset-x-0 bottom-0 flex justify-around border-t border-gray-200 bg-white p-1 sm:hidden"
         >
-          {nav.map((n) => (
+          {navMobile.map((n) => (
             <Link key={n.href} href={n.href} className="min-h-12 flex-1 rounded-xl p-3 text-center text-sm">
               {n.label}
             </Link>

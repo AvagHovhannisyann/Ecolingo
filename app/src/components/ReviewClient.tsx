@@ -7,6 +7,7 @@
  * evidence, which reschedules the next interval.
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { concepts, questions } from "@/content/econ13210";
@@ -70,7 +71,22 @@ export function ReviewClient() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">Review — practice before you forget</h1>
+      {/* Higgsfield review-garden art (approved decorative slot §17.2) */}
+      <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-200">
+        <Image
+          src="/art/review-header.webp"
+          alt=""
+          role="presentation"
+          width={1344}
+          height={768}
+          priority
+          className="h-32 w-full object-cover sm:h-40"
+        />
+        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+          <h1 className="text-xl font-semibold">Review — practice before you forget</h1>
+          <p className="text-sm opacity-90">Tend the ideas before they wilt.</p>
+        </div>
+      </div>
 
       {state.auditLog.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">

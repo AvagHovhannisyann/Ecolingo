@@ -72,6 +72,8 @@ export async function hydrateRemoteState(): Promise<Partial<LearnerState> | null
         explanationOrder: profileRes.data.explanation_order,
         readingLevel: profileRes.data.reading_level,
         onboarded: profileRes.data.onboarded,
+        mathReadiness: profileRes.data.math_readiness,
+        graphReading: profileRes.data.graph_reading,
       };
       partial.xp = profileRes.data.xp;
       partial.completedLessonIds = profileRes.data.completed_lesson_ids ?? [];
@@ -131,6 +133,8 @@ async function pushState(state: LearnerState): Promise<void> {
       explanation_order: state.profile.explanationOrder,
       reading_level: state.profile.readingLevel,
       onboarded: state.profile.onboarded,
+      math_readiness: state.profile.mathReadiness,
+      graph_reading: state.profile.graphReading,
       xp: state.xp,
       completed_lesson_ids: state.completedLessonIds,
     });
