@@ -51,14 +51,14 @@ export function BankClient() {
           <button
             type="button"
             onClick={() => setAttemptKey((k) => k + 1)}
-            className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm"
+            className="btn-secondary min-h-12 px-4 text-sm"
           >
             Fresh attempt
           </button>
           <button
             type="button"
             onClick={() => setActiveId(null)}
-            className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm"
+            className="btn-secondary min-h-12 px-4 text-sm"
           >
             Back to the bank
           </button>

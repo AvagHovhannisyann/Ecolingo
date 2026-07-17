@@ -62,7 +62,7 @@ export function ReviewClient() {
         <div className="mt-4">
           <QuestionCard key={`${active.conceptSlug}-${q.id}`} question={q} onEvidence={(e, r) => handleEvidence(active, e, r.correct)} />
         </div>
-        <button type="button" onClick={() => setActive(null)} className="mt-4 btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
+        <button type="button" onClick={() => setActive(null)} className="mt-4 btn-secondary min-h-12 px-4 text-sm">
           Back to queue
         </button>
       </div>
@@ -99,7 +99,23 @@ export function ReviewClient() {
       ) : (
         <>
           <h2 className="mt-5 font-medium">Due now</h2>
-          {due.length === 0 && <p className="mt-2 text-sm text-gray-600">Nothing due right now — that&apos;s the schedule working.</p>}
+          {due.length === 0 && (
+            <div className="card mt-2 flex items-center gap-4 p-4">
+              {/* Higgsfield "all caught up" creature (decorative slot §17.2) */}
+              <Image
+                src="/art/review-caught-up.webp"
+                alt=""
+                role="presentation"
+                width={200}
+                height={200}
+                className="art-enter h-20 w-20 shrink-0 rounded-2xl object-cover"
+              />
+              <div className="text-sm text-gray-600">
+                <p className="font-semibold text-[var(--deep-ink)]">All caught up!</p>
+                <p>Nothing due right now — that&apos;s the schedule working, not you slacking.</p>
+              </div>
+            </div>
+          )}
           <ul className="mt-2 space-y-3">
             {due.map((item) => {
               const c = concepts.find((x) => x.slug === item.conceptSlug);
@@ -110,7 +126,7 @@ export function ReviewClient() {
                   <button
                     type="button"
                     onClick={() => setActive(item)}
-                    className="mt-3 btn-press min-h-12 rounded-xl bg-gray-900 px-5 text-white"
+                    className="mt-3 btn-primary min-h-12 px-5 text-white"
                   >
                     Review now
                   </button>

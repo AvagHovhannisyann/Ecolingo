@@ -23,12 +23,15 @@ palette as the color constraint.
 | `art/achievement-first-lesson.webp` | "First steps" badge | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `47e3ac31-4c47-4a3a-8787-4a29c28f9ef6` | 2026-07-16 |
 | `art/achievement-streak.webp` | "On a roll" badge | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `2be88b14-0dbd-46c4-84a7-60303ab0c1f7` | 2026-07-16 |
 | `art/achievement-mastery.webp` | "Concept mastered" badge | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `24cc3a1c-1a2d-4f25-94fe-1603410eb52d` | 2026-07-16 |
-
 | `art/onboarding-checkin.webp` | Onboarding header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `da13ffdf-27f3-4c99-9590-fd659d606c11` | 2026-07-17 |
 | `art/bank-header.webp` | Question Bank header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `88222a90-247b-420e-b4fe-764a7f508eca` | 2026-07-17 |
 | `art/review-header.webp` | Review page header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `83de1aed-937d-4309-80a8-5a4b556519e9` | 2026-07-17 |
 | `art/exam-header.webp` | Exam Plan header | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `e6070401-3596-4e8b-9b87-ea3d1b998e1b` | 2026-07-17 |
+| `video/world-2-solow-ambient.mp4` | Home hero ambient loop (decorative; reduced-motion + decode-error users get the still) | Higgsfield MCP | kling3_0_turbo image-to-video (720p, 5s, from world-2 art) | `44aa4d15-2902-4e12-9eaa-190a3b510f6b` | 2026-07-17 |
+| `art/creature-celebrating.webp` | Correct-answer feedback creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `3555af4c-74f1-4680-99dd-d22fbe3a1421` | 2026-07-17 |
+| `art/creature-encouraging.webp` | Incorrect-answer feedback creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `6b501e58-568d-4b5c-b11f-32f79a2c946f` | 2026-07-17 |
+| `art/creature-thinking.webp` | Home "nothing due" empty-state creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `939d1db7-8ff6-4fe2-9e2b-a0ec661dfcf7` | 2026-07-17 |
+| `art/review-caught-up.webp` | Review "all caught up" empty-state creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `899264c0-2621-49b2-8c02-6ea9dd095688` | 2026-07-17 |
 
 Prompts are recorded in the Higgsfield job metadata (retrievable by job ID).
 All images were reviewed to contain no text, no charts, no axes, and no numbers.
-| `video/world-2-solow-ambient.mp4` | Home hero ambient loop (decorative; reduced-motion + decode-error users get the still) | Higgsfield MCP | kling3_0_turbo image-to-video (720p, 5s, from world-2 art) | `44aa4d15-2902-4e12-9eaa-190a3b510f6b` | 2026-07-17 |

@@ -138,7 +138,7 @@ export function ProgressClient() {
       <div className="mt-6">
         <button
           type="button"
-          className="btn-press min-h-12 rounded-xl border border-red-300 px-4 text-sm text-red-700"
+          className="btn-danger min-h-12 px-4 text-sm"
           onClick={() => {
             if (window.confirm("Reset all personalization and progress? This cannot be undone.")) {
               mutateLearnerState(() => resetLearnerState());

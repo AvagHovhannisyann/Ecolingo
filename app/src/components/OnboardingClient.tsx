@@ -204,12 +204,12 @@ export function OnboardingClient() {
       )}
 
       <div className="mt-6 flex items-center justify-between">
-        <button type="button" onClick={next} className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
+        <button type="button" onClick={next} className="btn-secondary min-h-12 px-4 text-sm">
           Skip for now
         </button>
         {/* the diagnostic advances through its own Finish button */}
         {step !== "diagnostic" && (
-          <button type="button" onClick={next} className="btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white">
+          <button type="button" onClick={next} className="btn-primary min-h-12 px-6 text-white">
             {isLast ? "Start learning" : "Continue"}
           </button>
         )}
@@ -247,8 +247,8 @@ function ChoiceButton({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`block min-h-12 w-full rounded-xl border p-3 text-left ${
-        selected ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
+      className={`block min-h-12 w-full p-3 text-left ${
+        selected ? "choice-selected" : "choice-idle"
       }`}
     >
       <span className="font-medium">{label}</span>

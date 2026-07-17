@@ -11,6 +11,7 @@
  * Mistakes are never punished (IDEA-132): wrong answers get a gentle retry.
  */
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import type { EvidenceEvent, Question } from "@/lib/engine/types";
 import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring";
@@ -144,8 +145,8 @@ export function QuestionCard({
             return (
               <label
                 key={o.id}
-                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3 ${
-                  selected ? "border-gray-900" : "border-gray-300"
+                className={`flex min-h-12 cursor-pointer items-center gap-3 p-3 ${
+                  selected ? "choice-selected" : "choice-idle"
                 }`}
               >
                 <input
@@ -203,7 +204,7 @@ export function QuestionCard({
                 type="button"
                 disabled={answered || tokenOrder.includes(tok.id)}
                 onClick={() => setTokenOrder((xs) => [...xs, tok.id])}
-                className="btn-press min-h-12 rounded-xl border border-gray-400 px-3 disabled:opacity-40"
+                className="btn-secondary min-h-12 px-3 disabled:opacity-40"
               >
                 <MathTex latex={tok.latex} />
               </button>
@@ -212,7 +213,7 @@ export function QuestionCard({
               type="button"
               disabled={answered || tokenOrder.length === 0}
               onClick={() => setTokenOrder((xs) => xs.slice(0, -1))}
-              className="btn-press min-h-12 rounded-xl border border-gray-300 px-3 text-sm disabled:opacity-40"
+              className="btn-secondary min-h-12 px-3 text-sm disabled:opacity-40"
             >
               Undo
             </button>
@@ -234,8 +235,8 @@ export function QuestionCard({
                   setItemOrder((xs) => (xs.includes(item.id) ? xs.filter((x) => x !== item.id) : [...xs, item.id]))
                 }
                 aria-pressed={pos >= 0}
-                className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm ${
-                  pos >= 0 ? "border-gray-900" : "border-gray-300"
+                className={`flex min-h-12 w-full items-center gap-3 p-3 text-left text-sm ${
+                  pos >= 0 ? "choice-selected" : "choice-idle"
                 }`}
               >
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs">
@@ -265,8 +266,8 @@ export function QuestionCard({
                 disabled={answered}
                 aria-pressed={activeSlot === s.id}
                 onClick={() => setActiveSlot(s.id)}
-                className={`btn-press min-h-12 rounded-xl border px-4 ${
-                  activeSlot === s.id ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
+                className={`min-h-12 px-4 ${
+                  activeSlot === s.id ? "choice-selected" : "choice-idle"
                 }`}
               >
                 {i + 1}
@@ -318,7 +319,7 @@ export function QuestionCard({
                 type="button"
                 aria-pressed={confidence === c}
                 onClick={() => setConfidence(c)}
-                className={`btn-press min-h-12 rounded-xl border px-3 text-sm ${confidence === c ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"}`}
+                className={`min-h-12 px-3 text-sm ${confidence === c ? "choice-selected" : "choice-idle"}`}
               >
                 {["Guessing", "Unsure", "Fairly sure", "Certain"][c - 1]}
               </button>
@@ -334,12 +335,12 @@ export function QuestionCard({
             type="button"
             onClick={submit}
             disabled={!answerReady}
-            className="btn-press min-h-12 rounded-xl bg-gray-900 px-5 text-white disabled:opacity-40"
+            className="btn-primary min-h-12 px-5 text-white disabled:opacity-40"
           >
             Check
           </button>
           {hintsAllowed && !hintShown && (
-            <button type="button" onClick={() => setHintShown(true)} className="btn-press min-h-12 rounded-xl border border-gray-400 px-4 text-sm">
+            <button type="button" onClick={() => setHintShown(true)} className="btn-secondary min-h-12 px-4 text-sm">
               I need a hint
             </button>
           )}
@@ -354,7 +355,7 @@ export function QuestionCard({
       {/* feedback (IDEA-097/099/101) */}
       {result && (
         <div
-          className={`mt-3 rounded-xl border p-3 ${
+          className={`mt-3 p-3 ${
             result.correct
               ? "feedback-correct border-green-600 bg-green-50"
               : "feedback-incorrect border-orange-400 bg-orange-50"
@@ -362,7 +363,17 @@ export function QuestionCard({
           role="status"
         >
           {result.correct ? (
-            <p className="relative text-sm">
+            <div className="flex items-start gap-3">
+              {/* Higgsfield celebration creature (decorative slot §17.2) */}
+              <Image
+                src="/art/creature-celebrating.webp"
+                alt=""
+                role="presentation"
+                width={160}
+                height={160}
+                className="art-enter h-16 w-16 shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20"
+              />
+              <p className="relative text-sm">
               {/* §16 correct-answer choreography: check draws itself + tiny particles (decorative) */}
               <svg viewBox="0 0 20 20" className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden="true">
                 <path
@@ -382,9 +393,20 @@ export function QuestionCard({
               </span>
               <span className="sr-only">✓ </span>Correct.
               {confidence !== null && confidence <= 2 && " You were surer than you thought — your understanding is ahead of your confidence."}
-            </p>
+              </p>
+            </div>
           ) : (
-            <div className="text-sm">
+            <div className="flex items-start gap-3 text-sm">
+              {/* Higgsfield encouragement creature (decorative slot §17.2) */}
+              <Image
+                src="/art/creature-encouraging.webp"
+                alt=""
+                role="presentation"
+                width={160}
+                height={160}
+                className="art-enter h-16 w-16 shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20"
+              />
+              <div>
               <p>Not quite — no penalty, let&apos;s fix it.</p>
               {confidence === 4 && (
                 <p className="mt-1 text-xs text-orange-900">
@@ -396,9 +418,10 @@ export function QuestionCard({
                   <strong>Likely mix-up:</strong> {activeMisconception.description}
                 </p>
               )}
-              <button type="button" onClick={retry} className="mt-2 btn-press min-h-12 rounded-xl border border-gray-400 px-4">
+              <button type="button" onClick={retry} className="mt-2 btn-secondary min-h-12 px-4">
                 Try again
               </button>
+              </div>
             </div>
           )}
           <ExplainPanel

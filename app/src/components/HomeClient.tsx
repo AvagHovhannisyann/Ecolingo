@@ -9,6 +9,7 @@
  */
 
 import { AmbientHero } from "./AmbientHero";
+import Image from "next/image";
 import Link from "next/link";
 import { concepts, conceptEdges, course } from "@/content/econ13210";
 import type { Lesson } from "@/lib/engine/types";
@@ -16,6 +17,7 @@ import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { UnverifiedBanner } from "./CitationChips";
+import { StatsBar } from "./StatsBar";
 import { WorldMap } from "./WorldMap";
 
 export function HomeClient() {
@@ -66,6 +68,8 @@ export function HomeClient() {
         </div>
       </AmbientHero>
 
+      <StatsBar state={state} minutesPlanned={today.minutesPlanned} />
+
       <div className="mt-4">
         <UnverifiedBanner />
       </div>
@@ -73,9 +77,9 @@ export function HomeClient() {
       {!state.profile.onboarded && (
         <Link
           href="/onboarding"
-          className="mt-4 block rounded-2xl border border-gray-900 p-4 hover:bg-gray-50"
+          className="card-lesson mt-4 block border-[var(--lavender)] p-4 transition hover:bg-[#f4f1ff]"
         >
-          <span className="font-medium">Personalize your path →</span>
+          <span className="font-bold text-[var(--lavender)]">Personalize your path →</span>
           <span className="block text-sm text-gray-600">
             2 minutes: your goal, schedule, and how you like ideas explained. Every step is skippable.
           </span>
@@ -128,10 +132,12 @@ export function HomeClient() {
           <li key={lesson.id}>
             <Link
               href={`/lesson/${lesson.id}`}
-              className="block rounded-2xl border border-gray-900 p-4 hover:bg-gray-50"
+              className="card-lesson block p-4 transition hover:border-[var(--growth-green)] hover:bg-[var(--growth-green-tint)]"
             >
-              <span className="text-xs uppercase tracking-wide text-gray-500">New lesson · {lesson.estimatedMinutes} min</span>
-              <span className="block font-medium">{lesson.title}</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-[var(--growth-green-deep)]">
+                ★ New lesson · {lesson.estimatedMinutes} min
+              </span>
+              <span className="block text-base font-bold">{lesson.title}</span>
               <span className="block text-sm text-gray-600">
                 Core idea → intuition → interactive model → math → practice → transfer check
               </span>
@@ -143,9 +149,9 @@ export function HomeClient() {
             .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires")
             .map((e) => concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
           return (
-            <li key={lesson.id} className="rounded-2xl border border-gray-200 p-4 opacity-70">
-              <span className="text-xs uppercase tracking-wide text-gray-500">🔒 Locked · {lesson.estimatedMinutes} min</span>
-              <span className="block font-medium">{lesson.title}</span>
+            <li key={lesson.id} className="card-lesson p-4 opacity-60">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">🔒 Locked · {lesson.estimatedMinutes} min</span>
+              <span className="block text-base font-bold">{lesson.title}</span>
               <span className="block text-sm text-gray-600">Unlocks after: {prereqs.join(", ")}</span>
             </li>
           );
@@ -154,27 +160,41 @@ export function HomeClient() {
           const c = concepts.find((x) => x.slug === r.conceptSlug);
           return (
             <li key={r.conceptSlug}>
-              <Link href="/review" className="block rounded-2xl border border-gray-300 p-4 hover:bg-gray-50">
-                <span className="text-xs uppercase tracking-wide text-gray-500">
-                  Review · ~3 min{"overdue" in r && r.overdue ? " · catch-up" : ""}
+              <Link
+                href="/review"
+                className="card-lesson block p-4 transition hover:border-[var(--model-blue)] hover:bg-[var(--model-blue-tint)]"
+              >
+                <span className="text-xs font-bold uppercase tracking-wide text-[var(--model-blue-deep)]">
+                  ⟳ Review · ~3 min{"overdue" in r && r.overdue ? " · catch-up" : ""}
                 </span>
-                <span className="block font-medium">{c?.name ?? r.conceptSlug}</span>
+                <span className="block text-base font-bold">{c?.name ?? r.conceptSlug}</span>
                 <span className="block text-sm text-gray-600">{r.reasonText}</span>
               </Link>
             </li>
           );
         })}
         {plannedLessons.length === 0 && lockedLessons.length === 0 && today.reviews.length === 0 && (
-          <li className="rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
-            Nothing due right now. Your next review is already scheduled —{" "}
-            <Link href="/review" className="underline">
-              see when and why
-            </Link>
-            , or explore the{" "}
-            <Link href="/lab/solow" className="underline">
-              Solow Lab
-            </Link>
-            .
+          <li className="card flex items-center gap-4 p-4 text-sm text-gray-600">
+            {/* Higgsfield "pondering" creature (decorative slot §17.2) */}
+            <Image
+              src="/art/creature-thinking.webp"
+              alt=""
+              role="presentation"
+              width={200}
+              height={200}
+              className="art-enter h-20 w-20 shrink-0 rounded-2xl object-cover"
+            />
+            <span>
+              Nothing due right now. Your next review is already scheduled —{" "}
+              <Link href="/review" className="underline">
+                see when and why
+              </Link>
+              , or explore the{" "}
+              <Link href="/lab/solow" className="underline">
+                Solow Lab
+              </Link>
+              .
+            </span>
           </li>
         )}
       </ul>

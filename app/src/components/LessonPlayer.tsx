@@ -100,7 +100,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           </Link>{" "}
           for when and why.
         </p>
-        <Link href="/" className="mt-4 inline-block btn-press min-h-12 rounded-xl bg-gray-900 px-5 py-3 text-white">
+        <Link href="/" className="mt-4 inline-block btn-primary min-h-12 px-5 py-3 text-white">
           Back to today&apos;s plan
         </Link>
       </div>
@@ -133,7 +133,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
             </p>
             <CitationChips citations={course.citations.filter((c) => step.citationIds.includes(c.id))} />
             <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} />
-            <button type="button" onClick={advance} className="mt-4 btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white">
+            <button type="button" onClick={advance} className="mt-4 btn-primary min-h-12 px-6 text-white">
               Continue
             </button>
           </div>
@@ -176,7 +176,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
               type="button"
               onClick={advance}
               disabled={!visualTargetHit}
-              className="mt-4 btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white disabled:opacity-40"
+              className="mt-4 btn-primary min-h-12 px-6 text-white disabled:opacity-40"
             >
               Continue
             </button>
@@ -202,7 +202,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
                 </div>
               );
             })()}
-            <button type="button" onClick={advance} className="mt-4 btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white">
+            <button type="button" onClick={advance} className="mt-4 btn-primary min-h-12 px-6 text-white">
               Continue
             </button>
           </div>
@@ -225,7 +225,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
               type="button"
               onClick={advance}
               disabled={!stepDone}
-              className="mt-4 btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white disabled:opacity-40"
+              className="mt-4 btn-primary min-h-12 px-6 text-white disabled:opacity-40"
             >
               Continue
             </button>

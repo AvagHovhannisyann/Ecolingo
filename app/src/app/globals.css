@@ -1,8 +1,27 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design tokens — the spec §14 palette, applied exactly. Bright and
+   low-friction by design (no dark mode until Fabel designs one).
+--------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --growth-green: #35c46a;
+  --growth-green-deep: #27a356; /* 3D button edge */
+  --growth-green-tint: #e9f8ef;
+  --deep-ink: #263238;
+  --model-blue: #31a8e0;
+  --model-blue-deep: #2589b8;
+  --model-blue-tint: #eaf6fc;
+  --sun-yellow: #ffc94a;
+  --soft-coral: #ff6b6b;
+  --coral-tint: #fff1f0;
+  --lavender: #8b7cf6;
+  --cloud-white: #fafcf8;
+  --mist-gray: #e3e9e2;
+  --mist-gray-deep: #cbd5cd; /* secondary button edge */
+
+  --background: var(--cloud-white);
+  --foreground: var(--deep-ink);
 }
 
 @theme inline {
@@ -12,17 +31,161 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  font-size: 17px; /* spec §14: body ≥16–17px */
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------------------
+   Button system — playful 3D press (spec §16 "compress bottom border").
+   The press physics are baked in and disabled under reduced motion.
+--------------------------------------------------------------------------- */
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 16px; /* spec §14: buttons 14–18px */
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-primary {
+  background: var(--growth-green);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 0 var(--growth-green-deep);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+.btn-primary:disabled {
+  background: var(--mist-gray);
+  box-shadow: 0 4px 0 var(--mist-gray-deep);
+  color: #9aa5a0;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: var(--deep-ink);
+  border: 2px solid var(--mist-gray);
+  box-shadow: 0 3px 0 var(--mist-gray-deep);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--growth-green-tint);
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: #ffffff;
+  color: var(--soft-coral);
+  border: 2px solid var(--coral-tint);
+  box-shadow: 0 3px 0 #f3d9d7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 120ms;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 var(--growth-green-deep);
+  }
+  .btn-secondary:active:not(:disabled),
+  .btn-danger:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--mist-gray-deep);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Choice tiles — answer options and chips. Blue = selection (never green:
+   green is reserved for "correct"), 2px borders, soft bottom edge.
+--------------------------------------------------------------------------- */
+.choice-idle,
+.choice-selected {
+  border-radius: 16px;
+  border-width: 2px;
+  border-style: solid;
+  cursor: pointer;
+  text-align: left;
+}
+.choice-idle {
+  border-color: var(--mist-gray);
+  background: #ffffff;
+  box-shadow: 0 2px 0 var(--mist-gray-deep);
+}
+.choice-idle:hover {
+  background: var(--model-blue-tint);
+  border-color: var(--model-blue);
+}
+.choice-selected {
+  border-color: var(--model-blue);
+  background: var(--model-blue-tint);
+  color: var(--deep-ink);
+  box-shadow: 0 2px 0 var(--model-blue-deep);
+  font-weight: 600;
+}
+
+/* cards */
+.card {
+  border-radius: 16px;
+  border: 2px solid var(--mist-gray);
+  background: #ffffff;
+}
+.card-lesson {
+  border-radius: 22px; /* spec §14: lesson cards 20–24px */
+  border: 2px solid var(--mist-gray);
+  background: #ffffff;
+}
+
+/* progress bars */
+.bar-track {
+  background: var(--mist-gray);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-fill {
+  background: linear-gradient(90deg, var(--growth-green), #4fd685);
+  border-radius: 999px;
+  height: 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill {
+    transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* range sliders — chunky friendly thumbs */
+input[type="range"] {
+  accent-color: var(--growth-green);
+  height: 28px;
+}
+
+/* stat chips (streak / xp / goal) */
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 2px solid var(--mist-gray);
+  background: #ffffff;
+  padding: 0.35rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.95rem;
 }
 
 /* ---------------------------------------------------------------------------

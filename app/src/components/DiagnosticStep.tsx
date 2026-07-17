@@ -78,8 +78,8 @@ export function DiagnosticStep({
               type="button"
               aria-pressed={optionId === o.id}
               onClick={() => setOptionId(o.id)}
-              className={`block min-h-12 w-full rounded-xl border p-3 text-left text-sm ${
-                optionId === o.id ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
+              className={`block min-h-12 w-full p-3 text-left text-sm ${
+                optionId === o.id ? "choice-selected" : "choice-idle"
               }`}
             >
               {o.text}
@@ -97,8 +97,8 @@ export function DiagnosticStep({
               type="button"
               aria-pressed={confidence === c}
               onClick={() => setConfidence(c)}
-              className={`btn-press min-h-12 rounded-xl border px-3 text-sm ${
-                confidence === c ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300"
+              className={`min-h-12 px-3 text-sm ${
+                confidence === c ? "choice-selected" : "choice-idle"
               }`}
             >
               {["Guessing", "Unsure", "Fairly sure", "Certain"][c - 1]}
@@ -111,7 +111,7 @@ export function DiagnosticStep({
         type="button"
         onClick={submit}
         disabled={item.kind === "numeric" ? !numericRaw.trim() : !optionId}
-        className="mt-4 btn-press min-h-12 rounded-xl bg-gray-900 px-6 text-white disabled:opacity-40"
+        className="mt-4 btn-primary min-h-12 px-6 text-white disabled:opacity-40"
       >
         {index + 1 < DIAGNOSTIC_ITEMS.length ? "Next" : "Finish diagnostic"}
       </button>

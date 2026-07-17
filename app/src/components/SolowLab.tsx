@@ -90,7 +90,7 @@ export function SolowLab({
         </h3>
         <button
           type="button"
-          className="btn-press min-h-12 rounded-xl border border-gray-400 px-3 text-sm"
+          className="btn-secondary min-h-12 px-3 text-sm"
           onClick={() => setView(view === "numeric" ? "symbolic" : "numeric")}
           aria-pressed={view === "symbolic"}
         >
