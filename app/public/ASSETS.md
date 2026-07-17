@@ -32,6 +32,7 @@ palette as the color constraint.
 | `art/creature-encouraging.webp` | Incorrect-answer feedback creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `6b501e58-568d-4b5c-b11f-32f79a2c946f` | 2026-07-17 |
 | `art/creature-thinking.webp` | Home "nothing due" empty-state creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `939d1db7-8ff6-4fe2-9e2b-a0ec661dfcf7` | 2026-07-17 |
 | `art/review-caught-up.webp` | Review "all caught up" empty-state creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `899264c0-2621-49b2-8c02-6ea9dd095688` | 2026-07-17 |
+| `art/teach-header.webp` | Teacher workspace header (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `c2af99d7-645c-42fb-8107-1b1ff713a5e0` | 2026-07-17 |
 
 Prompts are recorded in the Higgsfield job metadata (retrievable by job ID).
 All images were reviewed to contain no text, no charts, no axes, and no numbers.

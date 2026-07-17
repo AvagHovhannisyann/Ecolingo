@@ -29,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { href: "/bank", label: "Question Bank" },
     { href: "/exam", label: "Exam Plan" },
     { href: "/progress", label: "Progress" },
+    { href: "/teach", label: "Teach" },
   ];
   const navMobile = [
     { href: "/", label: "Path" },

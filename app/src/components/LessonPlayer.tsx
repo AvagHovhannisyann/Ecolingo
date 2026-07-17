@@ -17,7 +17,7 @@ import { MathTex } from "./MathTex";
 import { SolowLab } from "./SolowLab";
 import { QuestionCard } from "./QuestionCard";
 import { ExplainPanel } from "./ExplainPanel";
-import { CitationChips, UnverifiedBanner } from "./CitationChips";
+import { GroundedCitationChips, UnverifiedBanner } from "./CitationChips";
 
 const STEP_TITLES: Record<LessonStep["type"], string> = {
   core_idea: "Core idea",
@@ -109,7 +109,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
 
   return (
     <div>
-      <UnverifiedBanner />
+      <UnverifiedBanner conceptSlug={lesson.conceptSlug} />
       <nav aria-label="Lesson progress" className="mt-4 flex gap-1">
         {steps.map((s, i) => (
           <span
@@ -131,7 +131,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
             <p className="text-base leading-relaxed">
               {simpler && step.body.simpler ? step.body.simpler : step.body.standard}
             </p>
-            <CitationChips citations={course.citations.filter((c) => step.citationIds.includes(c.id))} />
+            <GroundedCitationChips conceptSlug={lesson.conceptSlug} fallback={course.citations.filter((c) => step.citationIds.includes(c.id))} />
             <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} />
             <button type="button" onClick={advance} className="mt-4 btn-primary min-h-12 px-6 text-white">
               Continue
@@ -197,7 +197,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
                       </li>
                     ))}
                   </ul>
-                  <CitationChips citations={course.citations.filter((c) => step.citationIds.includes(c.id))} />
+                  <GroundedCitationChips conceptSlug={lesson.conceptSlug} fallback={course.citations.filter((c) => step.citationIds.includes(c.id))} />
                   <ExplainPanel concept={concept} equation={eq} />
                 </div>
               );

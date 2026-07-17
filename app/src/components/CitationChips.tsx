@@ -1,6 +1,7 @@
 "use client";
 
 import type { Citation } from "@/lib/engine/types";
+import { useGroundedCitations, useHasGroundedContent } from "@/lib/grounding";
 
 /**
  * Source provenance display (GATE-001, IDEA-181/182).
@@ -28,7 +29,41 @@ export function CitationChips({ citations }: { citations: Citation[] }) {
   );
 }
 
-export function UnverifiedBanner() {
+/**
+ * Like CitationChips, but upgrades the pending marker to the concept's
+ * teacher-approved sources when they exist (GATE-001 grounding bridge).
+ */
+export function GroundedCitationChips({ conceptSlug, fallback }: { conceptSlug: string; fallback: Citation[] }) {
+  const citations = useGroundedCitations(conceptSlug, fallback);
+  return <CitationChips citations={citations} />;
+}
+
+export function UnverifiedBanner({ conceptSlug }: { conceptSlug?: string }) {
+  const anyGrounded = useHasGroundedContent();
+  const conceptCitations = useGroundedCitations(conceptSlug ?? "", []);
+  if (conceptSlug && conceptCitations.length > 0) {
+    return (
+      <p
+        className="rounded-xl border border-[var(--growth-green)] bg-[var(--growth-green-tint)] p-3 text-sm text-[var(--deep-ink)]"
+        role="note"
+      >
+        <strong>Teacher-verified sources attached.</strong> This concept is grounded in your teacher&apos;s
+        uploaded materials — see the source chips on each step.
+      </p>
+    );
+  }
+  if (anyGrounded) {
+    return (
+      <p className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900" role="note">
+        <strong>Partially grounded course.</strong> Some concepts already cite the teacher&apos;s uploaded
+        materials; the rest remain <em>planned &amp; unverified</em> until more sources are approved in the{" "}
+        <a href="/teach" className="underline">
+          teacher review queue
+        </a>
+        .
+      </p>
+    );
+  }
   return (
     <p className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900" role="note">
       <strong>Demo course, unverified content.</strong> No teacher materials have been ingested yet, so

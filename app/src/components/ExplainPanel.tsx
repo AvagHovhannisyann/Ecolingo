@@ -12,7 +12,7 @@ import { explainProvider, type ExplainMode, type ExplainOutput } from "@/lib/ai/
 import type { Concept, Equation, Misconception } from "@/lib/engine/types";
 import { course } from "@/content/econ13210";
 import { MathTex } from "./MathTex";
-import { CitationChips } from "./CitationChips";
+import { GroundedCitationChips } from "./CitationChips";
 
 const MODES: { mode: ExplainMode; label: string }[] = [
   { mode: "simpler", label: "Explain more simply" },
@@ -95,7 +95,7 @@ export function ExplainPanel({
               )
             )}
           </div>
-          <CitationChips citations={output.citations} />
+          <GroundedCitationChips conceptSlug={concept.slug} fallback={output.citations} />
           <div className="mt-3">
             {reported ? (
               <span className="text-xs text-gray-600" role="status">
