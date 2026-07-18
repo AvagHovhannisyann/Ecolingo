@@ -92,6 +92,21 @@ export function buildReviewQueue(ctx: ScheduleContext): ReviewItem[] {
 
     dueMs = skipNoStudyDays(dueMs, ctx.plan.noStudyDays);
 
+    // A no-study day at or just before the exam must never push an examinable
+    // review onto or past the exam itself: a review scheduled after the exam
+    // cannot help and silently defeats the back-planning guarantee (IDEA-110).
+    // `skipNoStudyDays` only ever moves *forward*, so if the day the back-planner
+    // chose (or the natural due day) is a no-study day near the deadline, the
+    // review can jump beyond the exam. When that happens for an examinable
+    // concept, walk backward instead to the last studyable day strictly before
+    // the exam (falling back to now when the whole pre-exam window is blocked).
+    if (exam !== null && concept.examinable && dueMs >= exam) {
+      let d = exam - DAY;
+      let guard = 0;
+      while (ctx.plan.noStudyDays.includes(isoDate(d)) && d > now && guard++ < 366) d -= DAY;
+      dueMs = Math.max(now, d);
+    }
+
     items.push({
       conceptSlug: concept.slug,
       dueAt: new Date(dueMs).toISOString(),
