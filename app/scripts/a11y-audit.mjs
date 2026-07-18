@@ -28,7 +28,8 @@ const BASE = process.env.A11Y_BASE || "http://localhost:3100";
 
 const routes = [
   "/", "/onboarding", "/review", "/lab", "/lab/solow", "/lab/budget",
-  "/bank", "/exam", "/progress", "/teach", "/lesson/lesson-solow-steady-state",
+  "/bank", "/exam", "/progress", "/teach", "/teach/analytics",
+  "/lesson/lesson-solow-steady-state",
 ];
 const breakpoints = [
   { name: "mobile", width: 390, height: 844 },

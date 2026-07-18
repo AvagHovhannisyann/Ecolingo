@@ -10,6 +10,7 @@
  */
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { concepts } from "@/content/econ13210";
 import { ensureMyCourse, fetchRoster, type CourseSummary } from "@/lib/course";
@@ -301,6 +302,22 @@ export function TeachClient() {
 
       {/* your class: join code + roster (D-012) */}
       <ClassCard />
+
+      {/* class analytics entry point (Phase 5) */}
+      <Link
+        href="/teach/analytics"
+        className="card mt-3 flex items-center justify-between gap-2 p-4 hover:border-[var(--model-blue)]"
+      >
+        <span>
+          <span className="font-bold">Class analytics</span>
+          <span className="block text-xs text-gray-600">
+            See what your class has mastered and what to reteach next
+          </span>
+        </span>
+        <span aria-hidden className="text-[var(--model-blue-text)]">
+          →
+        </span>
+      </Link>
 
       {/* upload */}
       <div className="card mt-4 p-4">
