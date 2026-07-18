@@ -452,7 +452,7 @@ Common acceptance criteria (testable flow, happy-path test, edge-case test, meas
 
 | ID | Item | Release | Phase | Note / rationale | Test plan | Status |
 |---|---|---|---|---|---|---|
-| IDEA-205 | Reusable course templates | platform | Phase 9 | Phase 9 | Unit + e2e per DoD; analytics idea205_* | Planned |
+| IDEA-205 | Reusable course templates | platform | Phase 9 | Multi-section courses (`createCourse`/`listMyCourses`/`renameCourse`); grounding + question bank are owner-scoped so every new section inherits them automatically — no re-ingestion (D-019) | Unit tests (`course.test.ts`) + live cross-course integration proof (`course.integration.test.ts`) | **Done** |
 | IDEA-206 | Teacher-created course marketplace | platform | Phase 9 | Out of MVP by spec §28 | Unit + e2e per DoD; analytics idea206_* | Planned |
 | IDEA-207 | School administrator dashboard | platform | Phase 9 | Org tier | Unit + e2e per DoD; analytics idea207_* | Planned |
 | IDEA-208 | LMS import and export | platform | Phase 9 | LTI/CSV | Unit + e2e per DoD; analytics idea208_* | Planned |
