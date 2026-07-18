@@ -87,10 +87,29 @@ export const concepts: Concept[] = [
 export const conceptEdges: ConceptEdge[] = [
   { prereqSlug: "production-function", conceptSlug: "fundamental-equation", kind: "requires" },
   { prereqSlug: "fundamental-equation", conceptSlug: "steady-state", kind: "requires" },
+  // The production function (diminishing returns) is the engine behind the
+  // steady state; with a production-function lesson now teachable, this direct
+  // "requires" edge makes the intended path production-function → steady-state
+  // → golden-rule enforceable by the gating rule. (The fundamental-equation
+  // link above still holds but has no lesson, so it cannot gate on its own.)
+  { prereqSlug: "production-function", conceptSlug: "steady-state", kind: "requires" },
   { prereqSlug: "steady-state", conceptSlug: "golden-rule", kind: "requires" },
 ];
 
 export const equations: Equation[] = [
+  {
+    id: "eq-production",
+    conceptSlug: "production-function",
+    latex: "y = f(k) = A\\,k^{\\alpha}",
+    components: [
+      { latex: "y", meaning: "output per worker" },
+      { latex: "A", meaning: "total factor productivity (TFP): how efficiently the economy turns inputs into output — a higher A scales the whole curve up at every level of capital" },
+      { latex: "k^{\\alpha}", meaning: "capital per worker raised to the capital share α, with 0 < α < 1 — the exponent being below 1 is exactly what makes capital's marginal product diminish" },
+      { latex: "\\alpha", meaning: "capital share of income (0 < α < 1): the curvature of f(k), and the elasticity of output with respect to capital" },
+    ],
+    approved: true,
+    sourceStatus: "planned_unverified",
+  },
   {
     id: "eq-fundamental",
     conceptSlug: "fundamental-equation",
@@ -130,6 +149,13 @@ export const equations: Equation[] = [
 
 export const misconceptions: Misconception[] = [
   {
+    slug: "linear-production",
+    conceptSlug: "production-function",
+    description: "Believing output grows in direct proportion to capital — that doubling capital per worker doubles output per worker.",
+    remediationHint:
+      "Because 0 < α < 1, the curve y = A·k^α bends over: each extra unit of capital adds less output than the one before (diminishing marginal product). Doubling k multiplies output by 2^α < 2, not by 2 — the graph is a curve, not a straight line.",
+  },
+  {
     slug: "s-rotates-breakeven",
     conceptSlug: "fundamental-equation",
     description: "Believing a change in the saving rate s rotates the break-even line.",
@@ -167,6 +193,78 @@ export const misconceptions: Misconception[] = [
 ];
 
 export const questions: Question[] = [
+  {
+    id: "q-prod-mc-1",
+    conceptSlug: "production-function",
+    type: "mc_single",
+    stem: "In the production function y = A·k^α with 0 < α < 1, what happens to the extra output from each additional unit of capital per worker as k rises?",
+    difficulty: 2,
+    expectedSeconds: 30,
+    transferDistance: 0,
+    provenance: "ai_draft",
+    hint: "Think about the exponent α. Is it above or below 1, and what does that do to the slope of the curve as k grows?",
+    citationIds: [PENDING_CITATION.id],
+    options: [
+      { id: "a", text: "Each additional unit of capital adds less output than the one before — the marginal product of capital diminishes." },
+      { id: "b", text: "Each additional unit adds the same output — output is proportional to capital.", misconceptionSlug: "linear-production" },
+      { id: "c", text: "Output per worker doubles whenever capital per worker doubles.", misconceptionSlug: "linear-production" },
+      { id: "d", text: "Output per worker falls outright as capital per worker rises." },
+    ],
+    answerKey: { correctOptionId: "a" },
+  },
+  {
+    id: "q-prod-numeric-1",
+    conceptSlug: "production-function",
+    type: "numeric",
+    stem: "A country has total factor productivity A = 2, capital per worker k = 64, and capital share α = 0.5. Using y = A·k^α, compute output per worker y.",
+    difficulty: 2,
+    expectedSeconds: 60,
+    transferDistance: 0,
+    provenance: "ai_draft",
+    hint: "k^α = 64^0.5 = √64 = 8; then multiply by A = 2.",
+    citationIds: [PENDING_CITATION.id],
+    unitLabel: "units of output per worker",
+    answerKey: { value: 16, relTolerance: 0.01 },
+  },
+  {
+    id: "q-prod-causal-1",
+    conceptSlug: "production-function",
+    type: "causal_order",
+    stem: "Order the reasoning for why diminishing returns to capital make a steady state possible.",
+    difficulty: 3,
+    expectedSeconds: 75,
+    transferDistance: 0,
+    provenance: "ai_draft",
+    hint: "Start from the shape of f(k), then compare how the two investment curves grow as k rises.",
+    citationIds: [PENDING_CITATION.id],
+    items: [
+      { id: "p1", text: "Output per worker follows y = A·k^α with 0 < α < 1" },
+      { id: "p2", text: "Each extra unit of capital adds less output than the last (marginal product of capital falls as k rises)" },
+      { id: "p3", text: "So actual investment s·f(k) keeps rising, but by ever-smaller amounts — the curve flattens" },
+      { id: "p4", text: "Break-even investment (n+δ)k meanwhile keeps rising in a straight line" },
+      { id: "p5", text: "The flattening investment curve is caught by the straight break-even line; they cross at a finite k*, the steady state" },
+    ],
+    answerKey: { orderedItemIds: ["p1", "p2", "p3", "p4", "p5"] },
+  },
+  {
+    id: "q-prod-transfer-1",
+    conceptSlug: "production-function",
+    type: "mc_single",
+    stem: "A data team keeps adding servers to speed up one fixed nightly job. The first few servers cut the run time a lot; the tenth server barely helps. Which production-function idea does this illustrate?",
+    difficulty: 3,
+    expectedSeconds: 60,
+    transferDistance: 1,
+    provenance: "ai_draft",
+    hint: "The workload (like the worker) is fixed while capital (servers) piles up. What does f(k) predict about each new unit's contribution?",
+    citationIds: [PENDING_CITATION.id],
+    options: [
+      { id: "a", text: "Diminishing marginal product of capital: each added server contributes less than the one before." },
+      { id: "b", text: "Constant returns: every server cuts the run time by the same amount.", misconceptionSlug: "linear-production" },
+      { id: "c", text: "A rise in total factor productivity A." },
+      { id: "d", text: "The economy is saving above its Golden Rule rate." },
+    ],
+    answerKey: { correctOptionId: "a" },
+  },
   {
     id: "q-solow-mc-1",
     conceptSlug: "fundamental-equation",
@@ -344,6 +442,72 @@ export const questions: Question[] = [
   },
 ];
 
+export const productionFunctionLesson: Lesson = {
+  id: "lesson-production-function",
+  conceptSlug: "production-function",
+  title: "The production function and diminishing returns",
+  version: 1,
+  status: "published", // demo course; real courses require teacher approval (IDEA-185)
+  estimatedMinutes: 10,
+  steps: [
+    {
+      id: "p1",
+      type: "core_idea",
+      body: {
+        standard:
+          "Output per worker depends on capital per worker through the production function y = f(k) = A·k^α. Two forces set it: total factor productivity A scales output up or down, and the capital share α (with 0 < α < 1) bends the curve so each extra unit of capital adds less than the last.",
+        simpler:
+          "How much each worker makes depends on how much equipment they have: y = A·k^α. A is how good the economy is at turning equipment into output; the exponent α being below 1 means every extra machine helps a little less than the one before.",
+      },
+      citationIds: [PENDING_CITATION.id],
+      completionCriterion: { kind: "continue" },
+    },
+    {
+      id: "p2",
+      type: "intuition",
+      body: {
+        standard:
+          "Picture one cook in a kitchen. The first oven transforms what they can produce; a second oven still helps a lot; the tenth oven mostly sits idle because a single cook can only use so many at once. Capital per worker behaves the same way: output keeps rising as you add capital, but in smaller and smaller steps. That gradual slowing — not any hard ceiling — is what later lets investment and break-even requirements balance at a steady state.",
+        simpler:
+          "One cook, more and more ovens: the first ovens help a lot, later ones barely help. More equipment always adds something, just less each time.",
+      },
+      citationIds: [PENDING_CITATION.id],
+      completionCriterion: { kind: "continue" },
+    },
+    {
+      id: "p3",
+      type: "visual",
+      lab: "solow",
+      prompt:
+        "In the lab, raise productivity A to at least 1.5 and watch the output readout y* and the s·f(k) curve. More productivity lifts output at every level of capital — the whole curve shifts up.",
+      target: { param: "A", comparator: "gte", value: 1.5 },
+      targetDescription: "Target: raise A to at least 1.5 and watch output rise at every k.",
+      successDescription:
+        "✓ You raised productivity: with a higher A the economy gets more output from the same capital, so the entire f(k)-driven curve sits higher — its diminishing-returns shape is unchanged, just scaled up.",
+      completionCriterion: { kind: "visual_target", description: "A ≥ 1.5 reached" },
+    },
+    {
+      id: "p4",
+      type: "math",
+      equationId: "eq-production",
+      citationIds: [PENDING_CITATION.id],
+      completionCriterion: { kind: "continue" },
+    },
+    {
+      id: "p5",
+      type: "guided",
+      questionId: "q-prod-mc-1",
+      completionCriterion: { kind: "answer_correct", questionId: "q-prod-mc-1", hintsAllowed: true },
+    },
+    {
+      id: "p6",
+      type: "mastery_check",
+      questionId: "q-prod-transfer-1",
+      completionCriterion: { kind: "answer_correct", questionId: "q-prod-transfer-1", hintsAllowed: false },
+    },
+  ],
+};
+
 export const solowLesson: Lesson = {
   id: "lesson-solow-steady-state",
   conceptSlug: "steady-state",
@@ -484,7 +648,7 @@ export const course = {
   equations,
   misconceptions,
   questions,
-  lessons: [solowLesson, goldenRuleLesson],
+  lessons: [productionFunctionLesson, solowLesson, goldenRuleLesson],
   citations,
 };
 
