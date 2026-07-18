@@ -42,7 +42,7 @@ export const worlds: World[] = [
     tagline: "The fundamental equation, steady states, the Golden Rule.",
     art: "/worlds/world-2-solow.webp",
     available: true,
-    topics: ["fundamental equation", "steady state", "stability", "Golden Rule", "convergence"],
+    topics: ["production function", "diminishing returns", "fundamental equation", "steady state", "stability", "Golden Rule", "convergence"],
   },
   {
     number: 3,

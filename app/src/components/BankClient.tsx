@@ -13,6 +13,7 @@ import { concepts, questions } from "@/content/econ13210";
 import { recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useTeacherState } from "@/lib/teacher-store";
+import { usePublishedQuestions } from "@/lib/published-questions";
 import { QuestionCard } from "./QuestionCard";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -27,13 +28,19 @@ const TYPE_LABELS: Record<string, string> = {
 export function BankClient() {
   const state = useLearnerState();
   const teacher = useTeacherState();
+  const published = usePublishedQuestions();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [attemptKey, setAttemptKey] = useState(0);
   if (!state) return <p className="p-4 text-sm text-gray-500">Loading question bank…</p>;
 
   // teacher-ratified AI drafts (D-014) join the bank next to the seed content;
-  // they carry provenance "ai_approved" and are scored by the same engine
-  const allQuestions = [...questions, ...(teacher?.authoredQuestions ?? [])];
+  // they carry provenance "ai_approved" and are scored by the same engine.
+  // Local teacher questions come first, then published ones from other teachers
+  // (D-012 posture), de-duplicated by id so a teacher never sees their own twice.
+  const seenIds = new Set<string>();
+  const allQuestions = [...questions, ...(teacher?.authoredQuestions ?? []), ...(published ?? [])].filter(
+    (q) => (seenIds.has(q.id) ? false : (seenIds.add(q.id), true))
+  );
   const active = allQuestions.find((q) => q.id === activeId) ?? null;
 
   if (active) {

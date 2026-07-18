@@ -10,6 +10,7 @@
  */
 
 import type { DocSection, ProposedLink, TeacherDoc } from "./engine/ingest";
+import type { Question } from "./engine/types";
 import type { ApprovedLink, TeacherState } from "./teacher-state";
 import { emptyTeacherState } from "./teacher-state";
 import { ensureSession, getSupabase } from "./supabase";
@@ -26,11 +27,12 @@ export async function hydrateTeacherRemote(): Promise<TeacherState | null> {
       setStatus("error");
       return null;
     }
-    const [docsRes, linksRes] = await Promise.all([
+    const [docsRes, linksRes, questionsRes] = await Promise.all([
       supabase.from("source_documents").select("*").eq("owner_id", userId),
       supabase.from("concept_links").select("*").eq("owner_id", userId),
+      supabase.from("authored_questions").select("question").eq("owner_id", userId),
     ]);
-    if (docsRes.error || linksRes.error) {
+    if (docsRes.error || linksRes.error || questionsRes.error) {
       setStatus("error");
       return null;
     }
@@ -58,7 +60,11 @@ export async function hydrateTeacherRemote(): Promise<TeacherState | null> {
         rejectedKeys.push(`${l.doc_id}:${l.section_id}:${l.concept_slug}`);
       }
     }
-    return { ...emptyTeacherState(), docs, approvedLinks, rejectedKeys };
+    // teacher's own authored questions: the jsonb column is the full Question
+    const authoredQuestions: Question[] = (questionsRes.data ?? [])
+      .map((r) => r.question as Question)
+      .filter((q): q is Question => !!q && typeof q === "object");
+    return { ...emptyTeacherState(), docs, approvedLinks, rejectedKeys, authoredQuestions };
   } catch {
     setStatus("error");
     return null;
@@ -135,7 +141,20 @@ async function pushTeacher(state: TeacherState): Promise<void> {
       ? supabase.from("concept_links").upsert(linkRows)
       : Promise.resolve({ error: null });
 
-    const results = await Promise.all([docUp, linkUp]);
+    // authored questions (D-014): upsert the current teacher-ratified set. The
+    // whole Question object rides in the jsonb column so learners reconstruct it
+    // verbatim and score it deterministically.
+    const questionRows = state.authoredQuestions.map((q) => ({
+      owner_id: userId,
+      question_id: q.id,
+      concept_slug: q.conceptSlug,
+      question: q,
+    }));
+    const questionUp = questionRows.length
+      ? supabase.from("authored_questions").upsert(questionRows)
+      : Promise.resolve({ error: null });
+
+    const results = await Promise.all([docUp, linkUp, questionUp]);
     if (results.some((r) => r.error)) {
       setStatus("error");
       return;
@@ -152,6 +171,15 @@ async function pushTeacher(state: TeacherState): Promise<void> {
         ? del.not("doc_id", "in", `(${keepDocIds.map((d) => `"${d}"`).join(",")})`)
         : del);
     }
+
+    // prune authored questions the teacher removed locally — same doc-prune
+    // style, scoped to owner_id so we only ever touch this teacher's own rows.
+    const keepQuestionIds = state.authoredQuestions.map((q) => q.id);
+    const qDel = supabase.from("authored_questions").delete().eq("owner_id", userId);
+    await (keepQuestionIds.length > 0
+      ? qDel.not("question_id", "in", `(${keepQuestionIds.map((id) => `"${id}"`).join(",")})`)
+      : qDel);
+
     setStatus("synced");
   } catch {
     setStatus("error");
