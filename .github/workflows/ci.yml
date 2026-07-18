@@ -5,8 +5,12 @@ name: CI
 # RUN_SYNC_INTEGRATION=1, and the app exercises only its deterministic fallback
 # paths (no Supabase / OpenRouter keys required).
 
+# push on main covers post-merge; pull_request covers every PR branch. (The
+# first rollout ran `push` on all branches too, which double-ran the battery
+# for each PR push — confirmed by the duplicate inaugural runs.)
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
