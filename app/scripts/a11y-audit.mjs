@@ -17,13 +17,11 @@
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { launchBrowser } from "./lib/launch-browser.mjs";
 
 const require = createRequire(import.meta.url);
 const AXE = readFileSync(require.resolve("axe-core").replace(/axe\.js$/, "axe.min.js"), "utf8");
 
-const pwModule = process.env.PLAYWRIGHT_MODULE || "/opt/node22/lib/node_modules/playwright/index.mjs";
-const { chromium } = await import(pwModule);
-const CHROMIUM = process.env.PLAYWRIGHT_CHROMIUM || "/opt/pw-browsers/chromium";
 const BASE = process.env.A11Y_BASE || "http://localhost:3100";
 
 const routes = [
@@ -40,10 +38,7 @@ const breakpoints = [
 const isBrandButtonException = (v, node) =>
   v.id === "color-contrast" && node.target.some((t) => String(t).includes(".btn-primary"));
 
-const launchArgs = process.env.HTTPS_PROXY
-  ? [`--proxy-server=${process.env.HTTPS_PROXY}`, "--proxy-bypass-list=localhost;127.0.0.1"]
-  : [];
-const browser = await chromium.launch({ executablePath: CHROMIUM, args: launchArgs });
+const browser = await launchBrowser();
 
 let blocking = 0;
 let allowedExceptions = 0;

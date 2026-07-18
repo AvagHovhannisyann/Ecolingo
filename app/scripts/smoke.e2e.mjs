@@ -17,18 +17,12 @@
  *   PLAYWRIGHT_CHROMIUM  chromium executablePath (default the sandbox browser)
  */
 
+import { launchBrowser } from "./lib/launch-browser.mjs";
+
 const PORT = process.env.SMOKE_PORT || "3200";
 const BASE = `http://localhost:${PORT}`;
 
-const pwModule = process.env.PLAYWRIGHT_MODULE || "/opt/node22/lib/node_modules/playwright/index.mjs";
-const { chromium } = await import(pwModule);
-const CHROMIUM = process.env.PLAYWRIGHT_CHROMIUM || "/opt/pw-browsers/chromium";
-
-const launchArgs = process.env.HTTPS_PROXY
-  ? [`--proxy-server=${process.env.HTTPS_PROXY}`, "--proxy-bypass-list=localhost;127.0.0.1"]
-  : [];
-
-const browser = await chromium.launch({ executablePath: CHROMIUM, args: launchArgs });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } }); // phone-size
 const log = (m) => console.log("✓", m);
 
