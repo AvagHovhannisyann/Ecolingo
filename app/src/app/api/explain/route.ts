@@ -17,13 +17,18 @@ export const runtime = "nodejs";
 // Primary is chosen for the free tier's reliability+latency (see D-010); the
 // rest are availability fallbacks. The deterministic provider is the client's
 // final fallback, so total failure here is still safe.
-const MODELS = [
+//
+// Exported (with the system prompt, mode table, and facts builder below) so the
+// opt-in live eval harness can exercise the REAL contract instead of a fork
+// that could silently drift from what ships. Exporting is inert at runtime —
+// no behavior change (GATE-009 fallback semantics are untouched).
+export const MODELS = [
   process.env.OPENROUTER_MODEL || "google/gemma-4-26b-a4b-it:free",
   "openai/gpt-oss-20b:free",
   "meta-llama/llama-3.3-70b-instruct:free",
 ];
 
-const MODE_INSTRUCTION: Record<string, string> = {
+export const MODE_INSTRUCTION: Record<string, string> = {
   simpler: "Re-explain the concept in the simplest possible language, 1–2 sentences.",
   three_sentences: "Explain the concept in exactly three short sentences.",
   step_by_step: "Explain the reasoning in 2–4 short numbered steps.",
@@ -42,6 +47,30 @@ interface Body {
   equationMeaning?: string | null;
   misconception?: string | null;
   sourceLabels?: string[];
+}
+
+// The grounding contract, factored out verbatim so the live eval can send the
+// EXACT same system prompt + facts the route sends. Changing either of these
+// changes the deployed behavior — the eval is meant to catch that.
+export const TUTOR_SYSTEM_PROMPT =
+  "You are Ecolingo's economics tutor for an intro macro course. Explain using ONLY the provided facts; never add outside claims, never invent numbers, never cite or name sources or page numbers (the app attaches citations itself). Be warm, plain, and concise. Output plain prose only — no markdown headers, no LaTeX, no bullet characters.";
+
+/**
+ * Grounding block: the model may use ONLY these facts. It must not cite sources
+ * (the client attaches real citations) and must not invent numbers. Extracted
+ * from POST unchanged so the route and the live eval build facts identically.
+ */
+export function buildFacts(body: Body): string {
+  return [
+    `Concept: ${body.conceptName ?? ""}`.trim(),
+    `Definition (authoritative, do not contradict): ${body.definition}`,
+    body.equationLatex ? `Equation (LaTeX, already shown to the learner): ${body.equationLatex}` : "",
+    body.equationMeaning ? `Equation meaning: ${body.equationMeaning}` : "",
+    body.misconception ? `The learner's likely misconception: ${body.misconception}` : "",
+    body.sourceLabels?.length ? `(Grounded in the teacher's material: ${body.sourceLabels.join("; ")})` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function POST(req: Request) {
@@ -66,19 +95,9 @@ export async function POST(req: Request) {
 
   // Grounding block: the model may use ONLY these facts. It must not cite
   // sources (the client attaches real citations) and must not invent numbers.
-  const facts = [
-    `Concept: ${body.conceptName ?? ""}`.trim(),
-    `Definition (authoritative, do not contradict): ${body.definition}`,
-    body.equationLatex ? `Equation (LaTeX, already shown to the learner): ${body.equationLatex}` : "",
-    body.equationMeaning ? `Equation meaning: ${body.equationMeaning}` : "",
-    body.misconception ? `The learner's likely misconception: ${body.misconception}` : "",
-    body.sourceLabels?.length ? `(Grounded in the teacher's material: ${body.sourceLabels.join("; ")})` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const facts = buildFacts(body);
 
-  const system =
-    "You are Ecolingo's economics tutor for an intro macro course. Explain using ONLY the provided facts; never add outside claims, never invent numbers, never cite or name sources or page numbers (the app attaches citations itself). Be warm, plain, and concise. Output plain prose only — no markdown headers, no LaTeX, no bullet characters.";
+  const system = TUTOR_SYSTEM_PROMPT;
   const user = `${facts}\n\nTask: ${instruction}`;
 
   const controller = new AbortController();

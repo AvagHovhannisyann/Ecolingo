@@ -4,6 +4,9 @@ name: CI
 # Runs green with ZERO secrets configured — integration tests self-skip without
 # RUN_SYNC_INTEGRATION=1, and the app exercises only its deterministic fallback
 # paths (no Supabase / OpenRouter keys required).
+# AI tutor evals: Layer 1 (tutor-evals.test.ts) runs here — it is fully mocked,
+# no network. Layer 2 (tutor-evals.live.test.ts) is opt-in and self-skips unless
+# RUN_AI_EVALS=1 + OPENROUTER_API_KEY are set, so it never runs in zero-secret CI.
 
 # push on main covers post-merge; pull_request covers every PR branch. (The
 # first rollout ran `push` on all branches too, which double-ran the battery
