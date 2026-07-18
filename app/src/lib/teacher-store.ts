@@ -48,6 +48,7 @@ async function hydrateAndMerge(): Promise<void> {
   if (!remote || cache === null) return;
   const docIds = new Set(remote.docs.map((d) => d.id));
   const linkKeys = new Set(remote.approvedLinks.map((l) => `${l.docId}:${l.sectionId}:${l.conceptSlug}`));
+  const remoteQuestionIds = new Set(remote.authoredQuestions.map((q) => q.id));
   cache = {
     version: 1,
     docs: [...remote.docs, ...cache.docs.filter((d) => !docIds.has(d.id))],
@@ -56,8 +57,12 @@ async function hydrateAndMerge(): Promise<void> {
       ...cache.approvedLinks.filter((l) => !linkKeys.has(`${l.docId}:${l.sectionId}:${l.conceptSlug}`)),
     ],
     rejectedKeys: [...new Set([...remote.rejectedKeys, ...cache.rejectedKeys])],
-    // authored questions are local-only for now; never dropped on remote hydrate
-    authoredQuestions: cache.authoredQuestions,
+    // authored questions: remote (durable) wins by id, local-only approvals
+    // made offline are preserved — same union style as docs/approvedLinks.
+    authoredQuestions: [
+      ...remote.authoredQuestions,
+      ...cache.authoredQuestions.filter((q) => !remoteQuestionIds.has(q.id)),
+    ],
   };
   saveTeacherState(cache);
   notify();
