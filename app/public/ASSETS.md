@@ -44,6 +44,10 @@ palette as the color constraint.
 | `art/review-ambient.mp4` | Review header ambient loop (decorative; reduced-motion + decode-error users get `art/review-header.webp`) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, from review-header still; audio track stripped with ffmpeg `-an -c:v copy`) | `f5146066-e8b9-4c8d-9d61-94af4443a1d3` | 2026-07-18 |
 | `art/exam-ambient.mp4` | Exam plan header ambient loop (decorative; reduced-motion + decode-error users get `art/exam-header.webp`) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, from exam-header still; audio track stripped) | `065fbed1-3787-4d74-aa4e-12dd4be49acf` | 2026-07-18 |
 | `art/lesson-complete.mp4` | Lesson-complete celebration loop (decorative; reduced-motion + decode-error users get `art/lesson-complete.webp`) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, 1:1, from lesson-complete still; audio track stripped) | `4e4a6293-7b67-4e96-ac67-422b6dc3a42d` | 2026-07-18 |
+| `art/achievement-first-lesson.webp` | "First steps" badge — Eco holding up a leaf trophy (replaces 2026-07-16 pre-mascot badge) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: creature-waving anchor `ee01e5ca`) | `bb0e5eb7-c02d-4935-b3e2-7142705e8a07` | 2026-07-18 |
+| `art/achievement-streak.webp` | "On a roll" badge — Eco with friendly flame motif (replaces 2026-07-16 pre-mascot badge) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: creature-waving anchor `ee01e5ca`) | `2faad8bf-7367-4024-9fa5-a55c2a64d863` | 2026-07-18 |
+| `art/achievement-mastery.webp` | "Concept mastered" badge — Eco with star medallion (replaces 2026-07-16 pre-mascot badge) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: creature-waving anchor `ee01e5ca`) | `ae4495a3-3d09-4994-b58f-190d828484fa` | 2026-07-18 |
+| `video/world-2-solow-ambient.mp4` | Home hero ambient loop (decorative; reduced-motion + decode-error users get the still; replaces 2026-07-17 kling3_0_turbo render) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, 16:9, from world-2 art job `f8526d30`; audio track stripped with ffmpeg `-an -c:v copy`) | `2143bbc3-9f1d-4e1e-bea2-ae06baff12de` | 2026-07-18 |
 
 Prompts are recorded in the Higgsfield job metadata (retrievable by job ID).
 All images were reviewed to contain no text, no charts, no axes, and no numbers.
@@ -55,3 +59,6 @@ was generated with the anchor job `ee01e5ca-8d33-4034-b4e0-da4d499c9e4b` as the
 image reference (the higgsfield-soul-id skill explicitly excludes non-photo
 cartoon characters, so Soul training was not used). Video frames were reviewed
 via extracted stills (ffmpeg) for style drift and text before wiring.
+The three achievement badges (`achievement-first-lesson`, `achievement-streak`,
+`achievement-mastery`) were regenerated on 2026-07-18 with the same anchor
+reference, so badge art now matches the Eco character set.
