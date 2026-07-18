@@ -8,6 +8,7 @@
  */
 
 import type { ProposedLink, TeacherDoc } from "./engine/ingest";
+import type { Question } from "./engine/types";
 
 export interface ApprovedLink extends ProposedLink {
   docId: string;
@@ -20,12 +21,14 @@ export interface TeacherState {
   approvedLinks: ApprovedLink[];
   /** rejected proposals stay hidden — keys are `${docId}:${sectionId}:${conceptSlug}` */
   rejectedKeys: string[];
+  /** AI-drafted, teacher-ratified practice questions (D-014); scored deterministically */
+  authoredQuestions: Question[];
 }
 
 const KEY = "ecolingo.teacher.v1";
 
 export function emptyTeacherState(): TeacherState {
-  return { version: 1, docs: [], approvedLinks: [], rejectedKeys: [] };
+  return { version: 1, docs: [], approvedLinks: [], rejectedKeys: [], authoredQuestions: [] };
 }
 
 export function loadTeacherState(): TeacherState {
@@ -39,6 +42,7 @@ export function loadTeacherState(): TeacherState {
       docs: parsed.docs ?? [],
       approvedLinks: parsed.approvedLinks ?? [],
       rejectedKeys: parsed.rejectedKeys ?? [],
+      authoredQuestions: parsed.authoredQuestions ?? [],
     };
   } catch {
     return emptyTeacherState();
@@ -90,4 +94,13 @@ export function removeDoc(s: TeacherState, docId: string): TeacherState {
     approvedLinks: s.approvedLinks.filter((l) => l.docId !== docId),
     rejectedKeys: s.rejectedKeys.filter((k) => !k.startsWith(docId + ":")),
   };
+}
+
+export function addAuthoredQuestion(s: TeacherState, q: Question): TeacherState {
+  if (s.authoredQuestions.some((x) => x.id === q.id)) return s; // same stem re-approved
+  return { ...s, authoredQuestions: [...s.authoredQuestions, q] };
+}
+
+export function removeAuthoredQuestion(s: TeacherState, id: string): TeacherState {
+  return { ...s, authoredQuestions: s.authoredQuestions.filter((q) => q.id !== id) };
 }

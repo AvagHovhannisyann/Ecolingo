@@ -14,10 +14,12 @@ import { useRef, useState } from "react";
 import { concepts } from "@/content/econ13210";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "@/content/econ13210/sample-lecture";
 import { proposeLinks, sectionize, type ProposedLink, type TeacherDoc } from "@/lib/engine/ingest";
+import { toAuthoredQuestion, type DraftQuestion } from "@/lib/engine/authored";
 import { extractPdfText } from "@/lib/pdf-text";
 import { suggestLinksForDoc } from "@/lib/ai/suggest-links";
-import { linkKey } from "@/lib/teacher-state";
-import { addDoc, approveLink, rejectLink, removeDoc } from "@/lib/teacher-state";
+import { draftQuestionsForConcept } from "@/lib/ai/draft-questions";
+import { linkKey, type TeacherState } from "@/lib/teacher-state";
+import { addAuthoredQuestion, addDoc, approveLink, rejectLink, removeAuthoredQuestion, removeDoc } from "@/lib/teacher-state";
 import { mutateTeacherState, useTeacherState } from "@/lib/teacher-store";
 
 function ProposalCard({
@@ -388,6 +390,154 @@ export function TeachClient() {
           })}
         </ul>
       </div>
+
+      {/* AI-drafted practice questions (D-014) */}
+      <AuthoredQuestionsSection />
+    </div>
+  );
+}
+
+function sectionTextForConcept(teacher: TeacherState, conceptSlug: string): { text: string; citationIds: string[] } {
+  const link = teacher.approvedLinks.find((l) => l.conceptSlug === conceptSlug);
+  if (!link) return { text: "", citationIds: [] };
+  const doc = teacher.docs.find((d) => d.id === link.docId);
+  const section = doc?.sections.find((s) => s.id === link.sectionId);
+  return { text: section?.text ?? "", citationIds: [] };
+}
+
+/**
+ * Draft → review → approve practice questions. The AI writes the prose and a
+ * *suggested* answer; the teacher confirms the correct option before approving,
+ * and the live question is scored deterministically against that key (GATE-002).
+ */
+function AuthoredQuestionsSection() {
+  const teacher = useTeacherState();
+  const [draftsByConcept, setDraftsByConcept] = useState<Record<string, DraftQuestion[]>>({});
+  const [pick, setPick] = useState<Record<string, number>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  if (!teacher) return null;
+  const groundedSlugs = [...new Set(teacher.approvedLinks.map((l) => l.conceptSlug))];
+  if (groundedSlugs.length === 0) return null;
+
+  const draft = async (c: { slug: string; name: string; definition: string }) => {
+    setBusy(c.slug);
+    setNote(null);
+    const { text } = sectionTextForConcept(teacher, c.slug);
+    try {
+      const drafts = await draftQuestionsForConcept({ conceptName: c.name, definition: c.definition, sectionText: text, count: 3 });
+      setDraftsByConcept((m) => ({ ...m, [c.slug]: drafts }));
+      if (drafts.length === 0) setNote("Couldn't draft questions just now — try again in a moment.");
+    } catch {
+      setNote("Couldn't reach the AI item-writer just now.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="mt-5">
+      <h2 className="font-bold">Practice questions (AI-drafted)</h2>
+      <p className="mt-1 text-xs text-gray-500">
+        The AI drafts questions from your approved sources. Confirm the correct answer, then approve — approved
+        questions are scored by the deterministic engine, never by the AI.
+      </p>
+      <ul className="mt-2 space-y-3">
+        {concepts
+          .filter((c) => groundedSlugs.includes(c.slug))
+          .map((c) => {
+            const drafts = draftsByConcept[c.slug] ?? [];
+            const authored = teacher.authoredQuestions.filter((q) => q.conceptSlug === c.slug);
+            return (
+              <li key={c.slug} className="card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-sm">{c.name}</strong>
+                  <span className="flex items-center gap-2">
+                    {authored.length > 0 && (
+                      <span className="stat-chip text-xs">{authored.length} in bank</span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy !== null}
+                      onClick={() => draft(c)}
+                      className="btn-secondary min-h-12 px-4 text-sm disabled:opacity-50"
+                    >
+                      {busy === c.slug ? "Drafting…" : "✦ Draft questions"}
+                    </button>
+                  </span>
+                </div>
+
+                {drafts.map((d, di) => {
+                  const key = `${c.slug}#${di}`;
+                  const chosen = pick[key] ?? d.suggestedIndex;
+                  return (
+                    <div key={key} className="mt-3 rounded-xl border border-[var(--lavender)] p-3">
+                      <p className="text-sm font-medium">{d.stem}</p>
+                      <p className="mt-1 text-xs text-gray-500">Pick the correct answer (AI suggested one — confirm or change it):</p>
+                      <div className="mt-2 space-y-1">
+                        {d.options.map((opt, oi) => (
+                          <label key={oi} className="flex cursor-pointer items-start gap-2 text-sm">
+                            <input
+                              type="radio"
+                              name={key}
+                              checked={chosen === oi}
+                              onChange={() => setPick((p) => ({ ...p, [key]: oi }))}
+                              className="mt-1"
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const q = toAuthoredQuestion(d, c.slug, chosen, []);
+                            mutateTeacherState((s) => addAuthoredQuestion(s, q));
+                            setDraftsByConcept((m) => ({ ...m, [c.slug]: (m[c.slug] ?? []).filter((_, i) => i !== di) }));
+                          }}
+                          className="btn-primary min-h-12 px-4 text-sm text-white"
+                        >
+                          Approve to bank
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDraftsByConcept((m) => ({ ...m, [c.slug]: (m[c.slug] ?? []).filter((_, i) => i !== di) }))}
+                          className="btn-secondary min-h-12 px-4 text-sm"
+                        >
+                          Discard
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {authored.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {authored.map((q) => (
+                      <li key={q.id} className="flex items-center justify-between gap-2 text-xs text-gray-600">
+                        <span>✓ {q.stem.length > 60 ? q.stem.slice(0, 57) + "…" : q.stem}</span>
+                        <button
+                          type="button"
+                          onClick={() => mutateTeacherState((s) => removeAuthoredQuestion(s, q.id))}
+                          className="underline"
+                        >
+                          remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+      </ul>
+      {note && (
+        <p className="mt-2 text-xs text-gray-600" role="status">
+          {note}
+        </p>
+      )}
     </div>
   );
 }

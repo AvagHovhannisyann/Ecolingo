@@ -12,6 +12,7 @@ import { useState } from "react";
 import { concepts, questions } from "@/content/econ13210";
 import { recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
+import { useTeacherState } from "@/lib/teacher-store";
 import { QuestionCard } from "./QuestionCard";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -25,11 +26,15 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function BankClient() {
   const state = useLearnerState();
+  const teacher = useTeacherState();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [attemptKey, setAttemptKey] = useState(0);
   if (!state) return <p className="p-4 text-sm text-gray-500">Loading question bank…</p>;
 
-  const active = questions.find((q) => q.id === activeId) ?? null;
+  // teacher-ratified AI drafts (D-014) join the bank next to the seed content;
+  // they carry provenance "ai_approved" and are scored by the same engine
+  const allQuestions = [...questions, ...(teacher?.authoredQuestions ?? [])];
+  const active = allQuestions.find((q) => q.id === activeId) ?? null;
 
   if (active) {
     const concept = concepts.find((c) => c.slug === active.conceptSlug);
@@ -86,7 +91,7 @@ export function BankClient() {
       </div>
 
       {concepts.map((c) => {
-        const qs = questions.filter((q) => q.conceptSlug === c.slug);
+        const qs = allQuestions.filter((q) => q.conceptSlug === c.slug);
         if (qs.length === 0) return null;
         const m = state.masteryBySlug[c.slug];
         return (
@@ -113,6 +118,9 @@ export function BankClient() {
                     <span className="text-xs uppercase tracking-wide text-gray-500">
                       {TYPE_LABELS[q.type]} · difficulty {q.difficulty}/5
                       {q.transferDistance > 0 ? " · transfer" : ""}
+                      {q.provenance === "ai_approved" && (
+                        <span className="ml-1 normal-case text-[var(--lavender-text)]">· ✦ teacher-approved</span>
+                      )}
                     </span>
                     <span className="block text-sm">{q.stem.length > 90 ? q.stem.slice(0, 87) + "…" : q.stem}</span>
                   </button>

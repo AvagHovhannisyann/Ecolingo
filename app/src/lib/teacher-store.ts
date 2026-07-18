@@ -56,6 +56,8 @@ async function hydrateAndMerge(): Promise<void> {
       ...cache.approvedLinks.filter((l) => !linkKeys.has(`${l.docId}:${l.sectionId}:${l.conceptSlug}`)),
     ],
     rejectedKeys: [...new Set([...remote.rejectedKeys, ...cache.rejectedKeys])],
+    // authored questions are local-only for now; never dropped on remote hydrate
+    authoredQuestions: cache.authoredQuestions,
   };
   saveTeacherState(cache);
   notify();
