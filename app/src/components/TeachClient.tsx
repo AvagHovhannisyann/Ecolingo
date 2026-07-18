@@ -40,11 +40,11 @@ function ProposalCard({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-bold">
           {concept.name} <span aria-hidden>→</span>{" "}
-          <span className="text-[var(--model-blue-deep)]">§ {section.heading}</span>
+          <span className="text-[var(--model-blue-text)]">§ {section.heading}</span>
         </p>
         {isAi ? (
           <span
-            className="rounded-full bg-[#f4f1ff] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender)]"
+            className="rounded-full bg-[#f4f1ff] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender-text)]"
             title="Suggested by the AI curriculum assistant — approve to make it a real source"
           >
             ✦ AI-suggested
@@ -212,6 +212,7 @@ export function TeachClient() {
             ref={fileRef}
             type="file"
             accept=".pdf,.md,.txt,.markdown"
+            aria-label="Upload a course document (PDF, .md, or .txt)"
             className="sr-only"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -239,12 +240,14 @@ export function TeachClient() {
           <summary className="cursor-pointer text-sm font-medium">Or paste text</summary>
           <input
             type="text"
+            aria-label="Title for the pasted material"
             placeholder="Title, e.g. Lecture 4 — Solow"
             className="mt-2 block w-full rounded-xl border border-gray-400 p-3 text-sm"
             value={pasteTitle}
             onChange={(e) => setPasteTitle(e.target.value)}
           />
           <textarea
+            aria-label="Paste lecture notes"
             placeholder="Paste lecture notes here…"
             className="mt-2 block h-40 w-full rounded-xl border border-gray-400 p-3 text-sm"
             value={pasted}

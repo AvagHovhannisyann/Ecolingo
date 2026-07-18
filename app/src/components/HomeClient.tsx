@@ -79,7 +79,7 @@ export function HomeClient() {
           href="/onboarding"
           className="card-lesson mt-4 block border-[var(--lavender)] p-4 transition hover:bg-[#f4f1ff]"
         >
-          <span className="font-bold text-[var(--lavender)]">Personalize your path →</span>
+          <span className="font-bold text-[var(--lavender-text)]">Personalize your path →</span>
           <span className="block text-sm text-gray-600">
             2 minutes: your goal, schedule, and how you like ideas explained. Every step is skippable.
           </span>
@@ -134,7 +134,7 @@ export function HomeClient() {
               href={`/lesson/${lesson.id}`}
               className="card-lesson block p-4 transition hover:border-[var(--growth-green)] hover:bg-[var(--growth-green-tint)]"
             >
-              <span className="text-xs font-bold uppercase tracking-wide text-[var(--growth-green-deep)]">
+              <span className="text-xs font-bold uppercase tracking-wide text-[var(--growth-green-text)]">
                 ★ New lesson · {lesson.estimatedMinutes} min
               </span>
               <span className="block text-base font-bold">{lesson.title}</span>
@@ -148,10 +148,12 @@ export function HomeClient() {
           const prereqs = conceptEdges
             .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires")
             .map((e) => concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
+          // "locked" is conveyed by the icon + label + muted surface, not by low
+          // opacity — dimming the text would drop it below AA contrast
           return (
-            <li key={lesson.id} className="card-lesson p-4 opacity-60">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">🔒 Locked · {lesson.estimatedMinutes} min</span>
-              <span className="block text-base font-bold">{lesson.title}</span>
+            <li key={lesson.id} className="card-lesson bg-[var(--mist-gray)]/25 p-4">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-600">🔒 Locked · {lesson.estimatedMinutes} min</span>
+              <span className="block text-base font-bold text-gray-700">{lesson.title}</span>
               <span className="block text-sm text-gray-600">Unlocks after: {prereqs.join(", ")}</span>
             </li>
           );
@@ -164,7 +166,7 @@ export function HomeClient() {
                 href="/review"
                 className="card-lesson block p-4 transition hover:border-[var(--model-blue)] hover:bg-[var(--model-blue-tint)]"
               >
-                <span className="text-xs font-bold uppercase tracking-wide text-[var(--model-blue-deep)]">
+                <span className="text-xs font-bold uppercase tracking-wide text-[var(--model-blue-text)]">
                   ⟳ Review · ~3 min{"overdue" in r && r.overdue ? " · catch-up" : ""}
                 </span>
                 <span className="block text-base font-bold">{c?.name ?? r.conceptSlug}</span>

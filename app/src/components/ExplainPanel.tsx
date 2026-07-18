@@ -94,7 +94,7 @@ export function ExplainPanel({
         <div className="mt-3 rounded-2xl border border-gray-300 p-4">
           <div className="mb-2 flex items-center gap-2">
             <span
-              className="rounded-full bg-[var(--growth-green-tint)] px-2 py-0.5 text-[11px] font-semibold text-[var(--growth-green-deep)]"
+              className="rounded-full bg-[var(--growth-green-tint)] px-2 py-0.5 text-[11px] font-semibold text-[var(--growth-green-text)]"
               title={
                 output.generatedBy === "ai"
                   ? "Written just now by the live tutor, grounded in the course facts"

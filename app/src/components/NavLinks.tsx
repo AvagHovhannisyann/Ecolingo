@@ -72,7 +72,7 @@ export function DesktopNav({ items }: { items: { href: string; label: string }[]
             aria-current={active ? "page" : undefined}
             className={`min-h-12 rounded-2xl px-3 py-3 text-sm font-bold ${
               active
-                ? "bg-[var(--growth-green-tint)] text-[var(--growth-green-deep)]"
+                ? "bg-[var(--growth-green-tint)] text-[var(--growth-green-text)]"
                 : "text-[var(--deep-ink)] hover:bg-[var(--mist-gray)]"
             }`}
           >
@@ -99,7 +99,7 @@ export function MobileNav({ items }: { items: { href: string; label: string }[] 
             href={n.href}
             aria-current={active ? "page" : undefined}
             className={`flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl p-1.5 text-[11px] font-bold ${
-              active ? "bg-[var(--growth-green-tint)] text-[var(--growth-green-deep)]" : "text-gray-500"
+              active ? "bg-[var(--growth-green-tint)] text-[var(--growth-green-text)]" : "text-gray-500"
             }`}
           >
             {ICONS[n.href]}

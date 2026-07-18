@@ -37,8 +37,8 @@ export default function LabHubPage() {
                 <span className="block text-sm text-gray-600">{lab.description}</span>
               </Link>
             ) : (
-              <div className="rounded-2xl border border-gray-200 p-4 opacity-70">
-                <span className="font-medium">🔒 {lab.title}</span>
+              <div className="rounded-2xl border border-gray-200 bg-[var(--mist-gray)]/25 p-4">
+                <span className="font-medium text-gray-700">🔒 {lab.title}</span>
                 <span className="block text-sm text-gray-600">{lab.description} · scheduled (see roadmap)</span>
               </div>
             )}

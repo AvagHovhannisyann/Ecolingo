@@ -20,6 +20,13 @@
   --mist-gray: #e3e9e2;
   --mist-gray-deep: #cbd5cd; /* secondary button edge */
 
+  /* Accessible text variants of the brand hues (WCAG AA ≥4.5:1 on light
+     surfaces). The vivid -deep tokens above are tuned for 3D button EDGES /
+     fills, not for text — small brand-coloured labels use these instead. */
+  --growth-green-text: #177140; /* AA on white AND on the green tint (nav pill) */
+  --model-blue-text: #1b6d94;
+  --lavender-text: #6a4fd0;
+
   --background: var(--cloud-white);
   --foreground: var(--deep-ink);
 }
@@ -89,7 +96,7 @@ body {
 
 .btn-danger {
   background: #ffffff;
-  color: var(--soft-coral);
+  color: #cf3d3d; /* deeper coral: WCAG AA on white (soft-coral text failed) */
   border: 2px solid var(--coral-tint);
   box-shadow: 0 3px 0 #f3d9d7;
 }
