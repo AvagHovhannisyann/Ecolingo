@@ -10,8 +10,9 @@
  */
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { concepts } from "@/content/econ13210";
+import { ensureMyCourse, fetchRoster, type CourseSummary } from "@/lib/course";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "@/content/econ13210/sample-lecture";
 import { proposeLinks, sectionize, type ProposedLink, type TeacherDoc } from "@/lib/engine/ingest";
 import { toAuthoredQuestion, type DraftQuestion } from "@/lib/engine/authored";
@@ -85,6 +86,98 @@ function ProposalCard({
         </button>
       </div>
     </li>
+  );
+}
+
+/**
+ * "Your class" — the teacher's course + join code (learners type this code to
+ * enroll) and a live roster count. The course is created lazily on first render
+ * (D-012). Degrades quietly when Supabase is unconfigured or unreachable: no
+ * crash, no infinite spinner — just an honest "needs the cloud connection".
+ */
+function ClassCard() {
+  const [phase, setPhase] = useState<"loading" | "unavailable" | "ready">("loading");
+  const [course, setCourse] = useState<CourseSummary | null>(null);
+  const [rosterCount, setRosterCount] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadRoster = useCallback(async (id: string) => {
+    const roster = await fetchRoster(id);
+    setRosterCount(roster.length);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const c = await ensureMyCourse("ECON 13210 — Intro to Macroeconomic Models");
+      if (!alive) return;
+      if (!c) {
+        setPhase("unavailable");
+        return;
+      }
+      setCourse(c);
+      setPhase("ready");
+      void loadRoster(c.id);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [loadRoster]);
+
+  if (phase === "loading") {
+    return (
+      <div className="card mt-4 p-4">
+        <h2 className="font-bold">Your class</h2>
+        <p className="mt-1 text-sm text-gray-500" role="status">
+          Setting up your class…
+        </p>
+      </div>
+    );
+  }
+
+  if (phase === "unavailable" || !course) {
+    return (
+      <div className="card mt-4 p-4">
+        <h2 className="font-bold">Your class</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Class features need the cloud connection — your join code and roster appear here once you&apos;re online.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card mt-4 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="font-bold">Your class</h2>
+          <p className="text-sm text-gray-700">{course.title}</p>
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            setRefreshing(true);
+            await loadRoster(course.id);
+            setRefreshing(false);
+          }}
+          disabled={refreshing}
+          className="btn-secondary min-h-12 px-4 text-sm disabled:opacity-50"
+        >
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
+          <p className="text-xs text-gray-600">Class join code — learners enter this to enroll</p>
+          <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
+            {course.joinCode}
+          </p>
+        </div>
+        <p className="text-sm text-gray-700" role="status">
+          {rosterCount === null ? "Counting enrollments…" : `${rosterCount} student${rosterCount === 1 ? "" : "s"} enrolled`}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -205,6 +298,9 @@ export function TeachClient() {
         section grounds which concept — with the matched terms shown. Nothing is cited to students until{" "}
         <strong>you approve it</strong>; unmatched concepts stay honestly marked as unverified.
       </p>
+
+      {/* your class: join code + roster (D-012) */}
+      <ClassCard />
 
       {/* upload */}
       <div className="card mt-4 p-4">

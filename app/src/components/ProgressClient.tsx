@@ -6,11 +6,129 @@
  * and the personalization reset control (IDEA-024).
  */
 
+import { useEffect, useState } from "react";
 import { concepts, misconceptions } from "@/content/econ13210";
 import { dominantMisconception, retentionAt } from "@/lib/engine/mastery";
 import { resetLearnerState, updateProfile } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
+import { fetchMyEnrollment, joinCourseByCode, type EnrollmentSummary } from "@/lib/course";
+import { getSupabase } from "@/lib/supabase";
 import { Achievements } from "./Achievements";
+
+/**
+ * "Join your class" — a student enters the teacher's join code to enroll; once
+ * enrolled (now or already) the card shows the class they belong to. Degrades
+ * quietly when Supabase is unconfigured or unreachable (GATE-009).
+ */
+function JoinClassCard() {
+  const [phase, setPhase] = useState<"loading" | "unavailable" | "ready">("loading");
+  const [enrollment, setEnrollment] = useState<EnrollmentSummary | null>(null);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      // no client configured at all → nothing cloud can do here
+      if (!getSupabase()) {
+        if (alive) setPhase("unavailable");
+        return;
+      }
+      const e = await fetchMyEnrollment();
+      if (!alive) return;
+      setEnrollment(e);
+      setPhase("ready");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const join = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await joinCourseByCode(code);
+    if (res.ok) {
+      const e = await fetchMyEnrollment();
+      setEnrollment(e ?? { courseId: res.courseId!, title: "Your class" });
+      setCode("");
+    } else if (res.error === "not_found") {
+      setError("No class found for that code — double-check it with your teacher.");
+    } else {
+      setError("Class features need the cloud connection — try again once you're online.");
+    }
+    setBusy(false);
+  };
+
+  if (phase === "loading") {
+    return (
+      <section aria-label="Your class" className="mt-4 rounded-2xl border border-gray-200 p-4">
+        <h2 className="text-sm font-medium">Your class</h2>
+        <p className="mt-1 text-sm text-gray-500" role="status">
+          Checking your enrollment…
+        </p>
+      </section>
+    );
+  }
+
+  if (phase === "unavailable") {
+    return (
+      <section aria-label="Your class" className="mt-4 rounded-2xl border border-gray-200 p-4">
+        <h2 className="text-sm font-medium">Your class</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Class features need the cloud connection — join with your class code once you&apos;re online.
+        </p>
+      </section>
+    );
+  }
+
+  if (enrollment) {
+    return (
+      <section aria-label="Your class" className="mt-4 rounded-2xl border border-gray-200 p-4">
+        <h2 className="text-sm font-medium">Your class</h2>
+        <p className="mt-1 rounded-xl bg-[var(--growth-green-tint)] p-3 text-sm" role="status">
+          ✅ Enrolled in <strong>{enrollment.title}</strong>
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="Join your class" className="mt-4 rounded-2xl border border-gray-200 p-4">
+      <h2 className="text-sm font-medium">Join your class</h2>
+      <p className="mt-1 text-xs text-gray-600">
+        Have a class join code from your teacher? Enter it to connect your progress to the class.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          inputMode="text"
+          autoCapitalize="characters"
+          aria-label="Class join code"
+          placeholder="e.g. K7QMP2"
+          maxLength={8}
+          className="min-h-12 w-40 rounded-xl border border-gray-400 p-3 font-mono text-sm uppercase tracking-widest"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+        />
+        <button
+          type="button"
+          onClick={join}
+          disabled={busy || code.trim().length < 6}
+          className="btn-primary min-h-12 px-5 text-sm text-white disabled:opacity-50"
+        >
+          {busy ? "Joining…" : "Join class"}
+        </button>
+      </div>
+      {error && (
+        <p className="mt-2 rounded-xl bg-[var(--coral-tint)] p-3 text-sm text-[var(--deep-ink)]" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
 
 const DIMENSIONS = [
   ["conceptual", "Conceptual"],
@@ -36,6 +154,9 @@ export function ProgressClient() {
       <p className="mt-1 text-sm text-gray-600">
         Mastery, not completion — each dimension is estimated separately from real evidence.
       </p>
+
+      {/* join your class (D-012) */}
+      <JoinClassCard />
 
       {studied.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
