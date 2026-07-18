@@ -10,6 +10,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { AmbientHero } from "./AmbientHero";
 import { concepts, questions } from "@/content/econ13210";
 import { buildReviewQueue, dueNow } from "@/lib/engine/scheduler";
 import { markReviewed, recordEvidence } from "@/lib/learner-state";
@@ -57,7 +58,18 @@ export function ReviewClient() {
     if (!q) return <p>No question available for this concept yet.</p>;
     return (
       <div>
-        <h1 className="text-xl font-semibold">Review: {concept?.name}</h1>
+        <div className="flex items-center gap-3">
+          {/* Higgsfield "determined" mascot (decorative slot §17.2) */}
+          <Image
+            src="/art/creature-determined.webp"
+            alt=""
+            role="presentation"
+            width={200}
+            height={200}
+            className="art-enter h-14 w-14 shrink-0 rounded-2xl object-cover"
+          />
+          <h1 className="text-xl font-semibold">Review: {concept?.name}</h1>
+        </div>
         <p className="mt-1 text-sm text-gray-600">{active.reasonText}</p>
         <div className="mt-4">
           <QuestionCard key={`${active.conceptSlug}-${q.id}`} question={q} onEvidence={(e, r) => handleEvidence(active, e, r.correct)} />
@@ -71,21 +83,15 @@ export function ReviewClient() {
 
   return (
     <div>
-      {/* Higgsfield review-garden art (approved decorative slot §17.2) */}
-      <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-200">
-        <Image
-          src="/art/review-header.webp"
-          alt=""
-          role="presentation"
-          width={1344}
-          height={768}
-          priority
-          className="art-enter h-32 w-full object-cover sm:h-40"
-        />
-        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-          <h1 className="text-xl font-semibold">Review — practice before you forget</h1>
-          <p className="text-sm opacity-90">Tend the ideas before they wilt.</p>
-        </div>
+      {/* Higgsfield review-garden ambient loop (approved decorative slot §17.2;
+          reduced-motion + decode-failure users get the still) */}
+      <div className="mb-4">
+        <AmbientHero videoSrc="/art/review-ambient.mp4" imageSrc="/art/review-header.webp" width={1344} height={768}>
+          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+            <h1 className="text-xl font-semibold">Review — practice before you forget</h1>
+            <p className="text-sm opacity-90">Tend the ideas before they wilt.</p>
+          </div>
+        </AmbientHero>
       </div>
 
       {state.auditLog.length === 0 ? (

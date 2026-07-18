@@ -33,6 +33,25 @@ palette as the color constraint.
 | `art/creature-thinking.webp` | Home "nothing due" empty-state creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `939d1db7-8ff6-4fe2-9e2b-a0ec661dfcf7` | 2026-07-17 |
 | `art/review-caught-up.webp` | Review "all caught up" empty-state creature (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 1:1, palette-constrained) | `899264c0-2621-49b2-8c02-6ea9dd095688` | 2026-07-17 |
 | `art/teach-header.webp` | Teacher workspace header (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `c2af99d7-645c-42fb-8107-1b1ff713a5e0` | 2026-07-17 |
+| `art/creature-waving.webp` | Mascot anchor pose — onboarding hello (decorative, `alt=""`) | Higgsfield MCP | nano_banana_2 (1K, 1:1, ref: old creature-celebrating; anchor of the consistent mascot set) | `ee01e5ca-8d33-4034-b4e0-da4d499c9e4b` | 2026-07-18 |
+| `art/creature-celebrating.webp` | Correct-answer feedback mascot (decorative, `alt=""`; replaces 2026-07-17 ad-hoc creature) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: mascot anchor `ee01e5ca`) | `6d39eb89-0562-44e9-af2c-c6880a56f297` | 2026-07-18 |
+| `art/creature-encouraging.webp` | Incorrect-answer feedback mascot (decorative, `alt=""`; replaces 2026-07-17 ad-hoc creature) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: mascot anchor `ee01e5ca`) | `7ed8478e-d3b5-431d-a203-194a10d886a7` | 2026-07-18 |
+| `art/creature-thinking.webp` | Lesson mastery-check "new context" mascot (decorative, `alt=""`; replaces 2026-07-17 ad-hoc creature) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: mascot anchor `ee01e5ca`) | `44d0f9c8-032a-4d5a-aaff-d473f65cf882` | 2026-07-18 |
+| `art/creature-sleeping.webp` | Home "nothing due" empty-state mascot (decorative, `alt=""`) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: mascot anchor `ee01e5ca`) | `92e73e01-1e5e-4a49-a919-4ca523471921` | 2026-07-18 |
+| `art/creature-determined.webp` | Active review-session mascot (decorative, `alt=""`) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: mascot anchor `ee01e5ca`) | `87e8dc09-d46e-4ac0-84d0-2d7108f7acb9` | 2026-07-18 |
+| `art/review-caught-up.webp` | Review "all caught up" mascot (decorative, `alt=""`; replaces 2026-07-17 ad-hoc creature) | Higgsfield MCP | nano_banana_flash (1K, 1:1, ref: mascot anchor `ee01e5ca`) | `496ec2d6-5842-4fe4-acdd-28a3bd9fcb48` | 2026-07-18 |
+| `art/exam-no-date.webp` | Exam plan "no exam date set" empty-state scene (decorative, `alt=""`) | Higgsfield MCP | recraft_v4_1 (1K, 16:9, palette-constrained) | `54c20362-b408-46c4-ace0-27a5aafc95ef` | 2026-07-18 |
+| `art/review-ambient.mp4` | Review header ambient loop (decorative; reduced-motion + decode-error users get `art/review-header.webp`) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, from review-header still; audio track stripped with ffmpeg `-an -c:v copy`) | `f5146066-e8b9-4c8d-9d61-94af4443a1d3` | 2026-07-18 |
+| `art/exam-ambient.mp4` | Exam plan header ambient loop (decorative; reduced-motion + decode-error users get `art/exam-header.webp`) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, from exam-header still; audio track stripped) | `065fbed1-3787-4d74-aa4e-12dd4be49acf` | 2026-07-18 |
+| `art/lesson-complete.mp4` | Lesson-complete celebration loop (decorative; reduced-motion + decode-error users get `art/lesson-complete.webp`) | Higgsfield MCP | seedance_2_0 image-to-video (720p, 5s, 1:1, from lesson-complete still; audio track stripped) | `4e4a6293-7b67-4e96-ac67-422b6dc3a42d` | 2026-07-18 |
 
 Prompts are recorded in the Higgsfield job metadata (retrievable by job ID).
 All images were reviewed to contain no text, no charts, no axes, and no numbers.
+
+Mascot consistency note (2026-07-18): the creature set is one coherent character
+("Eco", a round growth-green sprout spirit with a cream belly, sun-yellow limbs
+and a head sprout). Consistency comes from reference-image chaining — every pose
+was generated with the anchor job `ee01e5ca-8d33-4034-b4e0-da4d499c9e4b` as the
+image reference (the higgsfield-soul-id skill explicitly excludes non-photo
+cartoon characters, so Soul training was not used). Video frames were reviewed
+via extracted stills (ffmpeg) for style drift and text before wiring.

@@ -61,6 +61,20 @@ export function OnboardingClient() {
       </nav>
 
       {step === "role" && (
+        <div className="mt-5 flex justify-center">
+          {/* Higgsfield waving-hello mascot (decorative slot §17.2) */}
+          <Image
+            src="/art/creature-waving.webp"
+            alt=""
+            role="presentation"
+            width={200}
+            height={200}
+            className="art-enter h-24 w-24 rounded-2xl object-cover"
+          />
+        </div>
+      )}
+
+      {step === "role" && (
         <StepShell
           title="Who are you?"
           why="Your role decides which flows you see — students get a learning path, teachers get course-building tools."

@@ -28,10 +28,14 @@ function useReducedMotion(): boolean | null {
 export function AmbientHero({
   videoSrc,
   imageSrc,
+  width = 2688,
+  height = 1536,
   children,
 }: {
   videoSrc: string;
   imageSrc: string;
+  width?: number;
+  height?: number;
   children?: React.ReactNode;
 }) {
   const reducedMotion = useReducedMotion();
@@ -58,13 +62,62 @@ export function AmbientHero({
           src={imageSrc}
           alt=""
           role="presentation"
-          width={2688}
-          height={1536}
+          width={width}
+          height={height}
           priority
           className="h-40 w-full object-cover sm:h-56"
         />
       )}
       {children}
     </div>
+  );
+}
+
+/**
+ * Inline ambient art (same contract as AmbientHero, but caller-sized):
+ * a decorative video loop that falls back to its still for reduced-motion
+ * users or on any decode failure. Used for the lesson-complete celebration.
+ */
+export function AmbientArt({
+  videoSrc,
+  imageSrc,
+  width,
+  height,
+  className,
+}: {
+  videoSrc: string;
+  imageSrc: string;
+  width: number;
+  height: number;
+  className?: string;
+}) {
+  const reducedMotion = useReducedMotion();
+  const [videoFailed, setVideoFailed] = useState(false);
+
+  if (reducedMotion === false && !videoFailed) {
+    return (
+      <video
+        src={videoSrc}
+        poster={imageSrc}
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+        tabIndex={-1}
+        onError={() => setVideoFailed(true)}
+        className={className}
+      />
+    );
+  }
+  return (
+    <Image
+      src={imageSrc}
+      alt=""
+      role="presentation"
+      width={width}
+      height={height}
+      className={className}
+    />
   );
 }

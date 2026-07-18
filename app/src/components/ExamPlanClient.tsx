@@ -11,6 +11,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { AmbientHero } from "./AmbientHero";
 import { concepts } from "@/content/econ13210";
 import { retentionAt } from "@/lib/engine/mastery";
 import { buildReviewQueue } from "@/lib/engine/scheduler";
@@ -47,21 +48,15 @@ export function ExamPlanClient() {
 
   return (
     <div>
-      {/* Higgsfield summit-basecamp art (approved decorative slot §17.2) */}
-      <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-200">
-        <Image
-          src="/art/exam-header.webp"
-          alt=""
-          role="presentation"
-          width={1344}
-          height={768}
-          priority
-          className="art-enter h-32 w-full object-cover sm:h-40"
-        />
-        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-          <h1 className="text-xl font-semibold">Exam plan</h1>
-          <p className="text-sm opacity-90">Every checkpoint on the trail to the summit.</p>
-        </div>
+      {/* Higgsfield summit-basecamp ambient loop (approved decorative slot §17.2;
+          reduced-motion + decode-failure users get the still) */}
+      <div className="mb-4">
+        <AmbientHero videoSrc="/art/exam-ambient.mp4" imageSrc="/art/exam-header.webp" width={1344} height={768}>
+          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+            <h1 className="text-xl font-semibold">Exam plan</h1>
+            <p className="text-sm opacity-90">Every checkpoint on the trail to the summit.</p>
+          </div>
+        </AmbientHero>
       </div>
 
       <div className="mt-3 rounded-2xl border border-gray-300 p-4">
@@ -71,11 +66,22 @@ export function ExamPlanClient() {
             The scheduler back-plans every examinable concept to be reviewed inside this window.
           </p>
         ) : (
-          <p className="text-sm">
-            No exam date set — reviews follow pure retention timing. Set a date and the scheduler will
-            back-plan from it (why we ask: examinable concepts get pulled forward so nothing is met for the
-            first time in exam week).
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Higgsfield calm-horizon empty-state art (decorative slot §17.2) */}
+            <Image
+              src="/art/exam-no-date.webp"
+              alt=""
+              role="presentation"
+              width={640}
+              height={360}
+              className="art-enter h-24 w-full shrink-0 rounded-xl object-cover sm:h-20 sm:w-36"
+            />
+            <p className="text-sm">
+              No exam date set — reviews follow pure retention timing. Set a date and the scheduler will
+              back-plan from it (why we ask: examinable concepts get pulled forward so nothing is met for the
+              first time in exam week).
+            </p>
+          </div>
         )}
         <label className="mt-3 block max-w-xs text-sm">
           Exam date

@@ -177,9 +177,9 @@ export function HomeClient() {
         })}
         {plannedLessons.length === 0 && lockedLessons.length === 0 && today.reviews.length === 0 && (
           <li className="card flex items-center gap-4 p-4 text-sm text-gray-600">
-            {/* Higgsfield "pondering" creature (decorative slot §17.2) */}
+            {/* Higgsfield "sleeping" mascot — nothing due right now (decorative slot §17.2) */}
             <Image
-              src="/art/creature-thinking.webp"
+              src="/art/creature-sleeping.webp"
               alt=""
               role="presentation"
               width={200}

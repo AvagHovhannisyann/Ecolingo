@@ -13,6 +13,7 @@ import type { EvidenceEvent, Lesson, LessonStep } from "@/lib/engine/types";
 import { course, getConcept, getEquation, getQuestion } from "@/content/econ13210";
 import { completeLesson, recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
+import { AmbientArt } from "./AmbientHero";
 import { MathTex } from "./MathTex";
 import { SolowLab } from "./SolowLab";
 import { QuestionCard } from "./QuestionCard";
@@ -79,11 +80,11 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     const mastery = state?.masteryBySlug[lesson.conceptSlug];
     return (
       <div className="rounded-2xl border border-green-600 bg-green-50 p-6">
-        {/* Higgsfield-generated celebration art (spec §17.1) — decorative only */}
-        <Image
-          src="/art/lesson-complete.webp"
-          alt=""
-          role="presentation"
+        {/* Higgsfield-generated celebration loop (spec §17.1) — decorative only;
+            reduced-motion + decode-failure users get the still */}
+        <AmbientArt
+          videoSrc="/art/lesson-complete.mp4"
+          imageSrc="/art/lesson-complete.webp"
           width={1024}
           height={1024}
           className="art-enter mx-auto h-36 w-36 rounded-2xl object-cover"
@@ -211,9 +212,20 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
         {(step.type === "guided" || step.type === "mastery_check") && (
           <div>
             {step.type === "mastery_check" && (
-              <p className="mb-2 text-sm text-gray-700">
-                New context, no hints — this checks whether the idea transfers.
-              </p>
+              <div className="mb-2 flex items-center gap-3">
+                {/* Higgsfield "thinking" mascot (decorative slot §17.2) */}
+                <Image
+                  src="/art/creature-thinking.webp"
+                  alt=""
+                  role="presentation"
+                  width={200}
+                  height={200}
+                  className="art-enter h-12 w-12 shrink-0 rounded-xl object-cover"
+                />
+                <p className="text-sm text-gray-700">
+                  New context, no hints — this checks whether the idea transfers.
+                </p>
+              </div>
             )}
             <QuestionCard
               key={step.questionId}
