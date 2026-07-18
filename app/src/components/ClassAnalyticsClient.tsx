@@ -22,8 +22,10 @@ import {
   ensureMyCourse,
   fetchClassMastery,
   fetchRoster,
+  listMyCourses,
   type ClassMastery,
   type CourseSummary,
+  type OwnedCourse,
   type RosterEntry,
 } from "@/lib/course";
 import {
@@ -39,11 +41,22 @@ import {
 
 type Phase = "loading" | "offline" | "empty" | "data";
 
-interface LoadState {
-  phase: Phase;
-  course: CourseSummary | null;
-  roster: RosterEntry[];
-  mastery: ClassMastery;
+const DEFAULT_COURSE_TITLE = "ECON 13210 — Intro to Macroeconomic Models";
+
+/** the `course` query param, read client-side (post-mount) to avoid coupling
+ *  this statically-rendered route to a Suspense boundary for useSearchParams. */
+function readCourseParam(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("course");
+}
+
+/** reflect the selected course in the URL (shareable/bookmarkable) without a
+ *  navigation — replaceState keeps the back button and page state intact. */
+function syncCourseParam(courseId: string): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("course", courseId);
+  window.history.replaceState(null, "", url);
 }
 
 /** heatmap cell state: a spread bucket, or "none" when the student has no evidence */
@@ -88,35 +101,68 @@ const PRIORITY_BADGE: Record<ReteachPriority, { label: string; className: string
 };
 
 export function ClassAnalyticsClient() {
-  const [state, setState] = useState<LoadState>({
-    phase: "loading",
-    course: null,
-    roster: [],
-    mastery: {},
-  });
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [courses, setCourses] = useState<OwnedCourse[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [mastery, setMastery] = useState<ClassMastery>({});
 
+  // 1. load the teacher's courses once; pick the initial selection from the
+  //    ?course= param (existing links/bookmarks keep working) or fall back to
+  //    the first/most-recent course (previous single-course behavior).
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const course = await ensureMyCourse("ECON 13210 — Intro to Macroeconomic Models");
+      let list = await listMyCourses();
       if (!alive) return;
-      if (!course) {
-        setState({ phase: "offline", course: null, roster: [], mastery: {} });
-        return;
+      if (list.length === 0) {
+        // Disambiguate zero-state from offline: ensureMyCourse returns null only
+        // when Supabase is unconfigured/unreachable (GATE-009). A teacher with
+        // no course yet gets one lazily — the previous behavior on this route.
+        const first = await ensureMyCourse(DEFAULT_COURSE_TITLE);
+        if (!alive) return;
+        if (!first) {
+          setPhase("offline");
+          return;
+        }
+        list = [{ ...first, studentCount: 0 }];
       }
-      const [roster, mastery] = await Promise.all([fetchRoster(course.id), fetchClassMastery(course.id)]);
-      if (!alive) return;
-      setState({
-        phase: roster.length === 0 ? "empty" : "data",
-        course,
-        roster,
-        mastery,
-      });
+      setCourses(list);
+      const param = readCourseParam();
+      const initial = list.find((c) => c.id === param) ?? list[0];
+      setSelectedId(initial.id);
     })();
     return () => {
       alive = false;
     };
   }, []);
+
+  // 2. (re)load roster + mastery whenever the selected section changes. (The
+  //    "loading" phase for a *switch* is set in onSwitch; initial phase is
+  //    already "loading", so no synchronous setState is needed in this effect.)
+  useEffect(() => {
+    if (!selectedId) return;
+    let alive = true;
+    void (async () => {
+      const [r, m] = await Promise.all([fetchRoster(selectedId), fetchClassMastery(selectedId)]);
+      if (!alive) return;
+      setRoster(r);
+      setMastery(m);
+      setPhase(r.length === 0 ? "empty" : "data");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [selectedId]);
+
+  const selected: CourseSummary | null = courses.find((c) => c.id === selectedId) ?? null;
+
+  const onSwitch = (id: string) => {
+    if (id === selectedId) return;
+    setPhase("loading");
+    setSelectedId(id);
+    syncCourseParam(id);
+  };
 
   return (
     <div>
@@ -131,7 +177,11 @@ export function ClassAnalyticsClient() {
         names, no single grade.
       </p>
 
-      {state.phase === "loading" && (
+      {courses.length > 1 && selectedId && (
+        <CourseSwitcher courses={courses} selectedId={selectedId} onSwitch={onSwitch} />
+      )}
+
+      {phase === "loading" && (
         <div className="card mt-4 p-4">
           <p className="text-sm text-gray-500" role="status">
             Loading class data…
@@ -139,13 +189,47 @@ export function ClassAnalyticsClient() {
         </div>
       )}
 
-      {state.phase === "offline" && <OfflineCard />}
+      {phase === "offline" && <OfflineCard />}
 
-      {state.phase === "empty" && state.course && <EmptyCard course={state.course} />}
+      {phase === "empty" && selected && <EmptyCard course={selected} />}
 
-      {state.phase === "data" && state.course && (
-        <DataView course={state.course} roster={state.roster} mastery={state.mastery} />
-      )}
+      {phase === "data" && selected && <DataView course={selected} roster={roster} mastery={mastery} />}
+    </div>
+  );
+}
+
+/**
+ * Section switcher — lets a teacher who runs several sections of the same course
+ * (IDEA-205) view analytics per section. A plain <select> so it stays keyboard-
+ * and screen-reader-friendly; each option shows the section title and its live
+ * enrolled count.
+ */
+function CourseSwitcher({
+  courses,
+  selectedId,
+  onSwitch,
+}: {
+  courses: OwnedCourse[];
+  selectedId: string;
+  onSwitch: (id: string) => void;
+}) {
+  return (
+    <div className="card mt-4 flex flex-wrap items-center gap-2 p-3">
+      <label htmlFor="section-switcher" className="text-sm font-medium">
+        Section
+      </label>
+      <select
+        id="section-switcher"
+        className="min-h-12 flex-1 rounded-xl border border-gray-400 bg-white p-2 text-sm"
+        value={selectedId}
+        onChange={(e) => onSwitch(e.target.value)}
+      >
+        {courses.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.title} — {c.studentCount} enrolled
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
