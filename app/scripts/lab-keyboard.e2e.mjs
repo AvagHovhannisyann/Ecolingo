@@ -48,27 +48,20 @@
  *
  * Env:
  *   SMOKE_PORT           app port (default 3400)
- *   PLAYWRIGHT_MODULE    playwright ESM entry (default the sandbox install)
- *   PLAYWRIGHT_CHROMIUM  chromium executablePath (default the sandbox browser)
+ *   plus the launch-browser.mjs overrides (PLAYWRIGHT_MODULE / _CHROMIUM / HTTPS_PROXY)
  */
+
+import { launchBrowser } from "./lib/launch-browser.mjs";
 
 const PORT = process.env.SMOKE_PORT || "3400";
 const BASE = `http://localhost:${PORT}`;
-
-const pwModule = process.env.PLAYWRIGHT_MODULE || "/opt/node22/lib/node_modules/playwright/index.mjs";
-const { chromium } = await import(pwModule);
-const CHROMIUM = process.env.PLAYWRIGHT_CHROMIUM || "/opt/pw-browsers/chromium";
-
-const launchArgs = process.env.HTTPS_PROXY
-  ? [`--proxy-server=${process.env.HTTPS_PROXY}`, "--proxy-bypass-list=localhost;127.0.0.1"]
-  : [];
 
 const log = (m) => console.log("✓", m);
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-const browser = await chromium.launch({ executablePath: CHROMIUM, args: launchArgs });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } }); // phone-size
 
 try {

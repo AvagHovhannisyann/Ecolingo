@@ -65,6 +65,7 @@ jobs:
           # step so a bad `&` can never mask a later step's exit code.
           SMOKE_PORT=3100 node scripts/smoke.e2e.mjs
           SMOKE_PORT=3100 node scripts/teach-smoke.e2e.mjs
+          SMOKE_PORT=3100 node scripts/lab-keyboard.e2e.mjs
           A11Y_BASE=http://localhost:3100 npm run a11y
 
           kill "$SERVER_PID" 2>/dev/null || true
