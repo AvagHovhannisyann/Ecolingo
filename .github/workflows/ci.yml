@@ -1,0 +1,78 @@
+name: CI
+
+# Phase 7 hardening (docs/06-roadmap.md): all 12 GATEs enforced in CI.
+# Runs green with ZERO secrets configured — integration tests self-skip without
+# RUN_SYNC_INTEGRATION=1, and the app exercises only its deterministic fallback
+# paths (no Supabase / OpenRouter keys required).
+# AI tutor evals: Layer 1 (tutor-evals.test.ts) runs here — it is fully mocked,
+# no network. Layer 2 (tutor-evals.live.test.ts) is opt-in and self-skips unless
+# RUN_AI_EVALS=1 + OPENROUTER_API_KEY are set, so it never runs in zero-secret CI.
+
+# push on main covers post-merge; pull_request covers every PR branch. (The
+# first rollout ran `push` on all branches too, which double-ran the battery
+# for each PR push — confirmed by the duplicate inaugural runs.)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit & integration tests
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Start server and run e2e + a11y gates
+        run: |
+          npm run start -- -p 3100 &
+          SERVER_PID=$!
+          # Poll for readiness (up to ~30s) instead of a fixed sleep.
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3100/ >/dev/null; then
+              echo "server ready after ${i}s"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "server did not become ready in 30s"
+              kill "$SERVER_PID" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          # Each gate exits non-zero on failure; `set -e` (GH Actions default for
+          # `run:`) then fails the step. The server runs in the background of THIS
+          # step so a bad `&` can never mask a later step's exit code.
+          SMOKE_PORT=3100 node scripts/smoke.e2e.mjs
+          SMOKE_PORT=3100 node scripts/teach-smoke.e2e.mjs
+          SMOKE_PORT=3100 node scripts/lab-keyboard.e2e.mjs
+          A11Y_BASE=http://localhost:3100 npm run a11y
+
+          kill "$SERVER_PID" 2>/dev/null || true

@@ -1,0 +1,329 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens — the spec §14 palette, applied exactly. Bright and
+   low-friction by design (no dark mode until Fabel designs one).
+--------------------------------------------------------------------------- */
+:root {
+  --growth-green: #35c46a;
+  --growth-green-deep: #27a356; /* 3D button edge */
+  --growth-green-tint: #e9f8ef;
+  --deep-ink: #263238;
+  --model-blue: #31a8e0;
+  --model-blue-deep: #2589b8;
+  --model-blue-tint: #eaf6fc;
+  --sun-yellow: #ffc94a;
+  --soft-coral: #ff6b6b;
+  --coral-tint: #fff1f0;
+  --lavender: #8b7cf6;
+  --cloud-white: #fafcf8;
+  --mist-gray: #e3e9e2;
+  --mist-gray-deep: #cbd5cd; /* secondary button edge */
+
+  /* Accessible text variants of the brand hues (WCAG AA ≥4.5:1 on light
+     surfaces). The vivid -deep tokens above are tuned for 3D button EDGES /
+     fills, not for text — small brand-coloured labels use these instead. */
+  --growth-green-text: #177140; /* AA on white AND on the green tint (nav pill) */
+  --model-blue-text: #1b6d94;
+  --lavender-text: #6a4fd0;
+
+  --background: var(--cloud-white);
+  --foreground: var(--deep-ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 17px; /* spec §14: body ≥16–17px */
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------------------
+   Button system — playful 3D press (spec §16 "compress bottom border").
+   The press physics are baked in and disabled under reduced motion.
+--------------------------------------------------------------------------- */
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 16px; /* spec §14: buttons 14–18px */
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-primary {
+  background: var(--growth-green);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 0 var(--growth-green-deep);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+.btn-primary:disabled {
+  background: var(--mist-gray);
+  box-shadow: 0 4px 0 var(--mist-gray-deep);
+  color: #9aa5a0;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: var(--deep-ink);
+  border: 2px solid var(--mist-gray);
+  box-shadow: 0 3px 0 var(--mist-gray-deep);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--growth-green-tint);
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: #ffffff;
+  color: #cf3d3d; /* deeper coral: WCAG AA on white (soft-coral text failed) */
+  border: 2px solid var(--coral-tint);
+  box-shadow: 0 3px 0 #f3d9d7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 120ms;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 var(--growth-green-deep);
+  }
+  .btn-secondary:active:not(:disabled),
+  .btn-danger:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--mist-gray-deep);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Choice tiles — answer options and chips. Blue = selection (never green:
+   green is reserved for "correct"), 2px borders, soft bottom edge.
+--------------------------------------------------------------------------- */
+.choice-idle,
+.choice-selected {
+  border-radius: 16px;
+  border-width: 2px;
+  border-style: solid;
+  cursor: pointer;
+  text-align: left;
+}
+.choice-idle {
+  border-color: var(--mist-gray);
+  background: #ffffff;
+  box-shadow: 0 2px 0 var(--mist-gray-deep);
+}
+.choice-idle:hover {
+  background: var(--model-blue-tint);
+  border-color: var(--model-blue);
+}
+.choice-selected {
+  border-color: var(--model-blue);
+  background: var(--model-blue-tint);
+  color: var(--deep-ink);
+  box-shadow: 0 2px 0 var(--model-blue-deep);
+  font-weight: 600;
+}
+
+/* cards */
+.card {
+  border-radius: 16px;
+  border: 2px solid var(--mist-gray);
+  background: #ffffff;
+}
+.card-lesson {
+  border-radius: 22px; /* spec §14: lesson cards 20–24px */
+  border: 2px solid var(--mist-gray);
+  background: #ffffff;
+}
+
+/* progress bars */
+.bar-track {
+  background: var(--mist-gray);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-fill {
+  background: linear-gradient(90deg, var(--growth-green), #4fd685);
+  border-radius: 999px;
+  height: 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill {
+    transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* range sliders — chunky friendly thumbs */
+input[type="range"] {
+  accent-color: var(--growth-green);
+  height: 28px;
+}
+
+/* stat chips (streak / xp / goal) */
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 2px solid var(--mist-gray);
+  background: #ffffff;
+  padding: 0.35rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion system — implements the functional behaviours specified in spec §16
+   with the spec's own values. The full motion *design* language belongs to
+   Fabel (D-001); these are the engineering-owned interaction affordances.
+   Every rule lives behind prefers-reduced-motion: no-preference, so reduced-
+   motion users get instant state changes with no animation (IDEA-175) and
+   no meaning is carried by motion alone.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  /* Button press (§16): down 3px, scale 0.985, 100–140ms, gentle spring back */
+  .btn-press {
+    transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .btn-press:active:not(:disabled) {
+    transform: translateY(3px) scale(0.985);
+    transition-duration: 100ms;
+  }
+
+  /* Correct answer (§16): border turns green + card lifts slightly, ~500ms */
+  .feedback-correct {
+    animation: correct-lift 550ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes correct-lift {
+    0% {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+    35% {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+    100% {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+  }
+
+  /* check mark draws itself (§16) */
+  .check-draw {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: check-draw 450ms 120ms ease-out forwards;
+  }
+  @keyframes check-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* tiny celebration particles (§16) — pure decoration, hidden from AT */
+  .particle {
+    animation: particle-pop 600ms ease-out forwards;
+  }
+  @keyframes particle-pop {
+    0% {
+      transform: translate(0, 0) scale(0.4);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--px, 0px), var(--py, -18px)) scale(1);
+      opacity: 0;
+    }
+  }
+
+  /* Incorrect answer (§16): gentle horizontal shake, no loud negativity */
+  .feedback-incorrect {
+    animation: gentle-shake 360ms ease-in-out;
+  }
+  @keyframes gentle-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    50% {
+      transform: translateX(4px);
+    }
+    75% {
+      transform: translateX(-2px);
+    }
+  }
+
+  /* Graph choreography (§16): never animate everything at once — first curve
+     draws, then the second fades in (a fade, not a draw: a stroke-draw would
+     override its dash pattern, which is a non-colour distinction, IDEA-174),
+     then the equilibrium marker appears. */
+  .curve-draw-1 {
+    stroke-dasharray: 1600;
+    stroke-dashoffset: 1600;
+    animation: curve-draw 700ms ease-out forwards;
+  }
+  @keyframes curve-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .curve-fade-2 {
+    opacity: 0;
+    animation: curve-fade 450ms 500ms ease-out forwards;
+  }
+  @keyframes curve-fade {
+    to {
+      opacity: 1;
+    }
+  }
+  .equilibrium-appear {
+    opacity: 0;
+    animation: equilibrium-appear 300ms 1050ms ease-out forwards;
+  }
+  @keyframes equilibrium-appear {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* soft entrance for page-header art and lesson-complete celebration */
+  .art-enter {
+    animation: art-enter 500ms ease-out;
+  }
+  @keyframes art-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

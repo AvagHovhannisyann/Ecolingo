@@ -1,0 +1,6 @@
+
+# Agent tooling artifacts (local, not app code)
+# Vendored third-party agent skills (tooling, not app code)
+.agents/
+.claude/skills/
+skills-lock.json
