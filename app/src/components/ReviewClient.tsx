@@ -16,6 +16,7 @@ import { buildReviewQueue, dueNow } from "@/lib/engine/scheduler";
 import { markReviewed, recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import type { EvidenceEvent, ReviewItem } from "@/lib/engine/types";
+import { playSfx } from "@/lib/sfx";
 import { QuestionCard } from "./QuestionCard";
 
 export function ReviewClient() {
@@ -41,6 +42,7 @@ export function ReviewClient() {
     null;
 
   const handleEvidence = (item: ReviewItem, e: EvidenceEvent, correct: boolean) => {
+    playSfx(correct ? "correct" : "wrong");
     mutateLearnerState((s) => {
       let next = recordEvidence(s, e);
       if (correct) next = markReviewed(next, item.conceptSlug, item.intervalDays);

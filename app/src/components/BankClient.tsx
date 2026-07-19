@@ -14,6 +14,7 @@ import { recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useTeacherState } from "@/lib/teacher-store";
 import { usePublishedQuestions } from "@/lib/published-questions";
+import { playSfx } from "@/lib/sfx";
 import { QuestionCard } from "./QuestionCard";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -56,7 +57,10 @@ export function BankClient() {
           <QuestionCard
             key={`${active.id}-${attemptKey}`}
             question={active}
-            onEvidence={(e) => mutateLearnerState((s) => recordEvidence(s, e))}
+            onEvidence={(e, r) => {
+              playSfx(r.correct ? "correct" : "wrong");
+              mutateLearnerState((s) => recordEvidence(s, e));
+            }}
           />
         </div>
         <div className="mt-4 flex gap-2">
