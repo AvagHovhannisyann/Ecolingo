@@ -110,6 +110,26 @@ export function ExamIcon({ className }: IconProps) {
   );
 }
 
+export function SettingsIcon({ className }: IconProps) {
+  return (
+    <svg {...box(className)}>
+      <g fill="#b3c2cd">
+        <rect x="10.5" y="2.2" width="3" height="4.4" rx="1.2" />
+        <rect x="10.5" y="17.4" width="3" height="4.4" rx="1.2" />
+        <rect x="10.5" y="2.2" width="3" height="4.4" rx="1.2" transform="rotate(90 12 12)" />
+        <rect x="10.5" y="17.4" width="3" height="4.4" rx="1.2" transform="rotate(90 12 12)" />
+        <rect x="10.5" y="2.2" width="3" height="4.4" rx="1.2" transform="rotate(45 12 12)" />
+        <rect x="10.5" y="17.4" width="3" height="4.4" rx="1.2" transform="rotate(45 12 12)" />
+        <rect x="10.5" y="2.2" width="3" height="4.4" rx="1.2" transform="rotate(-45 12 12)" />
+        <rect x="10.5" y="17.4" width="3" height="4.4" rx="1.2" transform="rotate(-45 12 12)" />
+      </g>
+      <circle cx="12" cy="12" r="6.4" fill="#b3c2cd" />
+      <circle cx="12" cy="12" r="4.2" fill="#dce6ec" />
+      <circle cx="12" cy="12" r="2.3" fill="#1cb0f6" />
+    </svg>
+  );
+}
+
 export function MoreIcon({ className }: IconProps) {
   return (
     <svg {...box(className)}>

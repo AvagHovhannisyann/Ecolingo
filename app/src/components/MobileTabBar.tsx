@@ -13,7 +13,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LearnIcon, QuestsIcon, ShopIcon, ProfileIcon, TeachIcon,
-  ReviewIcon, LabsIcon, BankIcon, ExamIcon, MoreIcon,
+  ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
 import { isNavActive } from "./Sidebar";
 
@@ -30,6 +30,7 @@ const SHEET = [
   { href: "/lab", label: "Labs", icon: LabsIcon },
   { href: "/bank", label: "Bank", icon: BankIcon },
   { href: "/exam", label: "Exam", icon: ExamIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 function tabClass(active: boolean): string {

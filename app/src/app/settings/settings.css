@@ -1,0 +1,133 @@
+/* ===========================================================================
+   /settings — scoped styles (D-020 dark game surface). Everything here is
+   namespaced under .settings-* and consumes the globals.css tokens only:
+   navy surfaces, 2px structural borders, no shadows, Nunito from the body.
+   Motion is gated behind prefers-reduced-motion (IDEA-175).
+=========================================================================== */
+
+/* --- toggle switch (Sound effects) ------------------------------------- */
+
+/* The <button role="switch"> is the hit area: full row height ≥ 48px via
+   padding, well past the 44px touch minimum. The visual track/knob inside is
+   smaller; state is ALSO carried by the adjacent "On"/"Off" text + aria. */
+.settings-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 14px;
+}
+
+.settings-switch-track {
+  position: relative;
+  display: inline-block;
+  width: 58px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 2px solid var(--app-border-strong);
+  background: var(--app-surface-2);
+}
+
+.settings-switch[aria-checked="true"] .settings-switch-track {
+  background: var(--duo-green);
+  border-color: var(--duo-green-edge);
+}
+
+.settings-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--app-text);
+}
+
+.settings-switch[aria-checked="true"] .settings-switch-knob {
+  transform: translateX(26px);
+  background: #ffffff;
+}
+
+.settings-switch:focus-visible {
+  outline: 3px solid var(--duo-blue);
+  outline-offset: 2px;
+}
+
+/* visible state word next to the switch — meaning is never colour-only */
+.settings-switch-state {
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 2.4em;
+  text-align: left;
+  color: var(--app-text-muted);
+}
+.settings-switch[aria-checked="true"] .settings-switch-state {
+  color: var(--duo-green-text);
+}
+
+/* --- daily-goal preset chips ------------------------------------------- */
+
+/* Blue = selection (design-system rule: green is reserved for correct). */
+.settings-chip {
+  min-height: 44px;
+  min-width: 64px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  box-shadow: 0 2px 0 var(--app-border);
+  color: var(--app-text);
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.settings-chip:hover {
+  background: var(--app-surface-2);
+  border-color: var(--duo-blue);
+}
+.settings-chip[aria-pressed="true"] {
+  border-color: var(--duo-blue);
+  background: rgba(28, 176, 246, 0.14);
+  box-shadow: 0 2px 0 var(--duo-blue-edge);
+  color: var(--duo-blue-text);
+}
+.settings-chip:focus-visible {
+  outline: 3px solid var(--duo-blue);
+  outline-offset: 2px;
+}
+
+/* --- shared card bits --------------------------------------------------- */
+
+.settings-input {
+  margin-top: 0.25rem;
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 0.7rem 0.8rem;
+}
+.settings-input:focus-visible {
+  outline: 3px solid var(--duo-blue);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .settings-switch-track {
+    transition: background-color 160ms ease, border-color 160ms ease;
+  }
+  .settings-switch-knob {
+    transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 160ms ease;
+  }
+  .settings-chip {
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+}

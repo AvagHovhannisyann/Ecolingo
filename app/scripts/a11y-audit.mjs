@@ -27,7 +27,7 @@ const BASE = process.env.A11Y_BASE || "http://localhost:3100";
 const routes = [
   // "/" is the light marketing landing (D-020); "/learn" is the learner home.
   "/", "/learn", "/quests", "/shop", "/onboarding", "/review", "/lab", "/lab/solow", "/lab/budget",
-  "/bank", "/exam", "/progress", "/teach", "/teach/analytics",
+  "/bank", "/exam", "/progress", "/teach", "/teach/analytics", "/settings",
   "/lesson/lesson-solow-steady-state", "/lesson/lesson-production-function",
 ];
 const breakpoints = [

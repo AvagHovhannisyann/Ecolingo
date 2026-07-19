@@ -13,7 +13,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   LearnIcon, QuestsIcon, ShopIcon, ProfileIcon, TeachIcon,
-  ReviewIcon, LabsIcon, BankIcon, ExamIcon, MoreIcon,
+  ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
 
 type Item = { href: string; label: string; icon: (p: { className?: string }) => React.ReactNode };
@@ -31,6 +31,7 @@ const MORE: Item[] = [
   { href: "/lab", label: "Labs", icon: LabsIcon },
   { href: "/bank", label: "Bank", icon: BankIcon },
   { href: "/exam", label: "Exam", icon: ExamIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {
