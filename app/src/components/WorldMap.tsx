@@ -22,7 +22,7 @@ export function WorldMap({ state }: { state: LearnerState }) {
   return (
     <section aria-label="Course map" className="mt-8">
       <h2 className="text-lg font-semibold">Course map — ECON 13210</h2>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-app-muted">
         Eight worlds. World 2 is playable in this demo; the rest unlock as your teacher&apos;s materials are
         compiled into lessons.
       </p>
@@ -33,7 +33,7 @@ export function WorldMap({ state }: { state: LearnerState }) {
           const card = (
             <div
               className={`relative overflow-hidden rounded-2xl border ${
-                w.available ? "border-gray-900" : "border-gray-200"
+                w.available ? "border-[color:var(--app-border-strong)]" : "border-[color:var(--app-border)]"
               }`}
             >
               <Image
@@ -57,7 +57,7 @@ export function WorldMap({ state }: { state: LearnerState }) {
                 <p className="text-xs opacity-90">{w.tagline}</p>
               </div>
               {!w.available && (
-                <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] text-gray-700">
+                <span className="absolute right-2 top-2 rounded-full bg-[color:rgba(19,31,36,0.85)] px-2 py-1 text-[11px] text-app">
                   🔒 Planned
                 </span>
               )}
@@ -66,7 +66,7 @@ export function WorldMap({ state }: { state: LearnerState }) {
           return (
             <li key={w.slug}>
               {w.available ? (
-                <Link href="/" aria-label={`World ${w.number}: ${w.title} (available)`} className="block focus:outline-2">
+                <Link href="/learn" aria-label={`World ${w.number}: ${w.title} (available)`} className="block focus:outline-2">
                   {card}
                 </Link>
               ) : (

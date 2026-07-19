@@ -13,7 +13,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { concepts } from "@/content/econ13210";
-import { ensureMyCourse, fetchRoster, type CourseSummary } from "@/lib/course";
+import {
+  createCourse,
+  ensureMyCourse,
+  listMyCourses,
+  renameCourse,
+  type OwnedCourse,
+} from "@/lib/course";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "@/content/econ13210/sample-lecture";
 import { proposeLinks, sectionize, type ProposedLink, type TeacherDoc } from "@/lib/engine/ingest";
 import { toAuthoredQuestion, type DraftQuestion } from "@/lib/engine/authored";
@@ -48,7 +54,7 @@ function ProposalCard({
         </p>
         {isAi ? (
           <span
-            className="rounded-full bg-[#f4f1ff] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender-text)]"
+            className="rounded-full bg-[color:rgba(177,140,255,0.16)] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender-text)]"
             title="Suggested by the AI curriculum assistant — approve to make it a real source"
           >
             ✦ AI-suggested
@@ -59,7 +65,7 @@ function ProposalCard({
           </span>
         )}
       </div>
-      <p className="mt-1 text-xs text-gray-600">
+      <p className="mt-1 text-xs text-app-muted">
         {isAi ? (
           <>Why: {link.reason || "the section explains this concept"}</>
         ) : (
@@ -74,7 +80,7 @@ function ProposalCard({
         {" · "}est. p. {section.pageStart}
         {section.pageEnd !== section.pageStart ? `–${section.pageEnd}` : ""}
       </p>
-      <blockquote className="mt-2 border-l-4 border-[var(--mist-gray-deep)] pl-3 text-sm text-gray-700">
+      <blockquote className="mt-2 border-l-4 border-[var(--mist-gray-deep)] pl-3 text-sm text-app">
         {section.text.slice(0, 240)}
         {section.text.length > 240 ? "…" : ""}
       </blockquote>
@@ -90,75 +96,246 @@ function ProposalCard({
   );
 }
 
-/**
- * "Your class" — the teacher's course + join code (learners type this code to
- * enroll) and a live roster count. The course is created lazily on first render
- * (D-012). Degrades quietly when Supabase is unconfigured or unreachable: no
- * crash, no infinite spinner — just an honest "needs the cloud connection".
- */
-function ClassCard() {
-  const [phase, setPhase] = useState<"loading" | "unavailable" | "ready">("loading");
-  const [course, setCourse] = useState<CourseSummary | null>(null);
-  const [rosterCount, setRosterCount] = useState<number | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+const DEFAULT_COURSE_TITLE = "ECON 13210 — Intro to Macroeconomic Models";
 
-  const loadRoster = useCallback(async (id: string) => {
-    const roster = await fetchRoster(id);
-    setRosterCount(roster.length);
+/** "N students enrolled", pluralized. */
+function enrolledLabel(n: number): string {
+  return `${n} student${n === 1 ? "" : "s"} enrolled`;
+}
+
+/**
+ * One course/section card: title (inline-editable via renameCourse), join code
+ * and live roster count, and a link into per-section analytics. Because a
+ * teacher's grounding and question bank are owner-scoped (not course-scoped),
+ * every section here already shares the same approved sources — a reusable
+ * course template (IDEA-205).
+ */
+function SectionCard({
+  course,
+  onRenamed,
+}: {
+  course: OwnedCourse;
+  onRenamed: (id: string, title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(course.title);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    const title = draft.trim();
+    if (!title || title === course.title) {
+      setEditing(false);
+      setDraft(course.title);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const ok = await renameCourse(course.id, title);
+    setSaving(false);
+    if (!ok) {
+      setError("Couldn't rename just now — try again when you're online.");
+      return;
+    }
+    onRenamed(course.id, title);
+    setEditing(false);
+  };
+
+  return (
+    <li className="card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        {editing ? (
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <input
+              type="text"
+              aria-label="Section title"
+              className="min-w-0 flex-1 rounded-xl border border-[color:var(--app-border)] p-2 text-sm"
+              value={draft}
+              disabled={saving}
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void save();
+                if (e.key === "Escape") {
+                  setEditing(false);
+                  setDraft(course.title);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving}
+              className="btn-primary min-h-12 px-4 text-sm text-white disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setDraft(course.title);
+                setError(null);
+              }}
+              disabled={saving}
+              className="btn-secondary min-h-12 px-4 text-sm disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <>
+            <h3 className="font-bold">{course.title}</h3>
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(course.title);
+                setEditing(true);
+              }}
+              className="btn-secondary min-h-12 px-4 text-sm"
+              aria-label={`Rename ${course.title}`}
+            >
+              Rename
+            </button>
+          </>
+        )}
+      </div>
+      {error && (
+        <p className="mt-2 rounded-xl bg-[var(--coral-tint)] p-2 text-xs text-[var(--deep-ink)]" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
+          <p className="text-xs text-app-muted">Join code — learners enter this to enroll</p>
+          <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
+            {course.joinCode}
+          </p>
+        </div>
+        <p className="text-sm text-app">{enrolledLabel(course.studentCount)}</p>
+      </div>
+      <Link
+        href={`/teach/analytics?course=${course.id}`}
+        className="mt-3 inline-flex items-center gap-1 text-sm text-[var(--model-blue-text)] underline"
+      >
+        View analytics for this section <span aria-hidden>→</span>
+      </Link>
+    </li>
+  );
+}
+
+/**
+ * "Your sections" — every course the teacher owns, each an independent section
+ * (own join code + roster) that reuses the same grounded sources and question
+ * bank. Zero-state lazily creates the teacher's first course (unchanged D-012
+ * UX). A "+ New section" inline form creates additional sections (IDEA-205).
+ * Degrades quietly when Supabase is unconfigured or unreachable: no crash, no
+ * infinite spinner — just an honest "needs the cloud connection".
+ */
+function ClassSections() {
+  const [phase, setPhase] = useState<"loading" | "unavailable" | "ready">("loading");
+  const [courses, setCourses] = useState<OwnedCourse[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const list = await listMyCourses();
+    if (list.length > 0) {
+      setCourses(list);
+      setPhase("ready");
+      return true;
+    }
+    return false;
   }, []);
 
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const c = await ensureMyCourse("ECON 13210 — Intro to Macroeconomic Models");
+      const list = await listMyCourses();
       if (!alive) return;
-      if (!c) {
+      if (list.length > 0) {
+        setCourses(list);
+        setPhase("ready");
+        return;
+      }
+      // zero-state: lazily create the teacher's first course (unchanged UX).
+      // A null here means Supabase is unconfigured/unreachable (GATE-009).
+      const first = await ensureMyCourse(DEFAULT_COURSE_TITLE);
+      if (!alive) return;
+      if (!first) {
         setPhase("unavailable");
         return;
       }
-      setCourse(c);
+      setCourses([{ ...first, studentCount: 0 }]);
       setPhase("ready");
-      void loadRoster(c.id);
     })();
     return () => {
       alive = false;
     };
-  }, [loadRoster]);
+  }, []);
+
+  const onRenamed = useCallback((id: string, title: string) => {
+    setCourses((cs) => cs.map((c) => (c.id === id ? { ...c, title } : c)));
+  }, []);
+
+  const createSection = async () => {
+    const title = newTitle.trim();
+    if (!title) return;
+    setCreating(true);
+    setCreateError(null);
+    const created = await createCourse(title);
+    setCreating(false);
+    if (!created) {
+      setCreateError("Couldn't create a section just now — try again when you're online.");
+      return;
+    }
+    setCourses((cs) => [...cs, { ...created, studentCount: 0 }]);
+    setNewTitle("");
+    setAdding(false);
+  };
 
   if (phase === "loading") {
     return (
       <div className="card mt-4 p-4">
-        <h2 className="font-bold">Your class</h2>
-        <p className="mt-1 text-sm text-gray-500" role="status">
-          Setting up your class…
+        <h2 className="font-bold">Your sections</h2>
+        <p className="mt-1 text-sm text-app-muted" role="status">
+          Setting up your sections…
         </p>
       </div>
     );
   }
 
-  if (phase === "unavailable" || !course) {
+  if (phase === "unavailable") {
     return (
       <div className="card mt-4 p-4">
-        <h2 className="font-bold">Your class</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Class features need the cloud connection — your join code and roster appear here once you&apos;re online.
+        <h2 className="font-bold">Your sections</h2>
+        <p className="mt-1 text-sm text-app-muted">
+          Class features need the cloud connection — your sections, join codes, and rosters appear here once
+          you&apos;re online.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="card mt-4 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+    <section className="mt-4" aria-labelledby="sections-heading">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-bold">Your class</h2>
-          <p className="text-sm text-gray-700">{course.title}</p>
+          <h2 id="sections-heading" className="font-bold">
+            Your sections
+          </h2>
+          <p className="text-xs text-app-muted">
+            Each section has its own join code and roster, and reuses the same grounded sources and question bank.
+          </p>
         </div>
         <button
           type="button"
           onClick={async () => {
             setRefreshing(true);
-            await loadRoster(course.id);
+            await load();
             setRefreshing(false);
           }}
           disabled={refreshing}
@@ -167,18 +344,75 @@ function ClassCard() {
           {refreshing ? "Refreshing…" : "Refresh"}
         </button>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
-          <p className="text-xs text-gray-600">Class join code — learners enter this to enroll</p>
-          <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
-            {course.joinCode}
-          </p>
-        </div>
-        <p className="text-sm text-gray-700" role="status">
-          {rosterCount === null ? "Counting enrollments…" : `${rosterCount} student${rosterCount === 1 ? "" : "s"} enrolled`}
-        </p>
+
+      <ul className="mt-3 space-y-3">
+        {courses.map((c) => (
+          <SectionCard key={c.id} course={c} onRenamed={onRenamed} />
+        ))}
+      </ul>
+
+      <div className="mt-3">
+        {adding ? (
+          <div className="card p-4">
+            <label htmlFor="new-section-title" className="block text-sm font-medium">
+              New section title
+            </label>
+            <input
+              id="new-section-title"
+              type="text"
+              className="mt-2 block w-full rounded-xl border border-[color:var(--app-border)] p-3 text-sm"
+              placeholder="e.g. ECON 13210 — Fall 2026, Section B"
+              value={newTitle}
+              disabled={creating}
+              autoFocus
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void createSection();
+                if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewTitle("");
+                }
+              }}
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void createSection()}
+                disabled={creating || !newTitle.trim()}
+                className="btn-primary min-h-12 px-5 text-sm text-white disabled:opacity-50"
+              >
+                {creating ? "Creating…" : "Create section"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdding(false);
+                  setNewTitle("");
+                  setCreateError(null);
+                }}
+                disabled={creating}
+                className="btn-secondary min-h-12 px-4 text-sm disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+            {createError && (
+              <p className="mt-2 rounded-xl bg-[var(--coral-tint)] p-2 text-xs text-[var(--deep-ink)]" role="alert">
+                {createError}
+              </p>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="btn-secondary min-h-12 px-4 text-sm"
+          >
+            + New section
+          </button>
+        )}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -194,7 +428,7 @@ export function TeachClient() {
   const [aiBusyDoc, setAiBusyDoc] = useState<string | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
 
-  if (!teacher) return <p className="p-4 text-sm text-gray-500">Loading teacher workspace…</p>;
+  if (!teacher) return <p className="p-4 text-sm text-app-muted">Loading teacher workspace…</p>;
 
   const runAiSuggest = async (doc: TeacherDoc) => {
     setAiBusyDoc(doc.id);
@@ -278,7 +512,7 @@ export function TeachClient() {
   return (
     <div>
       {/* Higgsfield teacher-desk art (approved decorative slot §17.2) */}
-      <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-200">
+      <div className="relative mb-4 overflow-hidden rounded-2xl border border-[color:var(--app-border)]">
         <Image
           src="/art/teach-header.webp"
           alt=""
@@ -294,14 +528,15 @@ export function TeachClient() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-app">
         Upload lecture notes or a syllabus. Ecolingo splits it into sections, then <em>proposes</em> which
         section grounds which concept — with the matched terms shown. Nothing is cited to students until{" "}
         <strong>you approve it</strong>; unmatched concepts stay honestly marked as unverified.
       </p>
 
-      {/* your class: join code + roster (D-012) */}
-      <ClassCard />
+      {/* your sections: each an independent join code + roster, sharing the same
+          grounded sources & question bank (IDEA-205 reusable course template) */}
+      <ClassSections />
 
       {/* class analytics entry point (Phase 5) */}
       <Link
@@ -310,7 +545,7 @@ export function TeachClient() {
       >
         <span>
           <span className="font-bold">Class analytics</span>
-          <span className="block text-xs text-gray-600">
+          <span className="block text-xs text-app-muted">
             See what your class has mastered and what to reteach next
           </span>
         </span>
@@ -357,14 +592,14 @@ export function TeachClient() {
             type="text"
             aria-label="Title for the pasted material"
             placeholder="Title, e.g. Lecture 4 — Solow"
-            className="mt-2 block w-full rounded-xl border border-gray-400 p-3 text-sm"
+            className="mt-2 block w-full rounded-xl border border-[color:var(--app-border)] p-3 text-sm"
             value={pasteTitle}
             onChange={(e) => setPasteTitle(e.target.value)}
           />
           <textarea
             aria-label="Paste lecture notes"
             placeholder="Paste lecture notes here…"
-            className="mt-2 block h-40 w-full rounded-xl border border-gray-400 p-3 text-sm"
+            className="mt-2 block h-40 w-full rounded-xl border border-[color:var(--app-border)] p-3 text-sm"
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
           />
@@ -412,7 +647,7 @@ export function TeachClient() {
                   <button
                     type="button"
                     onClick={() => mutateTeacherState((s) => removeDoc(s, doc.id))}
-                    className="btn-danger min-h-12 px-4 text-sm text-white"
+                    className="btn-danger min-h-12 px-4 text-sm"
                   >
                     Remove
                   </button>
@@ -421,11 +656,11 @@ export function TeachClient() {
             ))}
           </ul>
           {aiNote && (
-            <p className="mt-2 text-xs text-gray-600" role="status">
+            <p className="mt-2 text-xs text-app-muted" role="status">
               {aiNote}
             </p>
           )}
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-app-muted">
             AI suggestions are advisory — they enter the review queue and still need your approval to become a source.
           </p>
         </div>
@@ -438,7 +673,7 @@ export function TeachClient() {
           <span className="stat-chip ml-1 align-middle text-xs">{pendingCount} pending</span>
         </h2>
         {teacher.docs.length === 0 && (
-          <p className="mt-2 text-sm text-gray-600">Upload a document to see proposed concept links here.</p>
+          <p className="mt-2 text-sm text-app-muted">Upload a document to see proposed concept links here.</p>
         )}
         {teacher.docs.length > 0 && pendingCount === 0 && (
           <p className="mt-2 rounded-xl bg-[var(--growth-green-tint)] p-3 text-sm" role="status">
@@ -476,13 +711,13 @@ export function TeachClient() {
                 <span>
                   {grounded ? "✅" : "⚠️"} <strong>{c.name}</strong>
                   {grounded && (
-                    <span className="block text-xs text-gray-600">
+                    <span className="block text-xs text-app-muted">
                       {links.length} approved source{links.length === 1 ? "" : "s"} — students now see real
                       citations
                     </span>
                   )}
                   {!grounded && (
-                    <span className="block text-xs text-gray-600">still planned &amp; unverified</span>
+                    <span className="block text-xs text-app-muted">still planned &amp; unverified</span>
                   )}
                 </span>
                 {grounded && (
@@ -552,7 +787,7 @@ function AuthoredQuestionsSection() {
   return (
     <div className="mt-5">
       <h2 className="font-bold">Practice questions (AI-drafted)</h2>
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-app-muted">
         The AI drafts questions from your approved sources. Confirm the correct answer, then approve — approved
         questions are scored by the deterministic engine, never by the AI.
       </p>
@@ -587,7 +822,7 @@ function AuthoredQuestionsSection() {
                   return (
                     <div key={key} className="mt-3 rounded-xl border border-[var(--lavender)] p-3">
                       <p className="text-sm font-medium">{d.stem}</p>
-                      <p className="mt-1 text-xs text-gray-500">Pick the correct answer (AI suggested one — confirm or change it):</p>
+                      <p className="mt-1 text-xs text-app-muted">Pick the correct answer (AI suggested one — confirm or change it):</p>
                       <div className="mt-2 space-y-1">
                         {d.options.map((opt, oi) => (
                           <label key={oi} className="flex cursor-pointer items-start gap-2 text-sm">
@@ -629,7 +864,7 @@ function AuthoredQuestionsSection() {
                 {authored.length > 0 && (
                   <ul className="mt-3 space-y-1">
                     {authored.map((q) => (
-                      <li key={q.id} className="flex items-center justify-between gap-2 text-xs text-gray-600">
+                      <li key={q.id} className="flex items-center justify-between gap-2 text-xs text-app-muted">
                         <span>✓ {q.stem.length > 60 ? q.stem.slice(0, 57) + "…" : q.stem}</span>
                         <button
                           type="button"
@@ -647,7 +882,7 @@ function AuthoredQuestionsSection() {
           })}
       </ul>
       {note && (
-        <p className="mt-2 text-xs text-gray-600" role="status">
+        <p className="mt-2 text-xs text-app-muted" role="status">
           {note}
         </p>
       )}

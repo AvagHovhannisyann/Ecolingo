@@ -25,7 +25,8 @@ const AXE = readFileSync(require.resolve("axe-core").replace(/axe\.js$/, "axe.mi
 const BASE = process.env.A11Y_BASE || "http://localhost:3100";
 
 const routes = [
-  "/", "/onboarding", "/review", "/lab", "/lab/solow", "/lab/budget",
+  // "/" is the light marketing landing (D-020); "/learn" is the learner home.
+  "/", "/learn", "/quests", "/shop", "/onboarding", "/review", "/lab", "/lab/solow", "/lab/budget",
   "/bank", "/exam", "/progress", "/teach", "/teach/analytics",
   "/lesson/lesson-solow-steady-state", "/lesson/lesson-production-function",
 ];
@@ -34,9 +35,12 @@ const breakpoints = [
   { name: "desktop", width: 1280, height: 900 },
 ];
 
-// D-013: the only accepted serious violation is the brand primary CTA contrast.
+// D-013: the only accepted serious violation is the brand primary CTA contrast
+// (.btn-primary in the app shell, .l-btn--primary on the light landing — same
+// white-on-brand-green pairing, same rationale).
 const isBrandButtonException = (v, node) =>
-  v.id === "color-contrast" && node.target.some((t) => String(t).includes(".btn-primary"));
+  v.id === "color-contrast" &&
+  node.target.some((t) => String(t).includes(".btn-primary") || String(t).includes(".l-btn--primary"));
 
 const browser = await launchBrowser();
 

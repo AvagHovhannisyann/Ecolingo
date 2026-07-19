@@ -22,8 +22,10 @@ import {
   ensureMyCourse,
   fetchClassMastery,
   fetchRoster,
+  listMyCourses,
   type ClassMastery,
   type CourseSummary,
+  type OwnedCourse,
   type RosterEntry,
 } from "@/lib/course";
 import {
@@ -39,11 +41,22 @@ import {
 
 type Phase = "loading" | "offline" | "empty" | "data";
 
-interface LoadState {
-  phase: Phase;
-  course: CourseSummary | null;
-  roster: RosterEntry[];
-  mastery: ClassMastery;
+const DEFAULT_COURSE_TITLE = "ECON 13210 — Intro to Macroeconomic Models";
+
+/** the `course` query param, read client-side (post-mount) to avoid coupling
+ *  this statically-rendered route to a Suspense boundary for useSearchParams. */
+function readCourseParam(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("course");
+}
+
+/** reflect the selected course in the URL (shareable/bookmarkable) without a
+ *  navigation — replaceState keeps the back button and page state intact. */
+function syncCourseParam(courseId: string): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("course", courseId);
+  window.history.replaceState(null, "", url);
 }
 
 /** heatmap cell state: a spread bucket, or "none" when the student has no evidence */
@@ -68,7 +81,7 @@ const CELL_STYLE: Record<CellState, { symbol: string; label: string; className: 
   none: {
     symbol: "·",
     label: "no evidence yet",
-    className: "bg-[var(--mist-gray)] text-gray-600",
+    className: "bg-[var(--mist-gray)] text-app-muted",
   },
 };
 
@@ -88,35 +101,68 @@ const PRIORITY_BADGE: Record<ReteachPriority, { label: string; className: string
 };
 
 export function ClassAnalyticsClient() {
-  const [state, setState] = useState<LoadState>({
-    phase: "loading",
-    course: null,
-    roster: [],
-    mastery: {},
-  });
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [courses, setCourses] = useState<OwnedCourse[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [mastery, setMastery] = useState<ClassMastery>({});
 
+  // 1. load the teacher's courses once; pick the initial selection from the
+  //    ?course= param (existing links/bookmarks keep working) or fall back to
+  //    the first/most-recent course (previous single-course behavior).
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const course = await ensureMyCourse("ECON 13210 — Intro to Macroeconomic Models");
+      let list = await listMyCourses();
       if (!alive) return;
-      if (!course) {
-        setState({ phase: "offline", course: null, roster: [], mastery: {} });
-        return;
+      if (list.length === 0) {
+        // Disambiguate zero-state from offline: ensureMyCourse returns null only
+        // when Supabase is unconfigured/unreachable (GATE-009). A teacher with
+        // no course yet gets one lazily — the previous behavior on this route.
+        const first = await ensureMyCourse(DEFAULT_COURSE_TITLE);
+        if (!alive) return;
+        if (!first) {
+          setPhase("offline");
+          return;
+        }
+        list = [{ ...first, studentCount: 0 }];
       }
-      const [roster, mastery] = await Promise.all([fetchRoster(course.id), fetchClassMastery(course.id)]);
-      if (!alive) return;
-      setState({
-        phase: roster.length === 0 ? "empty" : "data",
-        course,
-        roster,
-        mastery,
-      });
+      setCourses(list);
+      const param = readCourseParam();
+      const initial = list.find((c) => c.id === param) ?? list[0];
+      setSelectedId(initial.id);
     })();
     return () => {
       alive = false;
     };
   }, []);
+
+  // 2. (re)load roster + mastery whenever the selected section changes. (The
+  //    "loading" phase for a *switch* is set in onSwitch; initial phase is
+  //    already "loading", so no synchronous setState is needed in this effect.)
+  useEffect(() => {
+    if (!selectedId) return;
+    let alive = true;
+    void (async () => {
+      const [r, m] = await Promise.all([fetchRoster(selectedId), fetchClassMastery(selectedId)]);
+      if (!alive) return;
+      setRoster(r);
+      setMastery(m);
+      setPhase(r.length === 0 ? "empty" : "data");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [selectedId]);
+
+  const selected: CourseSummary | null = courses.find((c) => c.id === selectedId) ?? null;
+
+  const onSwitch = (id: string) => {
+    if (id === selectedId) return;
+    setPhase("loading");
+    setSelectedId(id);
+    syncCourseParam(id);
+  };
 
   return (
     <div>
@@ -126,26 +172,64 @@ export function ClassAnalyticsClient() {
         </Link>
       </div>
       <h1 className="text-2xl font-bold">Class analytics</h1>
-      <p className="mt-1 text-sm text-gray-700">
+      <p className="mt-1 text-sm text-app">
         What your class has mastered, and what to reteach next — from live enrollment and mastery data. No student
         names, no single grade.
       </p>
 
-      {state.phase === "loading" && (
+      {courses.length > 1 && selectedId && (
+        <CourseSwitcher courses={courses} selectedId={selectedId} onSwitch={onSwitch} />
+      )}
+
+      {phase === "loading" && (
         <div className="card mt-4 p-4">
-          <p className="text-sm text-gray-500" role="status">
+          <p className="text-sm text-app-muted" role="status">
             Loading class data…
           </p>
         </div>
       )}
 
-      {state.phase === "offline" && <OfflineCard />}
+      {phase === "offline" && <OfflineCard />}
 
-      {state.phase === "empty" && state.course && <EmptyCard course={state.course} />}
+      {phase === "empty" && selected && <EmptyCard course={selected} />}
 
-      {state.phase === "data" && state.course && (
-        <DataView course={state.course} roster={state.roster} mastery={state.mastery} />
-      )}
+      {phase === "data" && selected && <DataView course={selected} roster={roster} mastery={mastery} />}
+    </div>
+  );
+}
+
+/**
+ * Section switcher — lets a teacher who runs several sections of the same course
+ * (IDEA-205) view analytics per section. A plain <select> so it stays keyboard-
+ * and screen-reader-friendly; each option shows the section title and its live
+ * enrolled count.
+ */
+function CourseSwitcher({
+  courses,
+  selectedId,
+  onSwitch,
+}: {
+  courses: OwnedCourse[];
+  selectedId: string;
+  onSwitch: (id: string) => void;
+}) {
+  return (
+    <div className="card mt-4 flex flex-wrap items-center gap-2 p-3">
+      <label htmlFor="section-switcher" className="text-sm font-medium">
+        Section
+      </label>
+      <select
+        id="section-switcher"
+        className="min-h-12 flex-1 rounded-xl border border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-2 text-sm"
+        value={selectedId}
+        onChange={(e) => onSwitch(e.target.value)}
+      >
+        {courses.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.title} — {c.studentCount} enrolled
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -154,7 +238,7 @@ function OfflineCard() {
   return (
     <div className="card mt-4 p-5" role="status">
       <h2 className="font-bold">Cloud connection needed</h2>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-app-muted">
         Class analytics reads your enrolled learners&apos; mastery from the cloud. Once you&apos;re online and students
         have joined with your class code, their progress — and what to reteach next — appears here. Nothing to see yet
         is not an error.
@@ -168,12 +252,12 @@ function EmptyCard({ course }: { course: CourseSummary }) {
     <div className="card mt-4 p-5">
       <h2 className="font-bold">{course.title}</h2>
       <div className="mt-3 inline-block rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
-        <p className="text-xs text-gray-600">Class join code — learners enter this to enroll</p>
+        <p className="text-xs text-app-muted">Class join code — learners enter this to enroll</p>
         <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
           {course.joinCode}
         </p>
       </div>
-      <p className="mt-3 text-sm text-gray-600" role="status">
+      <p className="mt-3 text-sm text-app-muted" role="status">
         No students have enrolled yet. Share your join code — once learners join and start practicing, their mastery
         and your reteach priorities show up here.
       </p>
@@ -223,12 +307,12 @@ function DataView({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-bold">{course.title}</h2>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-app">
               {roster.length} student{roster.length === 1 ? "" : "s"} enrolled
             </p>
           </div>
           <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-2">
-            <p className="text-xs text-gray-600">Join code</p>
+            <p className="text-xs text-app-muted">Join code</p>
             <p className="font-mono text-xl font-bold tracking-[0.25em] text-[var(--growth-green-text)]">
               {course.joinCode}
             </p>
@@ -241,7 +325,7 @@ function DataView({
         <h2 id="reteach-heading" className="font-bold">
           Reteach next
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Ranked by where the class is struggling most. Each card explains why.
         </p>
         <ol className="mt-3 space-y-3">
@@ -263,7 +347,7 @@ function DataView({
                     {badge.label}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-gray-700">{item.reason}</p>
+                <p className="mt-2 text-sm text-app">{item.reason}</p>
               </li>
             );
           })}
@@ -275,7 +359,7 @@ function DataView({
         <h2 id="heatmap-heading" className="font-bold">
           Concept × student heatmap
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Each cell is a learner&apos;s conceptual grasp of a concept. Color and symbol both encode the level, so it
           reads without relying on color.
         </p>
@@ -291,7 +375,7 @@ function DataView({
                   Concept
                 </th>
                 {roster.map((r) => (
-                  <th key={r.userId} scope="col" className="p-2 text-center text-xs font-semibold text-gray-600">
+                  <th key={r.userId} scope="col" className="p-2 text-center text-xs font-semibold text-app-muted">
                     {studentLabel.get(r.userId)}
                   </th>
                 ))}
@@ -333,7 +417,7 @@ function DataView({
         <h2 id="dimensions-heading" className="font-bold">
           Mastery by dimension
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Class averages across the five learning dimensions — never collapsed into one grade. Averaged over students
           who have practiced each concept.
         </p>
@@ -350,7 +434,7 @@ function DataView({
                   </span>
                 </div>
                 {s.studentsWithEvidence === 0 ? (
-                  <p className="mt-2 text-sm text-gray-600">No evidence yet — nobody has practiced this concept.</p>
+                  <p className="mt-2 text-sm text-app-muted">No evidence yet — nobody has practiced this concept.</p>
                 ) : (
                   <ul className="mt-3 space-y-2">
                     {MASTERY_DIMENSIONS.map((dim) => {
@@ -359,11 +443,11 @@ function DataView({
                       return (
                         <li key={dim}>
                           <div className="flex items-center justify-between text-xs">
-                            <span className={isWeakest ? "font-semibold text-[#cf3d3d]" : "text-gray-700"}>
+                            <span className={isWeakest ? "font-semibold text-[#cf3d3d]" : "text-app"}>
                               {DIMENSION_LABELS[dim]}
                               {isWeakest ? " — weakest" : ""}
                             </span>
-                            <span className="tabular-nums text-gray-700">{pct(value)}%</span>
+                            <span className="tabular-nums text-app">{pct(value)}%</span>
                           </div>
                           <div
                             className="bar-track mt-1 h-3 w-full"
@@ -396,7 +480,7 @@ function Legend() {
       {order.map((k) => {
         const s = CELL_STYLE[k];
         return (
-          <li key={k} className="flex items-center gap-1.5 text-xs text-gray-700">
+          <li key={k} className="flex items-center gap-1.5 text-xs text-app">
             <span
               className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-bold ${s.className}`}
               aria-hidden

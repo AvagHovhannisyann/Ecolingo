@@ -17,6 +17,7 @@ import type {
   Misconception,
   Question,
 } from "../../lib/engine/types";
+import { buildGeneratedQuestions } from "./generated-questions";
 
 export const PENDING_CITATION: Citation = {
   id: "cit-pending-solow",
@@ -440,6 +441,9 @@ export const questions: Question[] = [
     ],
     answerKey: { orderedItemIds: ["i1", "i2", "i3", "i4", "i5"] },
   },
+  // Teacher-ratified output of the D-020 question factory (17 of 24 live
+  // drafts accepted; see generated-questions.ts for the per-draft verdicts).
+  ...buildGeneratedQuestions(PENDING_CITATION.id),
 ];
 
 export const productionFunctionLesson: Lesson = {

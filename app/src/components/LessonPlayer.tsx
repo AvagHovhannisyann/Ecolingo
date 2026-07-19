@@ -79,7 +79,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   if (finished) {
     const mastery = state?.masteryBySlug[lesson.conceptSlug];
     return (
-      <div className="rounded-2xl border border-green-600 bg-green-50 p-6">
+      <div className="rounded-2xl border border-[color:var(--duo-green)] bg-[color:rgba(88,204,2,0.12)] p-6">
         {/* Higgsfield-generated celebration loop (spec §17.1) — decorative only;
             reduced-motion + decode-failure users get the still */}
         <AmbientArt
@@ -101,7 +101,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           </Link>{" "}
           for when and why.
         </p>
-        <Link href="/" className="mt-4 inline-block btn-primary min-h-12 px-5 py-3 text-white">
+        <Link href="/learn" className="mt-4 inline-block btn-primary min-h-12 px-5 py-3 text-white">
           Back to today&apos;s plan
         </Link>
       </div>
@@ -116,13 +116,13 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           <span
             key={s.id}
             aria-current={i === stepIndex ? "step" : undefined}
-            className={`h-2 flex-1 rounded-full ${i < stepIndex ? "bg-gray-900" : i === stepIndex ? "bg-gray-500" : "bg-gray-200"}`}
+            className={`h-2 flex-1 rounded-full ${i < stepIndex ? "bg-[color:var(--duo-green)]" : i === stepIndex ? "bg-[color:var(--duo-blue)]" : "bg-[color:var(--app-surface-2)]"}`}
             title={STEP_TITLES[s.type]}
           />
         ))}
       </nav>
 
-      <h2 className="mt-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <h2 className="mt-4 text-sm font-semibold uppercase tracking-wide text-app-muted">
         Step {stepIndex + 1} of {steps.length}: {STEP_TITLES[step.type]}
       </h2>
 
@@ -222,7 +222,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
                   height={200}
                   className="art-enter h-12 w-12 shrink-0 rounded-xl object-cover"
                 />
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-app">
                   New context, no hints — this checks whether the idea transfers.
                 </p>
               </div>

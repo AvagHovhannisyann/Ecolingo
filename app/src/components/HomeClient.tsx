@@ -22,7 +22,7 @@ import { WorldMap } from "./WorldMap";
 
 export function HomeClient() {
   const state = useLearnerState();
-  if (!state) return <p className="p-4 text-sm text-gray-500">Loading your plan…</p>;
+  if (!state) return <p className="p-4 text-sm text-app-muted">Loading your plan…</p>;
 
   const nowISO = new Date().toISOString();
   const queue = buildReviewQueue({
@@ -77,17 +77,17 @@ export function HomeClient() {
       {!state.profile.onboarded && (
         <Link
           href="/onboarding"
-          className="card-lesson mt-4 block border-[var(--lavender)] p-4 transition hover:bg-[#f4f1ff]"
+          className="card-lesson mt-4 block border-[var(--lavender)] p-4 transition hover:bg-[color:var(--app-surface-2)]"
         >
           <span className="font-bold text-[var(--lavender-text)]">Personalize your path →</span>
-          <span className="block text-sm text-gray-600">
+          <span className="block text-sm text-app-muted">
             2 minutes: your goal, schedule, and how you like ideas explained. Every step is skippable.
           </span>
         </Link>
       )}
 
       {/* study plan settings (IDEA-010/011, editable later per §7) */}
-      <details className="mt-4 rounded-2xl border border-gray-300 p-4">
+      <details className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Your plan: {state.plan.minutesPerDay} min/day
           {state.plan.examDateISO ? `, exam ${state.plan.examDateISO.slice(0, 10)}` : ", no exam date set"}
@@ -99,7 +99,7 @@ export function HomeClient() {
               type="number"
               min={5}
               max={120}
-              className="mt-1 block w-full rounded-xl border border-gray-400 p-3"
+              className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] p-3"
               value={state.plan.minutesPerDay}
               onChange={(e) =>
                 mutateLearnerState((s) => updatePlan(s, { ...s.plan, minutesPerDay: Math.max(5, Number(e.target.value) || 20) }))
@@ -110,7 +110,7 @@ export function HomeClient() {
             Exam date (why: reviews are back-planned from it)
             <input
               type="date"
-              className="mt-1 block w-full rounded-xl border border-gray-400 p-3"
+              className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] p-3"
               value={state.plan.examDateISO?.slice(0, 10) ?? ""}
               onChange={(e) =>
                 mutateLearnerState((s) =>
@@ -138,7 +138,7 @@ export function HomeClient() {
                 ★ New lesson · {lesson.estimatedMinutes} min
               </span>
               <span className="block text-base font-bold">{lesson.title}</span>
-              <span className="block text-sm text-gray-600">
+              <span className="block text-sm text-app-muted">
                 Core idea → intuition → interactive model → math → practice → transfer check
               </span>
             </Link>
@@ -152,9 +152,9 @@ export function HomeClient() {
           // opacity — dimming the text would drop it below AA contrast
           return (
             <li key={lesson.id} className="card-lesson bg-[var(--mist-gray)]/25 p-4">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-600">🔒 Locked · {lesson.estimatedMinutes} min</span>
-              <span className="block text-base font-bold text-gray-700">{lesson.title}</span>
-              <span className="block text-sm text-gray-600">Unlocks after: {prereqs.join(", ")}</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-app-muted">🔒 Locked · {lesson.estimatedMinutes} min</span>
+              <span className="block text-base font-bold text-app">{lesson.title}</span>
+              <span className="block text-sm text-app-muted">Unlocks after: {prereqs.join(", ")}</span>
             </li>
           );
         })}
@@ -170,13 +170,13 @@ export function HomeClient() {
                   ⟳ Review · ~3 min{"overdue" in r && r.overdue ? " · catch-up" : ""}
                 </span>
                 <span className="block text-base font-bold">{c?.name ?? r.conceptSlug}</span>
-                <span className="block text-sm text-gray-600">{r.reasonText}</span>
+                <span className="block text-sm text-app-muted">{r.reasonText}</span>
               </Link>
             </li>
           );
         })}
         {plannedLessons.length === 0 && lockedLessons.length === 0 && today.reviews.length === 0 && (
-          <li className="card flex items-center gap-4 p-4 text-sm text-gray-600">
+          <li className="card flex items-center gap-4 p-4 text-sm text-app-muted">
             {/* Higgsfield "sleeping" mascot — nothing due right now (decorative slot §17.2) */}
             <Image
               src="/art/creature-sleeping.webp"

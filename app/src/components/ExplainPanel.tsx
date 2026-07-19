@@ -84,14 +84,14 @@ export function ExplainPanel({
       </div>
 
       {loadingMode && (
-        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-gray-200 p-4 text-sm text-gray-600" role="status">
-          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--growth-green)]" aria-hidden />
+        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[color:var(--app-border)] p-4 text-sm text-app-muted" role="status">
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--app-border)] border-t-[var(--growth-green)]" aria-hidden />
           Thinking through it for you…
         </div>
       )}
 
       {output && !loadingMode && (
-        <div className="mt-3 rounded-2xl border border-gray-300 p-4">
+        <div className="mt-3 rounded-2xl border border-[color:var(--app-border)] p-4">
           <div className="mb-2 flex items-center gap-2">
             <span
               className="rounded-full bg-[var(--growth-green-tint)] px-2 py-0.5 text-[11px] font-semibold text-[var(--growth-green-text)]"
@@ -105,7 +105,7 @@ export function ExplainPanel({
             </span>
           </div>
           {output.uncertainty !== "grounded" && (
-            <p className="mb-2 text-xs text-amber-800">
+            <p className="mb-2 text-xs text-[color:#ffcf4d]">
               {output.uncertainty === "partially_grounded"
                 ? "Grounding note: this explanation uses course structure that hasn't been verified against uploaded lectures yet."
                 : "This isn't covered by the course materials — no answer invented."}
@@ -129,13 +129,13 @@ export function ExplainPanel({
           <GroundedCitationChips conceptSlug={concept.slug} fallback={output.citations} />
           <div className="mt-3">
             {reported ? (
-              <span className="text-xs text-gray-600" role="status">
+              <span className="text-xs text-app-muted" role="status">
                 Thanks — this explanation was flagged for review.
               </span>
             ) : (
               <button
                 type="button"
-                className="btn-secondary min-h-12 px-3 text-xs text-gray-700"
+                className="btn-secondary min-h-12 px-3 text-xs text-app"
                 onClick={() => setReported(true)}
               >
                 Report as confusing or incorrect

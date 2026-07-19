@@ -35,9 +35,87 @@ export interface CourseSummary {
   joinCode: string;
 }
 
+/** map a raw `courses` row (snake_case join_code) to the CourseSummary shape */
+function toSummary(row: { id: string; title: string; join_code: string }): CourseSummary {
+  return { id: row.id, title: row.title, joinCode: row.join_code };
+}
+
 /**
- * Teacher path: return the caller's existing owned course, or lazily create one
- * with a fresh join code. Null in local-only / unreachable mode (GATE-009).
+ * The outcome of a single course-insert attempt, from the caller's point of
+ * view — deliberately DB-agnostic so the retry orchestration below is pure and
+ * unit-testable without a live database:
+ *   - "ok":        the row was created (or, for ensureMyCourse, a concurrent
+ *                  create of the teacher's course was found and reused).
+ *   - "collision": the join_code hit the unique constraint (23505) — retry with
+ *                  a fresh code.
+ *   - "error":     any other failure — abort immediately, no retry.
+ */
+export type CourseInsertOutcome =
+  | { status: "ok"; course: CourseSummary }
+  | { status: "collision" }
+  | { status: "error" };
+
+/**
+ * Pure retry orchestrator shared by ensureMyCourse and createCourse. Calls
+ * `attempt` with a fresh join code up to `maxAttempts` times: an "ok" resolves,
+ * an "error" aborts (null), a "collision" retries with a newly generated code,
+ * and exhausting the attempts yields null. The collision-vs-reuse *policy* lives
+ * in each caller's `attempt` closure (createCourse always wants a new row;
+ * ensureMyCourse reuses an already-owned course on collision), so this function
+ * stays free of any single-course assumption. Exported for unit testing.
+ */
+export async function retryInsertCourse(
+  attempt: (joinCode: string) => Promise<CourseInsertOutcome>,
+  genCode: () => string = generateJoinCode,
+  maxAttempts = 5,
+): Promise<CourseSummary | null> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const outcome = await attempt(genCode());
+    if (outcome.status === "ok") return outcome.course;
+    if (outcome.status === "error") return null;
+    // "collision" → loop and try again with a fresh code
+  }
+  return null;
+}
+
+/** the caller's earliest-created owned course, or null (owner-scoped by RLS) */
+async function firstOwnedCourse(
+  supabase: NonNullable<ReturnType<typeof getSupabase>>,
+  userId: string,
+): Promise<CourseSummary | null> {
+  const res = await supabase
+    .from("courses")
+    .select("id, title, join_code")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (res.error || !res.data) return null;
+  return toSummary(res.data);
+}
+
+/** insert one new course row for `userId` with the given join code */
+async function insertCourseRow(
+  supabase: NonNullable<ReturnType<typeof getSupabase>>,
+  userId: string,
+  title: string,
+  joinCode: string,
+) {
+  return supabase
+    .from("courses")
+    .insert({ owner_id: userId, title, join_code: joinCode })
+    .select("id, title, join_code")
+    .maybeSingle();
+}
+
+/**
+ * Teacher path: return the caller's existing (first) owned course, or lazily
+ * create one with a fresh join code. Backward-compatible "my one course, lazily
+ * created" semantics — existing callers depend on it. Null in local-only /
+ * unreachable mode (GATE-009). It is now sugar over the same insert-with-retry
+ * primitive createCourse uses; the only difference is that a join_code
+ * collision here re-checks for (and reuses) an already-owned course, so two
+ * concurrent first-time calls resolve to one course rather than erroring.
  */
 export async function ensureMyCourse(title: string): Promise<CourseSummary | null> {
   const supabase = getSupabase();
@@ -46,49 +124,113 @@ export async function ensureMyCourse(title: string): Promise<CourseSummary | nul
     const userId = await ensureSession();
     if (!userId) return null;
 
-    const existing = await supabase
+    const existing = await firstOwnedCourse(supabase, userId);
+    if (existing) return existing;
+
+    return await retryInsertCourse(async (joinCode) => {
+      const created = await insertCourseRow(supabase, userId, title, joinCode);
+      if (!created.error && created.data) return { status: "ok", course: toSummary(created.data) };
+      // 23505 = unique_violation. Could be a code clash, or a concurrent create
+      // of this teacher's course — reuse an owned course before retrying.
+      if (created.error?.code === "23505") {
+        const race = await firstOwnedCourse(supabase, userId);
+        if (race) return { status: "ok", course: race };
+        return { status: "collision" };
+      }
+      return { status: "error" };
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Teacher path (reusable templates): ALWAYS insert a NEW course row — a fresh
+ * section with its own independent join code and roster. The teacher's grounding
+ * (concept_links / source_documents) and authored_questions are owner-scoped,
+ * not course-scoped, so every new section automatically inherits the teacher's
+ * approved citations and question bank — no re-ingestion, no re-approval. Null
+ * in local-only / unreachable mode (GATE-009). Retries only on a join_code
+ * collision (never reuses an existing course — that is ensureMyCourse's job).
+ */
+export async function createCourse(title: string): Promise<CourseSummary | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  try {
+    const userId = await ensureSession();
+    if (!userId) return null;
+
+    return await retryInsertCourse(async (joinCode) => {
+      const created = await insertCourseRow(supabase, userId, title, joinCode);
+      if (!created.error && created.data) return { status: "ok", course: toSummary(created.data) };
+      if (created.error?.code === "23505") return { status: "collision" };
+      return { status: "error" };
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** A course the caller owns, with its live enrolled-student count. */
+export type OwnedCourse = CourseSummary & { studentCount: number };
+
+/**
+ * Teacher path: every course owned by the caller (oldest first), each with its
+ * live roster count. One count query per course — fine at this scale, and the
+ * count is RLS-gated (enrollments_read_roster), so a non-owner would see 0.
+ * Empty [] in local-only / unreachable mode (GATE-009).
+ */
+export async function listMyCourses(): Promise<OwnedCourse[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  try {
+    const userId = await ensureSession();
+    if (!userId) return [];
+    const { data, error } = await supabase
       .from("courses")
       .select("id, title, join_code")
       .eq("owner_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (existing.error) return null;
-    if (existing.data) {
-      return { id: existing.data.id, title: existing.data.title, joinCode: existing.data.join_code };
-    }
-
-    // create; retry on the (astronomically unlikely) join_code unique collision
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const joinCode = generateJoinCode();
-      const created = await supabase
-        .from("courses")
-        .insert({ owner_id: userId, title, join_code: joinCode })
-        .select("id, title, join_code")
-        .maybeSingle();
-      if (!created.error && created.data) {
-        return { id: created.data.id, title: created.data.title, joinCode: created.data.join_code };
-      }
-      // 23505 = unique_violation. Could be a code clash, or a concurrent create
-      // of this teacher's course — re-check for an owned course before retrying.
-      if (created.error?.code === "23505") {
-        const race = await supabase
-          .from("courses")
-          .select("id, title, join_code")
-          .eq("owner_id", userId)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (race.data) {
-          return { id: race.data.id, title: race.data.title, joinCode: race.data.join_code };
-        }
-        continue;
-      }
-      return null;
-    }
-    return null;
+      .order("created_at", { ascending: true });
+    if (error || !data) return [];
+    return await Promise.all(
+      data.map(async (row) => {
+        const summary = toSummary(row);
+        const { count, error: countError } = await supabase
+          .from("enrollments")
+          .select("*", { count: "exact", head: true })
+          .eq("course_id", summary.id);
+        return { ...summary, studentCount: countError ? 0 : count ?? 0 };
+      }),
+    );
   } catch {
-    return null;
+    return [];
+  }
+}
+
+/**
+ * Teacher path: rename a course the caller owns. Owner-only — RLS
+ * (courses_owner) silently no-ops the update for a non-owner, so this returns
+ * true only when the caller actually owns the row. false in local-only /
+ * unreachable mode (GATE-009).
+ */
+export async function renameCourse(courseId: string, title: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  try {
+    const userId = await ensureSession();
+    if (!userId) return false;
+    const { data, error } = await supabase
+      .from("courses")
+      .update({ title })
+      .eq("id", courseId)
+      .eq("owner_id", userId)
+      .select("id");
+    if (error) return false;
+    // RLS lets a non-owner's update match zero rows without erroring; treat an
+    // empty result set as "not updated".
+    return (data?.length ?? 0) > 0;
+  } catch {
+    return false;
   }
 }
 

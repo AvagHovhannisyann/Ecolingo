@@ -48,7 +48,7 @@ export function DiagnosticStep({
 
   return (
     <div>
-      <p className="text-sm text-gray-600" aria-live="polite">
+      <p className="text-sm text-app-muted" aria-live="polite">
         Question {index + 1} of {DIAGNOSTIC_ITEMS.length} — there&apos;s no grade here; this only tunes where we start.
       </p>
       <p className="mt-3 font-medium">{item.prompt}</p>
@@ -65,7 +65,7 @@ export function DiagnosticStep({
           <input
             type="text"
             inputMode="decimal"
-            className="mt-1 block w-full max-w-xs rounded-xl border border-gray-400 p-3"
+            className="mt-1 block w-full max-w-xs rounded-xl border border-[color:var(--app-border)] p-3"
             value={numericRaw}
             onChange={(e) => setNumericRaw(e.target.value)}
           />
@@ -89,7 +89,7 @@ export function DiagnosticStep({
       )}
 
       <fieldset className="mt-3">
-        <legend className="text-sm text-gray-700">How confident are you? (IDEA-007 — helps calibrate your reviews)</legend>
+        <legend className="text-sm text-app">How confident are you? (IDEA-007 — helps calibrate your reviews)</legend>
         <div className="mt-1 flex flex-wrap gap-2">
           {([1, 2, 3, 4] as const).map((c) => (
             <button

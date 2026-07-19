@@ -5,7 +5,7 @@ export default function SolowLabPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">Visual Lab — Solow growth</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-app-muted">
         Every curve here is computed in code from the model equations — drag the parameters and the geometry
         must follow the mathematics (never the other way round).
       </p>

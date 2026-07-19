@@ -83,7 +83,7 @@ export function SolowLab({
   const breakevenColor = "#D55E00";
 
   return (
-    <div className="rounded-2xl border border-gray-300 p-4">
+    <div className="rounded-2xl border border-[color:var(--app-border)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">
           Solow Lab — <MathTex latex="\Delta k = s\,f(k) - (n+\delta)k" />
@@ -177,7 +177,7 @@ export function SolowLab({
       </label>
 
       {/* deterministic interpretation of the current state */}
-      <p className="mt-2 rounded-xl bg-gray-100 p-3 text-sm" role="status" aria-live="polite">
+      <p className="mt-2 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm" role="status" aria-live="polite">
         {interpretation.text}
       </p>
 
@@ -201,7 +201,7 @@ export function SolowLab({
                 aria-label={`${meta.label}: ${meta.describe}`}
                 aria-valuetext={`${meta.label} = ${params[key].toFixed(3)}`}
               />
-              <span className="text-xs text-gray-600">{meta.describe}</span>
+              <span className="text-xs text-app-muted">{meta.describe}</span>
             </label>
           );
         })}
@@ -219,8 +219,8 @@ export function SolowLab({
 
 function ReadOut({ label, value, symbolic }: { label: string; value: string; symbolic: boolean }) {
   return (
-    <div className="rounded-xl border border-gray-200 p-2">
-      <dt className="text-xs text-gray-600">{symbolic ? <MathTex latex={label} /> : label}</dt>
+    <div className="rounded-xl border border-[color:var(--app-border)] p-2">
+      <dt className="text-xs text-app-muted">{symbolic ? <MathTex latex={label} /> : label}</dt>
       <dd className="font-mono">{symbolic ? <MathTex latex={value} /> : value}</dd>
     </div>
   );

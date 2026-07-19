@@ -20,7 +20,7 @@ import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 
 export function ExamPlanClient() {
   const state = useLearnerState();
-  if (!state) return <p className="p-4 text-sm text-gray-500">Loading exam plan…</p>;
+  if (!state) return <p className="p-4 text-sm text-app-muted">Loading exam plan…</p>;
 
   const nowISO = new Date().toISOString();
   const exam = state.plan.examDateISO;
@@ -38,12 +38,12 @@ export function ExamPlanClient() {
 
   const band = (slug: string): { label: string; cls: string } => {
     const m = state.masteryBySlug[slug];
-    if (!m || m.evidenceCount === 0) return { label: "Not started", cls: "bg-gray-100 text-gray-700" };
+    if (!m || m.evidenceCount === 0) return { label: "Not started", cls: "bg-[color:var(--app-surface-2)] text-app" };
     const r = retentionAt(m, nowISO);
     const strength = Math.min(m.conceptual, Math.max(r, 0));
-    if (strength >= 0.55 && m.transfer >= 0.4) return { label: "Strong", cls: "bg-green-100 text-green-900" };
-    if (strength >= 0.35) return { label: "Developing", cls: "bg-yellow-100 text-yellow-900" };
-    return { label: "At risk", cls: "bg-orange-100 text-orange-900" };
+    if (strength >= 0.55 && m.transfer >= 0.4) return { label: "Strong", cls: "bg-[color:rgba(88,204,2,0.16)] text-[color:var(--duo-green-text)]" };
+    if (strength >= 0.35) return { label: "Developing", cls: "bg-[color:rgba(255,200,0,0.16)] text-[color:#ffd24d]" };
+    return { label: "At risk", cls: "bg-[color:rgba(255,150,0,0.16)] text-[color:#ffb060]" };
   };
 
   return (
@@ -59,7 +59,7 @@ export function ExamPlanClient() {
         </AmbientHero>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-gray-300 p-4">
+      <div className="mt-3 rounded-2xl border border-[color:var(--app-border)] p-4">
         {exam ? (
           <p className="text-sm">
             Exam on <strong>{exam.slice(0, 10)}</strong> — <strong>{daysLeft}</strong> day{daysLeft === 1 ? "" : "s"} left.
@@ -87,7 +87,7 @@ export function ExamPlanClient() {
           Exam date
           <input
             type="date"
-            className="mt-1 block w-full rounded-xl border border-gray-400 p-3"
+            className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] p-3"
             value={exam?.slice(0, 10) ?? ""}
             onChange={(e) =>
               mutateLearnerState((s) =>
@@ -104,12 +104,12 @@ export function ExamPlanClient() {
           const b = band(c.slug);
           const item = queue.find((q) => q.conceptSlug === c.slug);
           return (
-            <li key={c.slug} className="rounded-2xl border border-gray-200 p-3">
+            <li key={c.slug} className="rounded-2xl border border-[color:var(--app-border)] p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{c.name}</span>
                 <span className={`rounded-full px-3 py-1 text-xs ${b.cls}`}>{b.label}</span>
               </div>
-              <p className="mt-1 text-xs text-gray-600">
+              <p className="mt-1 text-xs text-app-muted">
                 Importance {"★".repeat(c.importance)}
                 {item
                   ? ` · next review ${new Date(item.dueAt).toLocaleDateString()} — ${item.reasonText}`
@@ -120,9 +120,9 @@ export function ExamPlanClient() {
         })}
       </ul>
 
-      <p className="mt-4 text-sm text-gray-600">
+      <p className="mt-4 text-sm text-app-muted">
         Weak spots close fastest through the daily loop —{" "}
-        <Link href="/" className="underline">
+        <Link href="/learn" className="underline">
           back to today&apos;s plan
         </Link>
         .

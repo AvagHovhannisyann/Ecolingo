@@ -91,7 +91,7 @@ export function BudgetLab({
   const compColor = "#D55E00";
 
   return (
-    <div className="rounded-2xl border border-gray-300 p-4">
+    <div className="rounded-2xl border border-[color:var(--app-border)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">
           Intertemporal Budget Lab — <MathTex latex="c_2 = y_2 + (1+r)(y_1 - c_1)" />
@@ -177,7 +177,7 @@ export function BudgetLab({
             onChange={(e) => update(Number(e.target.value), c1)}
             aria-valuetext={`interest rate ${(r * 100).toFixed(0)} percent; the line rotates around the endowment point`}
           />
-          <span className="text-xs text-gray-600">rotates the line around the endowment — the endowment stays affordable at any r</span>
+          <span className="text-xs text-app-muted">rotates the line around the endowment — the endowment stays affordable at any r</span>
         </label>
         <label className="block text-sm">
           Consumption today c₁ = {c1.toFixed(0)}
@@ -191,15 +191,15 @@ export function BudgetLab({
             onChange={(e) => update(r, Number(e.target.value))}
             aria-valuetext={`consumption today ${c1.toFixed(0)}; you are a ${role}`}
           />
-          <span className="text-xs text-gray-600">move along the budget line to choose today vs tomorrow</span>
+          <span className="text-xs text-app-muted">move along the budget line to choose today vs tomorrow</span>
         </label>
       </div>
 
-      <p className="mt-2 rounded-xl bg-gray-100 p-3 text-sm" role="status" aria-live="polite">
+      <p className="mt-2 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm" role="status" aria-live="polite">
         {roleText}
       </p>
       {showCompensated && r !== R0 && (
-        <p className="mt-2 rounded-xl bg-orange-50 p-3 text-sm text-orange-900">
+        <p className="mt-2 rounded-xl bg-[color:rgba(255,150,0,0.12)] p-3 text-sm text-[color:#ffb060]">
           The dashed compensated line has the <em>new</em> slope −(1+r) but passes through your original bundle:
           movement along it is the pure <strong>substitution effect</strong>; the remaining jump to the new line is the{" "}
           <strong>income effect</strong>.
@@ -218,8 +218,8 @@ export function BudgetLab({
 
 function ReadOut({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 p-2">
-      <dt className="text-xs text-gray-600">{label}</dt>
+    <div className="rounded-xl border border-[color:var(--app-border)] p-2">
+      <dt className="text-xs text-app-muted">{label}</dt>
       <dd className="font-mono">{value}</dd>
     </div>
   );

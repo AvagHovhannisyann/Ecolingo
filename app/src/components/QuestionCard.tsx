@@ -133,7 +133,7 @@ export function QuestionCard({
   const answerReady = buildAnswer() !== null;
 
   return (
-    <div className="rounded-2xl border border-gray-300 p-4">
+    <div className="rounded-2xl border border-[color:var(--app-border)] p-4">
       <p className="font-medium">{question.stem}</p>
 
       {/* format-specific input */}
@@ -172,13 +172,13 @@ export function QuestionCard({
           <input
             type="text"
             inputMode="decimal"
-            className="mt-1 block w-full max-w-xs rounded-xl border border-gray-400 p-3"
+            className="mt-1 block w-full max-w-xs rounded-xl border border-[color:var(--app-border)] p-3"
             value={numericRaw}
             disabled={answered}
             onChange={(e) => setNumericRaw(e.target.value)}
             aria-describedby={`${question.id}-equiv`}
           />
-          <span id={`${question.id}-equiv`} className="text-xs text-gray-600">
+          <span id={`${question.id}-equiv`} className="text-xs text-app-muted">
             Decimals, fractions and percentages are all accepted — equivalent answers count.
           </span>
         </label>
@@ -186,7 +186,7 @@ export function QuestionCard({
 
       {question.type === "equation_assembly" && (
         <div className="mt-3">
-          <p className="text-sm text-gray-700" aria-live="polite">
+          <p className="text-sm text-app" aria-live="polite">
             Your equation:{" "}
             {tokenOrder.length === 0 ? (
               <em>tap terms below in order</em>
@@ -223,7 +223,7 @@ export function QuestionCard({
 
       {question.type === "causal_order" && (
         <div className="mt-3 space-y-2">
-          <p className="text-sm text-gray-700">Tap the events in the order they happen:</p>
+          <p className="text-sm text-app">Tap the events in the order they happen:</p>
           {shuffledItems.map((item) => {
             const pos = itemOrder.indexOf(item.id);
             return (
@@ -257,7 +257,7 @@ export function QuestionCard({
             slotMarkers
             ariaLabel="Solow diagram with three numbered markers: marker 1 on the curved solid line, marker 2 on the straight dashed line, marker 3 at their crossing point."
           />
-          <p className="mt-2 text-sm text-gray-700">Pick a marker, then tap the label that belongs to it:</p>
+          <p className="mt-2 text-sm text-app">Pick a marker, then tap the label that belongs to it:</p>
           <div className="mt-2 flex gap-2" role="group" aria-label="Diagram markers">
             {question.slots.map((s, i) => (
               <button
@@ -295,7 +295,7 @@ export function QuestionCard({
                     });
                     setActiveSlot(null);
                   }}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-gray-300 p-3 text-left text-sm disabled:opacity-50"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-[color:var(--app-border)] p-3 text-left text-sm disabled:opacity-50"
                 >
                   <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs">
                     {slotIdx >= 0 ? slotIdx + 1 : "·"}
@@ -311,7 +311,7 @@ export function QuestionCard({
       {/* confidence before submit (IDEA-007) */}
       {!answered && (
         <fieldset className="mt-3">
-          <legend className="text-sm text-gray-700">How confident are you?</legend>
+          <legend className="text-sm text-app">How confident are you?</legend>
           <div className="mt-1 flex gap-2">
             {([1, 2, 3, 4] as const).map((c) => (
               <button
@@ -347,7 +347,7 @@ export function QuestionCard({
         </div>
       )}
       {hintShown && !answered && (
-        <p className="mt-2 rounded-xl bg-gray-100 p-3 text-sm" role="status">
+        <p className="mt-2 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm" role="status">
           💡 {question.hint}
         </p>
       )}
@@ -357,8 +357,8 @@ export function QuestionCard({
         <div
           className={`mt-3 p-3 ${
             result.correct
-              ? "feedback-correct border-green-600 bg-green-50"
-              : "feedback-incorrect border-orange-400 bg-orange-50"
+              ? "feedback-correct border-[color:var(--duo-green)] bg-[color:rgba(88,204,2,0.12)]"
+              : "feedback-incorrect border-[color:#ffb020] bg-[color:rgba(255,150,0,0.12)]"
           }`}
           role="status"
         >
@@ -409,7 +409,7 @@ export function QuestionCard({
               <div>
               <p>Not quite — no penalty, let&apos;s fix it.</p>
               {confidence === 4 && (
-                <p className="mt-1 text-xs text-orange-900">
+                <p className="mt-1 text-xs text-[color:#ffb060]">
                   You were certain but missed it — that gap is exactly what review will target.
                 </p>
               )}

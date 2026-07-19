@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
-import { SyncBadge } from "@/components/SyncBadge";
-import { DesktopNav, MobileNav } from "@/components/NavLinks";
+import { nunito } from "@/fonts/nunito";
+import { Sidebar } from "@/components/Sidebar";
+import { MobileTabBar } from "@/components/MobileTabBar";
+import { AppStatBar } from "@/components/AppStatBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,51 +14,33 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#35C46A",
+  themeColor: "#131f24",
 };
 
 /**
- * App shell on the spec §14 system: Cloud White surfaces, Deep Ink text,
- * Growth Green identity. IA per docs/02-prd.md §6: full nav on wide screens,
- * four one-thumb icon tabs on mobile. (Final art direction: Fabel, D-001.)
+ * App shell on the dark game surface (product-owner direction D-020): a fixed
+ * left icon rail on desktop (≥880px), a bottom tab bar on mobile, and a fixed
+ * top stat strip (streak / gems / hearts) in both. Nunito everywhere. The
+ * marketing landing page is a separate stream; this shell wraps the app.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const navDesktop = [
-    { href: "/", label: "Path" },
-    { href: "/review", label: "Review" },
-    { href: "/lab", label: "Visual Lab" },
-    { href: "/bank", label: "Question Bank" },
-    { href: "/exam", label: "Exam Plan" },
-    { href: "/progress", label: "Progress" },
-    { href: "/teach", label: "Teach" },
-  ];
-  const navMobile = [
-    { href: "/", label: "Path" },
-    { href: "/review", label: "Review" },
-    { href: "/lab", label: "Labs" },
-    { href: "/progress", label: "Progress" },
-  ];
   return (
-    <html lang="en">
-      <body className="min-h-dvh antialiased">
-        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-3">
+    <html lang="en" className={nunito.variable}>
+      <body className="min-h-dvh bg-app text-app antialiased">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:rounded-lg focus:bg-[color:var(--app-surface)] focus:p-3 focus:text-app"
+        >
           Skip to content
         </a>
-        <header className="sticky top-0 z-40 border-b-2 border-[var(--mist-gray)] bg-[var(--cloud-white)]/95 backdrop-blur">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-2">
-            <div className="flex items-baseline gap-2">
-              <Link href="/" className="text-lg font-extrabold tracking-tight text-[var(--growth-green-text)]">
-                ecolingo
-              </Link>
-              <SyncBadge />
-            </div>
-            <DesktopNav items={navDesktop} />
-          </div>
-        </header>
-        <main id="main" className="mx-auto max-w-3xl p-4 pb-28 sm:pb-10">
-          {children}
-        </main>
-        <MobileNav items={navMobile} />
+        <Sidebar />
+        <AppStatBar />
+        <div className="min-[880px]:pl-[240px]">
+          <main id="main" className="mx-auto max-w-3xl px-4 pb-28 pt-16 min-[880px]:pb-12">
+            {children}
+          </main>
+        </div>
+        <MobileTabBar />
       </body>
     </html>
   );
