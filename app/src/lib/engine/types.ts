@@ -122,6 +122,7 @@ export type QuestionType =
   | "diagram_label"
   | "causal_order"
   | "match_pairs";
+  | "cloze";
 
 export interface ChoiceOption {
   id: string;
@@ -200,6 +201,18 @@ export interface MatchPairsQuestion extends QuestionBase {
    * shuffled (engine/match-pairs.ts `shuffledSides`) so tapping is required.
    */
   pairs: { id: string; left: string; right: string }[];
+/**
+ * CLOZE (fill-in-the-blank with a word bank, Duolingo-style). `template`
+ * carries 1–3 `{{blankId}}` placeholders (parsed strictly by
+ * `engine/cloze.ts#parseTemplate`); `bank` is the full tap-word pool shown to
+ * the learner — every correct fill plus distractors, all distinct. See
+ * `engine/cloze.ts` for the parsing/scoring/validation contract.
+ */
+export interface ClozeQuestion extends QuestionBase {
+  type: "cloze";
+  template: string;
+  bank: string[];
+  answerKey: { fills: Record<string, string> };
 }
 
 export type Question =
@@ -210,6 +223,7 @@ export type Question =
   | DiagramLabelQuestion
   | CausalOrderQuestion
   | MatchPairsQuestion;
+  | ClozeQuestion;
 
 /** §22 — never one global percentage */
 export interface MasteryState {

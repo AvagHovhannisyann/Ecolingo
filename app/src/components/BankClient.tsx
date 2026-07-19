@@ -26,6 +26,7 @@ const TYPE_LABELS: Record<string, string> = {
   diagram_label: "Label the diagram",
   causal_order: "Order the chain",
   match_pairs: "Match the pairs",
+  cloze: "Fill in the blank",
 };
 
 export function BankClient() {
