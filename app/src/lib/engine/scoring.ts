@@ -5,6 +5,7 @@
 
 import type { Question } from "./types";
 import { checkNumericAnswer } from "./equivalence";
+import { scoreMatchPairs, type MatchPairsAnswer } from "./match-pairs";
 
 export type Answer =
   | { type: "mc_single"; optionId: string }
@@ -12,7 +13,8 @@ export type Answer =
   | { type: "numeric"; raw: string }
   | { type: "equation_assembly"; orderedTokenIds: string[] }
   | { type: "diagram_label"; slotToLabel: Record<string, string> }
-  | { type: "causal_order"; orderedItemIds: string[] };
+  | { type: "causal_order"; orderedItemIds: string[] }
+  | MatchPairsAnswer;
 
 export interface ScoreResult {
   correct: boolean;
@@ -74,6 +76,10 @@ export function scoreAnswer(q: Question, answer: Answer): ScoreResult {
       // first divergence identifies the failed reasoning step
       const idx = q.answerKey.orderedItemIds.findIndex((id, i) => a.orderedItemIds[i] !== id);
       return bad([], idx >= 0 ? `causal_step_${idx + 1}` : null);
+    }
+    case "match_pairs": {
+      const a = answer as Extract<Answer, { type: "match_pairs" }>;
+      return scoreMatchPairs(q, a);
     }
   }
 }
