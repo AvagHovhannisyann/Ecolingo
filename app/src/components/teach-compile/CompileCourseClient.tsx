@@ -44,7 +44,7 @@ const DROP_REASON_LABEL: Record<DroppedPrereqReason, string> = {
   cycle: "would create a cycle",
 };
 
-type Phase = "input" | "compiling" | "review" | "error";
+type Phase = "input" | "clarify" | "compiling" | "review" | "error";
 
 interface CompileError {
   kind: "no_provider" | "upstream" | "network" | "empty";
@@ -62,6 +62,12 @@ export function CompileCourseClient() {
 
   // ── compile lifecycle ───────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("input");
+  // D-022 clarify step: AI questions (optional to answer) + structural context
+  const [clarifyQuestions, setClarifyQuestions] = useState<string[]>([]);
+  const [clarifyAnswers, setClarifyAnswers] = useState<Record<number, string>>({});
+  const [clarifyLoading, setClarifyLoading] = useState(false);
+  const [targetDifficulty, setTargetDifficulty] = useState(3);
+  const [expectedLectures, setExpectedLectures] = useState<string>("");
   const [error, setError] = useState<CompileError | null>(null);
   const [result, setResult] = useState<CoursePlanSanitizeResult | null>(null);
   const [model, setModel] = useState<string | null>(null);
@@ -99,6 +105,37 @@ export function CompileCourseClient() {
 
   const canCompile = sections.length > 0 && phase !== "compiling";
 
+  /**
+   * D-022: before compiling, ask the AI for clarifying questions about the
+   * material and the class. Failure NEVER blocks (GATE-009): the context
+   * screen still opens with the structural fields; questions are a bonus.
+   */
+  const startClarify = async () => {
+    setClarifyLoading(true);
+    setClarifyQuestions([]);
+    setClarifyAnswers({});
+    try {
+      const res = await fetch("/api/compile-course", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "clarify",
+          sections: sections.map((s) => ({ id: s.id, heading: s.heading, text: s.text })),
+        }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { questions?: unknown };
+        if (Array.isArray(data.questions)) {
+          setClarifyQuestions(data.questions.filter((q): q is string => typeof q === "string").slice(0, 5));
+        }
+      }
+    } catch {
+      /* questions are optional — the context screen works without them */
+    }
+    setClarifyLoading(false);
+    setPhase("clarify");
+  };
+
   const compile = async () => {
     setPhase("compiling");
     setError(null);
@@ -110,6 +147,13 @@ export function CompileCourseClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sections: sections.map((s) => ({ id: s.id, heading: s.heading, text: s.text })),
+          context: {
+            targetDifficulty,
+            expectedLectures: expectedLectures ? Number(expectedLectures) : undefined,
+            answers: clarifyQuestions
+              .map((q, i) => ({ question: q, answer: (clarifyAnswers[i] ?? "").trim() }))
+              .filter((a) => a.answer),
+          },
         }),
       });
       if (res.status === 503) {
@@ -225,8 +269,93 @@ export function CompileCourseClient() {
 
       {approved && phase !== "review" && <ApprovedBanner plan={approved} />}
 
+      {phase === "clarify" && (
+        <section className="card mt-4 p-4" aria-label="Tell the AI about your class">
+          <h2 className="text-lg font-extrabold">Tell the AI about your class</h2>
+          <p className="mt-1 text-sm text-app-muted">
+            Everything here shapes the course structure. Every field is optional except the difficulty target.
+          </p>
+
+          <fieldset className="mt-4">
+            <legend className="text-sm font-bold">
+              Target difficulty — how strong must students be by the END of the course?
+            </legend>
+            <p className="text-xs text-app-muted">
+              Students always start accessible and ramp up; this sets where the ramp must arrive.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[
+                [1, "Familiarity"],
+                [2, "Comfortable"],
+                [3, "Solid"],
+                [4, "Strong"],
+                [5, "Mastery-grade"],
+              ].map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={targetDifficulty === v}
+                  onClick={() => setTargetDifficulty(v as number)}
+                  className={`min-h-11 rounded-xl border-2 px-3 text-sm font-bold ${
+                    targetDifficulty === v
+                      ? "border-[var(--model-blue)] bg-[var(--model-blue-tint)]"
+                      : "border-[color:var(--app-border)]"
+                  }`}
+                >
+                  {v} · {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <label className="mt-4 block max-w-xs text-sm font-bold" htmlFor="expected-lectures">
+            Roughly how many classes does this course span? <span className="font-normal text-app-muted">(optional)</span>
+            <input
+              id="expected-lectures"
+              type="number"
+              min={1}
+              max={60}
+              value={expectedLectures}
+              onChange={(e) => setExpectedLectures(e.target.value)}
+              className="mt-1 block w-full rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3 font-normal"
+            />
+          </label>
+
+          {clarifyQuestions.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-sm font-extrabold">The AI read your material and asks:</h3>
+              <ul className="mt-2 space-y-3">
+                {clarifyQuestions.map((q, i) => (
+                  <li key={i}>
+                    <label className="block text-sm font-bold" htmlFor={`clarify-${i}`}>
+                      {q} <span className="font-normal text-app-muted">(optional)</span>
+                    </label>
+                    <textarea
+                      id={`clarify-${i}`}
+                      rows={2}
+                      value={clarifyAnswers[i] ?? ""}
+                      onChange={(e) => setClarifyAnswers((prev) => ({ ...prev, [i]: e.target.value }))}
+                      className="mt-1 block w-full rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3 text-sm font-normal"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button type="button" onClick={compile} className="btn-primary min-h-12 px-5 text-white">
+              Compile course plan
+            </button>
+            <button type="button" onClick={() => setPhase("input")} className="btn-secondary min-h-12 px-4 text-sm">
+              Back
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* ── INPUT ──────────────────────────────────────────────────────── */}
-      {phase !== "review" && (
+      {phase !== "review" && phase !== "clarify" && (
         <section className="card mt-4 p-4" aria-labelledby="compile-source-heading">
           <h2 id="compile-source-heading" className="font-bold">
             1 · Choose source material
@@ -336,11 +465,15 @@ export function CompileCourseClient() {
           <div className="mt-4">
             <button
               type="button"
-              onClick={compile}
-              disabled={!canCompile}
+              onClick={() => void startClarify()}
+              disabled={!canCompile || clarifyLoading}
               className="btn-primary min-h-12 px-5 text-white disabled:opacity-50"
             >
-              {phase === "compiling" ? "Asking the AI to draft a course plan…" : "Compile course plan"}
+              {clarifyLoading
+                ? "Reading your material…"
+                : phase === "compiling"
+                  ? "Asking the AI to draft a course plan…"
+                  : "Continue — tell the AI about your class"}
             </button>
             {phase === "compiling" && (
               <p className="mt-2 text-xs text-app-muted" role="status">

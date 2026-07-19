@@ -42,6 +42,72 @@ export function extractJsonObject(s: string): unknown {
   }
 }
 
+/**
+ * Clarify mode (D-022): before compiling, the model may ask the teacher a few
+ * SPECIFIC questions about the material and the students. Questions are
+ * display-only text — sanitized, capped, never executed — and answering is
+ * always optional (GATE-009: a clarify failure never blocks compiling).
+ */
+export const CLARIFY_SYSTEM_PROMPT =
+  "You are an expert instructional designer preparing to turn a teacher's source material into a course. " +
+  'Reply with ONLY a JSON object, no prose: {"questions":[string]}. ' +
+  "Ask 3-5 SHORT, specific questions whose answers would genuinely change how you structure the course — about ambiguous or missing content in the material, the students' prior knowledge, emphasis between topics, or what the exam rewards. " +
+  "Never ask for personal data about individual students. Never ask questions the material already answers.";
+
+export function buildClarifyUser(sections: { id: string; heading: string; text: string }[]): string {
+  const sectionList = sections.map((s) => "### " + s.heading + "\n" + s.text.slice(0, 400)).join("\n\n");
+  return "SOURCE MATERIAL (excerpts):\n" + sectionList + "\n\nAsk your clarifying questions. Return the JSON object.";
+}
+
+/** display-only strings: trimmed, deduped, capped at 5 questions of ≤200 chars */
+export function sanitizeClarifyQuestions(raw: unknown): string[] {
+  if (!raw || typeof raw !== "object") return [];
+  const arr = (raw as { questions?: unknown }).questions;
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const q of arr) {
+    if (typeof q !== "string") continue;
+    const t = q.trim().slice(0, 200);
+    if (t.length < 8 || seen.has(t.toLowerCase())) continue;
+    seen.add(t.toLowerCase());
+    out.push(t);
+    if (out.length === 5) break;
+  }
+  return out;
+}
+
+/** teacher-supplied compile context (D-022) — every field optional, all sanitized */
+export interface TeacherContext {
+  /** the ENDPOINT difficulty (1-5): how strong students must be by the course's end */
+  targetDifficulty?: number;
+  /** roughly how many classes/lectures the course spans */
+  expectedLectures?: number;
+  answers?: { question: string; answer: string }[];
+}
+
+export function sanitizeTeacherContext(raw: unknown): TeacherContext {
+  if (!raw || typeof raw !== "object") return {};
+  const r = raw as Record<string, unknown>;
+  const ctx: TeacherContext = {};
+  const d = Number(r.targetDifficulty);
+  if (Number.isInteger(d) && d >= 1 && d <= 5) ctx.targetDifficulty = d;
+  const n = Number(r.expectedLectures);
+  if (Number.isInteger(n) && n >= 1 && n <= 60) ctx.expectedLectures = n;
+  if (Array.isArray(r.answers)) {
+    ctx.answers = r.answers
+      .filter((a): a is { question: unknown; answer: unknown } => !!a && typeof a === "object")
+      .map((a) => ({
+        question: String(a.question ?? "").slice(0, 200),
+        answer: String(a.answer ?? "").slice(0, 500),
+      }))
+      .filter((a) => a.question && a.answer.trim())
+      .slice(0, 5);
+    if (ctx.answers.length === 0) delete ctx.answers;
+  }
+  return ctx;
+}
+
 export const COMPILE_SYSTEM_PROMPT =
   "You are an expert instructional designer decomposing a teacher's source material into a Duolingo-style course. " +
   'Reply with ONLY a JSON object, no prose: {"units":[{"title":string,"lessons":[{"title":string,"conceptName":string,"definition":string,"coreIdea":string,"intuition":string,"estimatedMinutes":number,"sourceSectionIds":string[]}]}],"prereqPairs":[[fromConceptName,toConceptName]]}. ' +
@@ -51,11 +117,22 @@ export const COMPILE_SYSTEM_PROMPT =
   "prereqPairs lists ordered [before, after] concept-name pairs ONLY where the source implies one concept must be understood before another; omit weak or speculative dependencies and never create a cycle.";
 
 /** the exact user message the route sends — exported so the live eval can't drift */
-export function buildCompileUser(sections: { id: string; heading: string; text: string }[]): string {
+export function buildCompileUser(
+  sections: { id: string; heading: string; text: string }[],
+  context: TeacherContext = {}
+): string {
   const sectionList = sections
     .map((s) => `### section id "${s.id}" (heading: ${s.heading})\n${s.text}`)
     .join("\n\n");
-  return `DOCUMENT SECTIONS:\n${sectionList}\n\nCompile the course plan. Return the JSON object.`;
+  const ctxLines: string[] = [];
+  if (context.targetDifficulty)
+    ctxLines.push(
+      `Target END-OF-COURSE difficulty: ${context.targetDifficulty}/5. This is the level students must REACH by the end — early lessons still start accessible and ramp up.`
+    );
+  if (context.expectedLectures) ctxLines.push(`The course spans roughly ${context.expectedLectures} classes; size the unit/lesson count accordingly.`);
+  for (const a of context.answers ?? []) ctxLines.push(`Teacher was asked: "${a.question}" — answered: "${a.answer}"`);
+  const ctxBlock = ctxLines.length > 0 ? `\n\nTEACHER CONTEXT (authoritative):\n- ${ctxLines.join("\n- ")}` : "";
+  return `DOCUMENT SECTIONS:\n${sectionList}${ctxBlock}\n\nCompile the course plan. Return the JSON object.`;
 }
 
 export async function POST(req: Request) {
@@ -63,12 +140,14 @@ export async function POST(req: Request) {
   const empty: DraftCoursePlan = { units: [], prereqPairs: [] };
   if (!key) return NextResponse.json({ error: "no_provider", plan: empty }, { status: 503 });
 
-  let body: { sections?: InSection[] };
+  let body: { sections?: InSection[]; mode?: unknown; context?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "bad_request", plan: empty }, { status: 400 });
   }
+  const mode = body.mode === "clarify" ? "clarify" : "compile";
+  const context = sanitizeTeacherContext(body.context);
 
   const sections = (body.sections ?? [])
     .map((s) => ({
@@ -81,8 +160,8 @@ export async function POST(req: Request) {
   if (sections.length === 0) return NextResponse.json({ plan: empty });
 
   const allowedSectionIds = new Set(sections.map((s) => s.id));
-  const system = COMPILE_SYSTEM_PROMPT;
-  const user = buildCompileUser(sections);
+  const system = mode === "clarify" ? CLARIFY_SYSTEM_PROMPT : COMPILE_SYSTEM_PROMPT;
+  const user = mode === "clarify" ? buildClarifyUser(sections) : buildCompileUser(sections, context);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -108,6 +187,11 @@ export async function POST(req: Request) {
         const content: string = data?.choices?.[0]?.message?.content ?? "";
         const parsed = extractJsonObject(content);
         if (parsed === null) continue;
+        if (mode === "clarify") {
+          const questions = sanitizeClarifyQuestions(parsed);
+          if (questions.length === 0) continue;
+          return NextResponse.json({ questions, model });
+        }
         const { plan } = sanitizeCoursePlan(parsed, allowedSectionIds);
         // a valid parse that sanitizes to zero usable units is still a legitimate answer
         return NextResponse.json({ plan, model });
