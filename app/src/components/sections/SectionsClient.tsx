@@ -29,11 +29,12 @@ interface SectionCard {
   locked: boolean;
 }
 
-function ProgressBar({ done, total }: { done: number; total: number }) {
+function ProgressBar({ label, done, total }: { label: string; done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (
     <div
       role="progressbar"
+      aria-label={`${label} progress`}
       aria-valuemin={0}
       aria-valuemax={total}
       aria-valuenow={done}
@@ -130,7 +131,7 @@ export function SectionsClient() {
                 </p>
               ) : (
                 <>
-                  <ProgressBar done={card.done} total={card.total} />
+                  <ProgressBar label={card.title} done={card.done} total={card.total} />
                   <p className="mt-1 text-xs text-app-muted">
                     {card.done} / {card.total} lessons complete
                   </p>
