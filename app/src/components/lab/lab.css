@@ -1,0 +1,307 @@
+/* ===========================================================================
+   Visual Labs — dark game surface styling (D-020 Wave 2 Stream O).
+
+   Scope: /lab index chooser cards + the Solow / Budget lab shells.
+   STRICTLY presentational: colours, spacing, typography, containers, controls.
+   Every equation, curve, axis and computed number stays deterministic truth
+   rendered by code (GATE-002) — nothing here may change geometry or meaning.
+
+   Sliders stay NATIVE <input type="range"> under the hood (the keyboard e2e
+   gate depends on native semantics); this file only repaints them into the
+   fat Duolingo-style track + big thumb.
+
+   All hover/press motion is gated behind prefers-reduced-motion.
+=========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Lab index — game-styled chooser cards
+--------------------------------------------------------------------------- */
+.lab-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  height: 100%;
+  border-radius: 18px;
+  border: 2px solid var(--app-border-strong);
+  background: var(--app-surface);
+  box-shadow: 0 3px 0 var(--app-border-strong);
+  padding: 1rem;
+  color: var(--app-text);
+}
+
+.lab-card--locked {
+  border-color: var(--app-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.lab-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.lab-card-icon--green {
+  border-color: var(--duo-green-edge);
+  background: rgba(88, 204, 2, 0.14);
+}
+
+.lab-card-icon--blue {
+  border-color: var(--duo-blue-edge);
+  background: rgba(28, 176, 246, 0.14);
+}
+
+.lab-card-cta {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--duo-blue-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a.lab-card {
+    transition:
+      transform 140ms ease,
+      border-color 140ms ease,
+      background-color 140ms ease,
+      box-shadow 140ms ease;
+  }
+}
+
+@media (hover: hover) {
+  a.lab-card:hover {
+    border-color: var(--duo-blue);
+    background: var(--app-surface-2);
+    box-shadow: 0 5px 0 var(--duo-blue-edge);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  a.lab-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+a.lab-card:focus-visible {
+  outline: 3px solid var(--duo-blue);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Lab shell — the dark surface panel around each lab
+--------------------------------------------------------------------------- */
+.lab-panel {
+  border-radius: 18px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .lab-panel {
+    padding: 1.25rem;
+  }
+}
+
+.lab-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  font-size: 1.1rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* ---------------------------------------------------------------------------
+   Diagram container — the truth canvas. Extra-dark so the fixed curve palette
+   (#0072B2 / #D55E00 — gate-locked colours) clears 3:1 against it.
+--------------------------------------------------------------------------- */
+.lab-chart {
+  --lab-chart-bg: #0e161a;
+  border-radius: 16px;
+  border: 2px solid var(--app-border);
+  background: var(--lab-chart-bg);
+  padding: 0.75rem 0.75rem 0.5rem;
+}
+
+.lab-chart svg {
+  display: block;
+}
+
+/* SVG text without an explicit fill attribute would default to black (invisible
+   on the dark canvas). Repaint ONLY those — never texts that carry their own
+   series colour via a fill attribute. Purely palette; geometry untouched. */
+.lab-chart svg text:not([fill]) {
+  fill: var(--app-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Sliders — fat Duolingo track + big green thumb. The input stays a native
+   range control (keyboard gate depends on it); only its paint changes.
+   Height 44px also lifts the touch target from AA (24px) to the 44px
+   button convention.
+--------------------------------------------------------------------------- */
+input[type="range"].lab-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].lab-slider::-webkit-slider-runnable-track {
+  height: 16px;
+  border-radius: 999px;
+  background: var(--app-surface-2);
+  border: 2px solid var(--app-border);
+}
+
+input[type="range"].lab-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -9px;
+  border-radius: 999px;
+  background: var(--duo-green);
+  border: 3px solid #ffffff;
+  box-shadow: 0 3px 0 var(--duo-green-edge);
+}
+
+input[type="range"].lab-slider::-moz-range-track {
+  height: 16px;
+  border-radius: 999px;
+  background: var(--app-surface-2);
+  border: 2px solid var(--app-border);
+}
+
+input[type="range"].lab-slider::-moz-range-progress {
+  height: 16px;
+  border-radius: 999px;
+  background: var(--duo-green);
+}
+
+input[type="range"].lab-slider::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--duo-green);
+  border: 3px solid #ffffff;
+  box-shadow: 0 3px 0 var(--duo-green-edge);
+}
+
+/* Focus ring lives on the big thumb — clearly visible on the dark surface. */
+input[type="range"].lab-slider:focus-visible {
+  outline: none;
+}
+
+input[type="range"].lab-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 4px rgba(28, 176, 246, 0.6),
+    0 3px 0 var(--duo-green-edge);
+}
+
+input[type="range"].lab-slider:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 4px rgba(28, 176, 246, 0.6),
+    0 3px 0 var(--duo-green-edge);
+}
+
+/* ---------------------------------------------------------------------------
+   Parameter blocks — label row with a bold value pill, slider below, and the
+   plain-language "why" line preserved underneath.
+--------------------------------------------------------------------------- */
+.lab-param {
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  padding: 0.6rem 0.75rem 0.35rem;
+}
+
+.lab-param-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+
+.lab-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.4rem;
+  border-radius: 999px;
+  border: 2px solid var(--app-border-strong);
+  background: var(--app-bg);
+  padding: 0.1rem 0.6rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text);
+  white-space: nowrap;
+}
+
+.lab-param-why {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.75rem;
+  color: var(--app-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Interpretation / status callout (aria-live region) and readout tiles
+--------------------------------------------------------------------------- */
+.lab-status {
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  border-left: 6px solid var(--duo-blue);
+  background: var(--app-surface-2);
+  padding: 0.7rem 0.85rem;
+  font-weight: 600;
+}
+
+.lab-readout {
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  padding: 0.5rem 0.65rem;
+}
+
+.lab-readout dt {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--app-text-faint);
+}
+
+.lab-readout dd {
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+/* Insight callout (e.g. substitution/income effect explainer) */
+.lab-note {
+  border-radius: 14px;
+  border: 2px solid rgba(255, 157, 92, 0.55);
+  background: rgba(255, 150, 0, 0.12);
+  padding: 0.7rem 0.85rem;
+}

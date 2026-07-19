@@ -12,7 +12,8 @@
  * - Keyboard-operable range inputs; curves distinguished by dash + label,
  *   never colour alone. Reduced-motion safe (no animation carries meaning).
  *
- * Visual styling intentionally neutral — design pass belongs to Fabel.
+ * Visual styling: D-020 dark game surface (lab/lab.css) — presentational only;
+ * the geometry pipeline above is untouched.
  */
 
 import { useMemo, useState } from "react";
@@ -27,6 +28,7 @@ import {
   type BudgetParams,
 } from "@/lib/engine/budget";
 import { MathTex } from "./MathTex";
+import "./lab/lab.css";
 
 const W = 560;
 const H = 420;
@@ -86,12 +88,17 @@ export function BudgetLab({
     onStateChange?.({ r: nr, c1: nc1, role: classifyChoice(nc1, { ...endow, r: nr }) });
   };
 
+  // Stroke colours are gate-locked (lab-keyboard e2e selects the solid budget
+  // line by stroke="#0072B2"); the *Label variants are brighter same-hue tints
+  // so 12px text clears AA on the dark chart canvas.
   const budgetColor = "#0072B2";
-  const refColor = "#888888";
+  const refColor = "#94a4af";
   const compColor = "#D55E00";
+  const budgetLabelColor = "#4cc2ff";
+  const compLabelColor = "#ff9d5c";
 
   return (
-    <div className="rounded-2xl border border-[color:var(--app-border)] p-4">
+    <div className="lab-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">
           Intertemporal Budget Lab — <MathTex latex="c_2 = y_2 + (1+r)(y_1 - c_1)" />
@@ -106,10 +113,11 @@ export function BudgetLab({
         </button>
       </div>
 
+      <div className="lab-chart mt-3">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        className="mt-2 w-full max-w-full"
+        className="w-full max-w-full"
         aria-label={`Two-period budget diagram. Interest rate ${(r * 100).toFixed(0)} percent. Endowment y1=${endow.y1}, y2=${endow.y2}. Chosen consumption today ${c1.toFixed(0)}, tomorrow ${chosenC2.toFixed(0)}. ${roleText}`}
       >
         {/* axes */}
@@ -149,27 +157,31 @@ export function BudgetLab({
 
         {/* chosen bundle */}
         <circle cx={x(c1)} cy={y(chosenC2)} r="6" fill={budgetColor} stroke="white" strokeWidth="2" />
-        <text x={x(c1) + 8} y={y(chosenC2) + 14} fontSize="12" fill={budgetColor}>
+        <text x={x(c1) + 8} y={y(chosenC2) + 14} fontSize="12" fill={budgetLabelColor}>
           your choice
         </text>
 
         {/* labels (not colour-only) */}
-        <text x={x(xMax * 0.55)} y={y(budgetLineC2(xMax * 0.55, params)) - 8} fontSize="12" fill={budgetColor}>
+        <text x={x(xMax * 0.55)} y={y(budgetLineC2(xMax * 0.55, params)) - 8} fontSize="12" fill={budgetLabelColor}>
           budget line (solid)
         </text>
         {showCompensated && r !== R0 && (
-          <text x={x(xMax * 0.28)} y={y(compensatedLineC2(xMax * 0.28, originalBundle, r)) - 8} fontSize="12" fill={compColor}>
+          <text x={x(xMax * 0.28)} y={y(compensatedLineC2(xMax * 0.28, originalBundle, r)) - 8} fontSize="12" fill={compLabelColor}>
             compensated (dashed)
           </text>
         )}
       </svg>
+      </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm">
-          Real interest rate r = {(r * 100).toFixed(0)}%
+        <label className="lab-param block text-sm">
+          <span className="lab-param-head">
+            <span>Real interest rate r</span>
+            <span className="lab-pill">{(r * 100).toFixed(0)}%</span>
+          </span>
           <input
             type="range"
-            className="mt-1 block w-full"
+            className="lab-slider mt-1 block w-full"
             min={-0.2}
             max={0.5}
             step={0.01}
@@ -177,13 +189,16 @@ export function BudgetLab({
             onChange={(e) => update(Number(e.target.value), c1)}
             aria-valuetext={`interest rate ${(r * 100).toFixed(0)} percent; the line rotates around the endowment point`}
           />
-          <span className="text-xs text-app-muted">rotates the line around the endowment — the endowment stays affordable at any r</span>
+          <span className="lab-param-why">rotates the line around the endowment — the endowment stays affordable at any r</span>
         </label>
-        <label className="block text-sm">
-          Consumption today c₁ = {c1.toFixed(0)}
+        <label className="lab-param block text-sm">
+          <span className="lab-param-head">
+            <span>Consumption today c₁</span>
+            <span className="lab-pill">{c1.toFixed(0)}</span>
+          </span>
           <input
             type="range"
-            className="mt-1 block w-full"
+            className="lab-slider mt-1 block w-full"
             min={5}
             max={Math.floor(c1Intercept(params)) - 1}
             step={1}
@@ -191,15 +206,15 @@ export function BudgetLab({
             onChange={(e) => update(r, Number(e.target.value))}
             aria-valuetext={`consumption today ${c1.toFixed(0)}; you are a ${role}`}
           />
-          <span className="text-xs text-app-muted">move along the budget line to choose today vs tomorrow</span>
+          <span className="lab-param-why">move along the budget line to choose today vs tomorrow</span>
         </label>
       </div>
 
-      <p className="mt-2 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm" role="status" aria-live="polite">
+      <p className="lab-status mt-3 text-sm" role="status" aria-live="polite">
         {roleText}
       </p>
       {showCompensated && r !== R0 && (
-        <p className="mt-2 rounded-xl bg-[color:rgba(255,150,0,0.12)] p-3 text-sm text-[color:#ffb060]">
+        <p className="lab-note mt-3 text-sm text-[color:#ffb060]">
           The dashed compensated line has the <em>new</em> slope −(1+r) but passes through your original bundle:
           movement along it is the pure <strong>substitution effect</strong>; the remaining jump to the new line is the{" "}
           <strong>income effect</strong>.
@@ -218,8 +233,8 @@ export function BudgetLab({
 
 function ReadOut({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-[color:var(--app-border)] p-2">
-      <dt className="text-xs text-app-muted">{label}</dt>
+    <div className="lab-readout">
+      <dt className="text-xs">{label}</dt>
       <dd className="font-mono">{value}</dd>
     </div>
   );

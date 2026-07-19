@@ -13,7 +13,8 @@
  * - No animation is required to read the graph; transition dynamics are a
  *   static path readout (reduced-motion safe, IDEA-175).
  *
- * Visual styling is intentionally neutral: the design pass belongs to Fabel.
+ * Visual styling: D-020 dark game surface (lab/lab.css) — presentational only;
+ * the geometry pipeline above is untouched.
  */
 
 import { useMemo, useState } from "react";
@@ -30,6 +31,7 @@ import {
   type SolowParams,
 } from "@/lib/engine/solow";
 import { MathTex } from "./MathTex";
+import "./lab/lab.css";
 
 const W = 560;
 const H = 360;
@@ -78,12 +80,17 @@ export function SolowLab({
   const probe = probeK ?? kStar;
   const interpretation = interpretState(probe, params);
 
-  // colour-blind-safe pair + dash distinction (never colour-only)
+  // colour-blind-safe pair + dash distinction (never colour-only).
+  // Stroke colours are gate-locked (lab-keyboard e2e selects by them); the
+  // *Label variants are brighter same-hue tints so 12px text clears AA on the
+  // dark chart canvas.
   const investColor = "#0072B2";
   const breakevenColor = "#D55E00";
+  const investLabelColor = "#4cc2ff";
+  const breakevenLabelColor = "#ff9d5c";
 
   return (
-    <div className="rounded-2xl border border-[color:var(--app-border)] p-4">
+    <div className="lab-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">
           Solow Lab — <MathTex latex="\Delta k = s\,f(k) - (n+\delta)k" />
@@ -98,10 +105,11 @@ export function SolowLab({
         </button>
       </div>
 
+      <div className="lab-chart mt-3">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        className="mt-2 w-full max-w-full"
+        className="w-full max-w-full"
         aria-label={`Solow diagram. Saving rate ${params.s.toFixed(2)}, population growth ${params.n.toFixed(3)}, depreciation ${params.delta.toFixed(3)}. Steady state capital per worker ${kStar.toFixed(2)}. ${interpretation.text}`}
       >
         {/* axes */}
@@ -136,7 +144,7 @@ export function SolowLab({
         {/* probe */}
         {probeK !== null && (
           <g>
-            <line x1={x(probeK)} y1={PAD.t} x2={x(probeK)} y2={H - PAD.b} stroke="#666" strokeWidth="1" strokeDasharray="1 3" />
+            <line x1={x(probeK)} y1={PAD.t} x2={x(probeK)} y2={H - PAD.b} stroke="#7f939e" strokeWidth="1" strokeDasharray="1 3" />
             <circle cx={x(probeK)} cy={y(actualInvestment(probeK, params))} r="4" fill={investColor} />
             <circle cx={x(probeK)} cy={y(breakEvenInvestment(probeK, params))} r="4" fill={breakevenColor} />
           </g>
@@ -153,20 +161,24 @@ export function SolowLab({
         })}
 
         {/* curve labels (not colour-only) */}
-        <text x={x(kMax * 0.8)} y={y(actualInvestment(kMax * 0.8, params)) - 8} fontSize="12" fill={investColor}>
+        <text x={x(kMax * 0.8)} y={y(actualInvestment(kMax * 0.8, params)) - 8} fontSize="12" fill={investLabelColor}>
           s·f(k) (solid)
         </text>
-        <text x={x(kMax * 0.62)} y={y(breakEvenInvestment(kMax * 0.62, params)) - 8} fontSize="12" fill={breakevenColor}>
+        <text x={x(kMax * 0.62)} y={y(breakEvenInvestment(kMax * 0.62, params)) - 8} fontSize="12" fill={breakevenLabelColor}>
           (n+δ)k (dashed)
         </text>
       </svg>
+      </div>
 
       {/* probe slider: keyboard-operable exploration of any k */}
-      <label className="mt-2 block text-sm">
-        Explore a capital level k = {probe.toFixed(2)}
+      <label className="lab-param mt-3 block text-sm">
+        <span className="lab-param-head">
+          <span>Explore a capital level</span>
+          <span className="lab-pill">k = {probe.toFixed(2)}</span>
+        </span>
         <input
           type="range"
-          className="mt-1 block w-full"
+          className="lab-slider mt-1 block w-full"
           min={kMax * 0.02}
           max={kMax * 0.98}
           step={kMax / 200}
@@ -177,7 +189,7 @@ export function SolowLab({
       </label>
 
       {/* deterministic interpretation of the current state */}
-      <p className="mt-2 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm" role="status" aria-live="polite">
+      <p className="lab-status mt-3 text-sm" role="status" aria-live="polite">
         {interpretation.text}
       </p>
 
@@ -186,13 +198,16 @@ export function SolowLab({
           const b = SOLOW_BOUNDS[key];
           const meta = PARAM_LABELS[key];
           return (
-            <label key={key} className="block text-sm">
-              <span className="flex items-baseline gap-1">
-                {meta.label} <MathTex latex={meta.latex} /> = {params[key].toFixed(3)}
+            <label key={key} className="lab-param block text-sm">
+              <span className="lab-param-head">
+                <span className="flex items-baseline gap-1">
+                  {meta.label} <MathTex latex={meta.latex} />
+                </span>
+                <span className="lab-pill">{params[key].toFixed(3)}</span>
               </span>
               <input
                 type="range"
-                className="mt-1 block w-full"
+                className="lab-slider mt-1 block w-full"
                 min={b.min}
                 max={b.max}
                 step={b.step}
@@ -201,7 +216,7 @@ export function SolowLab({
                 aria-label={`${meta.label}: ${meta.describe}`}
                 aria-valuetext={`${meta.label} = ${params[key].toFixed(3)}`}
               />
-              <span className="text-xs text-app-muted">{meta.describe}</span>
+              <span className="lab-param-why">{meta.describe}</span>
             </label>
           );
         })}
@@ -219,8 +234,8 @@ export function SolowLab({
 
 function ReadOut({ label, value, symbolic }: { label: string; value: string; symbolic: boolean }) {
   return (
-    <div className="rounded-xl border border-[color:var(--app-border)] p-2">
-      <dt className="text-xs text-app-muted">{symbolic ? <MathTex latex={label} /> : label}</dt>
+    <div className="lab-readout">
+      <dt className="text-xs">{symbolic ? <MathTex latex={label} /> : label}</dt>
       <dd className="font-mono">{symbolic ? <MathTex latex={value} /> : value}</dd>
     </div>
   );
