@@ -121,7 +121,7 @@ export type QuestionType =
   | "equation_assembly"
   | "diagram_label"
   | "causal_order"
-  | "match_pairs";
+  | "match_pairs"
   | "cloze";
 
 export interface ChoiceOption {
@@ -201,6 +201,8 @@ export interface MatchPairsQuestion extends QuestionBase {
    * shuffled (engine/match-pairs.ts `shuffledSides`) so tapping is required.
    */
   pairs: { id: string; left: string; right: string }[];
+}
+
 /**
  * CLOZE (fill-in-the-blank with a word bank, Duolingo-style). `template`
  * carries 1–3 `{{blankId}}` placeholders (parsed strictly by
@@ -222,7 +224,7 @@ export type Question =
   | EquationAssemblyQuestion
   | DiagramLabelQuestion
   | CausalOrderQuestion
-  | MatchPairsQuestion;
+  | MatchPairsQuestion
   | ClozeQuestion;
 
 /** §22 — never one global percentage */

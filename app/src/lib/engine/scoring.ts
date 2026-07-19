@@ -15,7 +15,7 @@ export type Answer =
   | { type: "equation_assembly"; orderedTokenIds: string[] }
   | { type: "diagram_label"; slotToLabel: Record<string, string> }
   | { type: "causal_order"; orderedItemIds: string[] }
-  | MatchPairsAnswer;
+  | MatchPairsAnswer
   | { type: "cloze"; fills: Record<string, string> };
 
 export interface ScoreResult {
@@ -82,6 +82,7 @@ export function scoreAnswer(q: Question, answer: Answer): ScoreResult {
     case "match_pairs": {
       const a = answer as Extract<Answer, { type: "match_pairs" }>;
       return scoreMatchPairs(q, a);
+    }
     case "cloze": {
       const a = answer as Extract<Answer, { type: "cloze" }>;
       return scoreCloze(q, a);

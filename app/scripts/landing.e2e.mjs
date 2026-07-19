@@ -89,11 +89,11 @@ try {
   await page.waitForSelector("text=Who are you?");
   log("GET STARTED navigates to /onboarding");
 
-  // ---------- secondary CTA: I already have an account -> /learn ----------
+  // ---------- secondary CTA: I already have an account -> /auth (D-022) ----------
   await page.goto(`${BASE}/`);
   await page.locator('a:has-text("I already have an account")').first().click();
-  await page.waitForURL((url) => pathOf(url) === "/learn");
-  log("I ALREADY HAVE AN ACCOUNT navigates to /learn");
+  await page.waitForURL((url) => pathOf(url) === "/auth");
+  log("I ALREADY HAVE AN ACCOUNT navigates to /auth");
 
   // ---------- wordmark -> / ----------
   await page.goto(`${BASE}/`);

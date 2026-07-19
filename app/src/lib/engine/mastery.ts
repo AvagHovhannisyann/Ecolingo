@@ -55,6 +55,10 @@ export function dimensionsFor(qt: QuestionType | "visual" | "review"): (keyof Pi
     // mc_single/mc_multi, so it informs the same dimension.
     case "cloze":
       return ["conceptual"];
+    // match_pairs (Stream AC): term↔definition recognition — conceptual, like
+    // the choice formats.
+    case "match_pairs":
+      return ["conceptual"];
   }
 }
 
