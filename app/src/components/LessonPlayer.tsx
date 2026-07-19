@@ -35,6 +35,7 @@ import { SolowLab } from "./SolowLab";
 import { QuestionCard } from "./QuestionCard";
 import { ExplainPanel } from "./ExplainPanel";
 import { GroundedCitationChips, UnverifiedBanner } from "./CitationChips";
+import { CharacterSpeaks } from "./lesson/CharacterSpeaks";
 import { LessonShell } from "./lesson/LessonShell";
 import { FeedbackStrip } from "./lesson/FeedbackStrip";
 import { QuitModal } from "./lesson/QuitModal";
@@ -241,9 +242,12 @@ export function LessonPlayer({
     body = (
       <div>
         {heading}
-        <p className="mt-3 text-lg leading-relaxed text-app">
-          {simpler && step.body.simpler ? step.body.simpler : step.body.standard}
-        </p>
+        {/* character-speaks presentation: Eco delivers the line in a speech
+            bubble with an optional read-aloud button (Web Speech) */}
+        <CharacterSpeaks
+          text={simpler && step.body.simpler ? step.body.simpler : step.body.standard}
+          characterSrc={step.type === "core_idea" ? "/art-v2/eco-wave.webp" : "/art-v2/eco-books.webp"}
+        />
         <GroundedCitationChips
           conceptSlug={lesson.conceptSlug}
           fallback={course.citations.filter((c) => step.citationIds.includes(c.id))}

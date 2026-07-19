@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceEvent, Question } from "@/lib/engine/types";
 import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring";
 import { course, misconceptions } from "@/content/active-course";
+import { fireConfetti } from "@/lib/confetti";
 import { MathTex } from "./MathTex";
 import { ExplainPanel } from "./ExplainPanel";
 import { MiniSolowDiagram } from "./MiniSolowDiagram";
@@ -66,6 +67,7 @@ export function QuestionCard({
   // answer drafts per format
   const [optionId, setOptionId] = useState<string | null>(null);
   const [optionIds, setOptionIds] = useState<string[]>([]);
+  const optionsRef = useRef<HTMLFieldSetElement | null>(null);
   const [numericRaw, setNumericRaw] = useState("");
   const [tokenOrder, setTokenOrder] = useState<string[]>([]);
   const [itemOrder, setItemOrder] = useState<string[]>([]);
@@ -107,6 +109,17 @@ export function QuestionCard({
     if (!answer) return;
     const r = scoreAnswer(question, answer);
     setResult(r);
+    if (r.correct) {
+      // Sparkle burst from the chosen option (Duolingo's correct-pick moment);
+      // falls back to the card itself for non-MC formats. Decorative only.
+      const anchor =
+        optionsRef.current?.querySelector<HTMLElement>("[data-selected='true']") ?? optionsRef.current;
+      const rect = anchor?.getBoundingClientRect();
+      fireConfetti({
+        origin: rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : undefined,
+        count: 70,
+      });
+    }
     const evidence: EvidenceEvent = {
       at: new Date().toISOString(),
       conceptSlug: question.conceptSlug,
@@ -148,6 +161,26 @@ export function QuestionCard({
     retry();
   }, [retryToken]);
 
+  // Duolingo desktop affordance: number keys 1..9 pick the matching MC option
+  // (the numbered chips advertise this). Ignored while typing in an input and
+  // once the question is answered.
+  useEffect(() => {
+    if (question.type !== "mc_single" && question.type !== "mc_multi") return;
+    if (result !== null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(input|textarea|select)$/i.test(target.tagName) && target.getAttribute("type") !== "radio" && target.getAttribute("type") !== "checkbox") return;
+      const n = Number.parseInt(e.key, 10);
+      if (!Number.isInteger(n) || n < 1 || n > question.options.length) return;
+      const o = question.options[n - 1];
+      if (question.type === "mc_single") setOptionId(o.id);
+      else setOptionIds((xs) => (xs.includes(o.id) ? xs.filter((x) => x !== o.id) : [...xs, o.id]));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [question, result]);
+
   const activeMisconception =
     result && result.misconceptionSlugs.length > 0
       ? misconceptions.find((m) => m.slug === result.misconceptionSlugs[0]) ?? null
@@ -180,9 +213,9 @@ export function QuestionCard({
 
       {/* format-specific input */}
       {(question.type === "mc_single" || question.type === "mc_multi") && (
-        <fieldset className="mt-3 space-y-2" disabled={answered}>
+        <fieldset ref={optionsRef} className="mt-3 space-y-2" disabled={answered}>
           <legend className="sr-only">Answer options</legend>
-          {question.options.map((o) => {
+          {question.options.map((o, optionIdx) => {
             const selected = question.type === "mc_single" ? optionId === o.id : optionIds.includes(o.id);
             const isCorrectOption =
               question.type === "mc_single"
@@ -202,11 +235,13 @@ export function QuestionCard({
             return (
               <label
                 key={o.id}
+                data-selected={selected ? "true" : undefined}
                 className={`flex min-h-12 cursor-pointer items-center gap-3 p-3 ${stateCls}`}
               >
                 <input
                   type={question.type === "mc_single" ? "radio" : "checkbox"}
                   name={question.id}
+                  className="sr-only"
                   checked={selected}
                   onChange={() =>
                     question.type === "mc_single"
@@ -214,6 +249,17 @@ export function QuestionCard({
                       : setOptionIds((xs) => (xs.includes(o.id) ? xs.filter((x) => x !== o.id) : [...xs, o.id]))
                   }
                 />
+                {/* Duolingo numbered chip — doubles as the 1..9 keyboard hint */}
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 text-xs font-extrabold ${
+                    selected
+                      ? "border-[color:var(--duo-blue,#1cb0f6)] text-[color:var(--duo-blue,#1cb0f6)]"
+                      : "border-[color:var(--app-border)] text-app-muted"
+                  }`}
+                >
+                  {optionIdx + 1}
+                </span>
                 <span className="text-sm">{o.text}</span>
               </label>
             );

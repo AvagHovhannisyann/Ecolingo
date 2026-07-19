@@ -13,7 +13,7 @@
  * hardcoded 5 until the hearts economy lands (see TODO below).
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { HeartIcon } from "../icons";
 import styles from "./lesson.module.css";
 
@@ -44,6 +44,21 @@ export function LessonShell({
 }) {
   const pct = total > 0 ? Math.round((Math.min(completed, total) / total) * 100) : 0;
 
+  // Pulse the fill with a brief shine each time progress advances. The class is
+  // toggled (not the element remounted) so the width transition still runs.
+  const [pulsing, setPulsing] = useState(false);
+  const prevCompleted = useRef(completed);
+  useEffect(() => {
+    if (completed <= prevCompleted.current) {
+      prevCompleted.current = completed;
+      return;
+    }
+    prevCompleted.current = completed;
+    setPulsing(true);
+    const t = setTimeout(() => setPulsing(false), 600);
+    return () => clearTimeout(t);
+  }, [completed]);
+
   return (
     <div className={styles.screen} data-lesson-shell>
       <div className={styles.topRow}>
@@ -73,7 +88,10 @@ export function LessonShell({
           aria-valuemax={total}
           aria-valuenow={Math.min(completed, total)}
         >
-          <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+          <div
+            className={`${styles.progressFill} ${pulsing ? styles.progressPulse : ""}`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
 
         <span className={styles.hearts} title="Hearts">

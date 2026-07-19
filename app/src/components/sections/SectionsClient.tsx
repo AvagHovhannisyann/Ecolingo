@@ -16,6 +16,7 @@ import { course, concepts as demoConcepts } from "@/content/active-course";
 import { worlds } from "@/content/econ13210/worlds";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
 import { useLearnerState } from "@/lib/learner-store";
+import { LoadingScreen } from "../LoadingScreen";
 import { JoinCourseGate } from "../path/JoinCourseGate";
 
 interface SectionCard {
@@ -49,8 +50,7 @@ function ProgressBar({ label, done, total }: { label: string; done: number; tota
 export function SectionsClient() {
   const state = useLearnerState();
   const enrolled = useEnrolledCourse();
-  if (!state || enrolled === "loading")
-    return <p className="p-4 text-sm text-app-muted">Loading your sections…</p>;
+  if (!state || enrolled === "loading") return <LoadingScreen label="Loading your sections…" />;
   if (enrolled === "none") return <JoinCourseGate onJoined={() => window.location.reload()} />;
 
   const doneIds = new Set(state.completedLessonIds);

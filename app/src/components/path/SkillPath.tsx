@@ -43,6 +43,16 @@ export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) 
   const completedCount = rows.filter((r) => r.status === "done").length;
   const allComplete = rows.length > 0 && rows.every((r) => r.status === "done");
 
+  // Fast-forward target (the Duolingo "JUMP HERE?" pill): the first locked
+  // lesson at least two steps past the current one. The node stays visually
+  // locked — the pill is an explicit, labeled shortcut for confident learners
+  // (the adaptive engine absorbs the harder entry).
+  const currentIdx = rows.findIndex((r) => r.status === "current");
+  const jumpLessonId =
+    currentIdx >= 0
+      ? rows.find((r, i) => i >= currentIdx + 2 && r.status === "locked")?.lesson.id ?? null
+      : null;
+
   // Build the visual sequence: lesson (+ review after current) with a chest
   // milestone after every two lessons (not at the very end), then the medal.
   type Item =
@@ -116,6 +126,7 @@ export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) 
         if (status === "locked") {
           const hint =
             prereqNames.length > 0 ? `Unlocks after: ${prereqNames.join(", ")}` : "Locked";
+          const isJump = lesson.id === jumpLessonId;
           return (
             <PathNode
               key={lesson.id}
@@ -124,6 +135,10 @@ export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) 
               ariaLabel={`${lesson.title} — locked. ${hint}`}
               captionTitle={lesson.title}
               captionHint={hint}
+              jumpHref={isJump ? `/lesson/${lesson.id}` : undefined}
+              jumpLabel={isJump ? `Jump ahead to ${lesson.title}` : undefined}
+              mascotSrc={isJump ? "/art-v2/eco-think.webp" : undefined}
+              mascotSide={offsetX > 0 ? "left" : "right"}
             />
           );
         }
