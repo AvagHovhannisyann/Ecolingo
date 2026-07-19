@@ -1,24 +1,44 @@
 "use client";
 
 /**
- * Lesson player — walks the six-step lesson anatomy (LESSON-01..06).
- * Step order adapts to the learner's explanation-order preference; each step
- * has a deterministic completion criterion; interaction events are recorded.
+ * Lesson player — the D-020 one-exercise-per-screen flow. It walks the same
+ * six-step lesson anatomy (core idea → intuition → visual → math → guided →
+ * mastery check) as before, but presents each step as its own screen inside
+ * LessonShell: a close/progress/hearts top row, vertically centred content, a
+ * bottom-anchored CHECK/CONTINUE, and — after a question is scored — the
+ * signature FeedbackStrip sliding up from the bottom.
+ *
+ * What did NOT change (invariants):
+ *  - Scoring stays 100% deterministic in QuestionCard → engine (GATE-002).
+ *  - Mastery updates and completedLessonIds writes go through the exact same
+ *    recordEvidence / completeLesson calls as before (GATE-006).
+ *  - Step order still adapts to explanationOrder; content is never rewritten.
+ *
+ * What is NEW:
+ *  - Adaptive difficulty (D-020): the guided/mastery question steps pick their
+ *    question via engine `pickQuestion` from the bank — filtered to the fixed
+ *    question's concept and transfer role — using the learner's live mastery and
+ *    the ids already seen this lesson. Fallback: the step's fixed questionId when
+ *    pickQuestion returns null (empty pool).
  */
 
 import Image from "next/image";
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import type { EvidenceEvent, Lesson, LessonStep } from "@/lib/engine/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
+import type { ScoreResult } from "@/lib/engine/scoring";
+import { pickQuestion } from "@/lib/engine/adaptive";
 import { course, getConcept, getEquation, getQuestion } from "@/content/econ13210";
 import { completeLesson, recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
-import { AmbientArt } from "./AmbientHero";
 import { MathTex } from "./MathTex";
 import { SolowLab } from "./SolowLab";
 import { QuestionCard } from "./QuestionCard";
 import { ExplainPanel } from "./ExplainPanel";
 import { GroundedCitationChips, UnverifiedBanner } from "./CitationChips";
+import { LessonShell } from "./lesson/LessonShell";
+import { FeedbackStrip } from "./lesson/FeedbackStrip";
+import { QuitModal } from "./lesson/QuitModal";
+import { LessonComplete } from "./lesson/LessonComplete";
 
 const STEP_TITLES: Record<LessonStep["type"], string> = {
   core_idea: "Core idea",
@@ -29,12 +49,28 @@ const STEP_TITLES: Record<LessonStep["type"], string> = {
   mastery_check: "Mastery check — new context",
 };
 
+interface ResolvedQuestion {
+  question: Question;
+  /** learner-facing reason for the difficulty band (§22 explainability) */
+  reason: string | null;
+}
+
 export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const state = useLearnerState();
   const [stepIndex, setStepIndex] = useState(0);
   const [visualTargetHit, setVisualTargetHit] = useState(false);
-  const [stepDone, setStepDone] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [feedback, setFeedback] = useState<{ question: Question; result: ScoreResult } | null>(null);
+  const [quitOpen, setQuitOpen] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
+
+  // XP-style summary counters (first-attempt correctness, truthful).
+  const attemptedRef = useRef<Set<string>>(new Set());
+  const [attempted, setAttempted] = useState(0);
+  const [firstTryCorrect, setFirstTryCorrect] = useState(0);
+
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   const concept = getConcept(lesson.conceptSlug);
 
@@ -60,190 +96,293 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ?? getEquation("eq-fundamental");
   const step = steps[stepIndex];
 
+  // ---- adaptive question resolution (D-020) --------------------------------
+  // Each guided/mastery step's question is resolved once, when the step is first
+  // entered (in the navigation handler, never in render/effect), and frozen so it
+  // can't change when mastery updates mid-lesson. recentIds spans the ids already
+  // resolved this lesson — the guided (transfer-0) and mastery (transfer-1) pools
+  // are disjoint, so this only ever matters within a single pool. The first
+  // question step is always reached via advance(), so it is always resolved
+  // before it renders (step 0 is a text step in every lesson).
+  const [resolvedQuestions, setResolvedQuestions] = useState<Record<string, ResolvedQuestion>>({});
+
+  const resolveStepQuestion = (
+    qStep: QuestionStep,
+    prev: Record<string, ResolvedQuestion>
+  ): Record<string, ResolvedQuestion> => {
+    if (prev[qStep.id]) return prev;
+    const fixed = getQuestion(qStep.questionId);
+    // Same concept AND transfer role as the pedagogically-chosen fixed question,
+    // so a guided step still draws practice-level and a mastery check still draws
+    // transfer-level questions.
+    const pool = course.questions.filter(
+      (q) => q.conceptSlug === fixed.conceptSlug && q.transferDistance === fixed.transferDistance
+    );
+    const mastery = state?.masteryBySlug[fixed.conceptSlug];
+    const shown = Object.values(prev).map((r) => r.question.id);
+    const picked = pickQuestion(pool, mastery, shown);
+    // Documented fallback: use the fixed questionId when adaptive returns null.
+    const resolved: ResolvedQuestion = picked
+      ? { question: picked.question, reason: picked.reason }
+      : { question: fixed, reason: null };
+    return { ...prev, [qStep.id]: resolved };
+  };
+
+  // ---- navigation ----------------------------------------------------------
+  const goToStep = (nextIndex: number) => {
+    const next = steps[nextIndex];
+    if (next && (next.type === "guided" || next.type === "mastery_check")) {
+      setResolvedQuestions((prev) => resolveStepQuestion(next as QuestionStep, prev));
+    }
+    setStepIndex(nextIndex);
+    setVisualTargetHit(false);
+  };
+
   const advance = () => {
+    setFeedback(null);
     if (stepIndex + 1 >= steps.length) {
       mutateLearnerState((s) => completeLesson(s, lesson.id));
       setFinished(true);
     } else {
-      setStepIndex((i) => i + 1);
-      setStepDone(false);
-      setVisualTargetHit(false);
+      goToStep(stepIndex + 1);
     }
   };
 
-  const handleEvidence = (e: EvidenceEvent, correct: boolean) => {
+  // Send focus to each new step's heading (a11y focus contract).
+  useEffect(() => {
+    if (!finished) headingRef.current?.focus();
+  }, [stepIndex, finished]);
+
+  const recordVisualEvidence = () => {
+    const e: EvidenceEvent = {
+      at: new Date().toISOString(),
+      conceptSlug: lesson.conceptSlug,
+      questionType: "visual",
+      correct: true,
+      difficulty: 2,
+      hintsUsed: 0,
+      timeMs: 0,
+      expectedSeconds: 60,
+      confidence: null,
+      attemptNo: 1,
+      transferDistance: 0,
+      misconceptionSlugs: [],
+    };
     mutateLearnerState((s) => recordEvidence(s, e));
-    if (correct) setStepDone(true);
+  };
+
+  const handleQuestionEvidence = (stepId: string, e: EvidenceEvent, r: ScoreResult, q: Question) => {
+    // Mastery update — unchanged path (GATE-006).
+    mutateLearnerState((s) => recordEvidence(s, e));
+    // First-attempt bookkeeping for the completion summary.
+    if (!attemptedRef.current.has(stepId)) {
+      attemptedRef.current.add(stepId);
+      setAttempted((n) => n + 1);
+      if (r.correct) setFirstTryCorrect((n) => n + 1);
+    }
+    setFeedback({ question: q, result: r });
   };
 
   if (finished) {
     const mastery = state?.masteryBySlug[lesson.conceptSlug];
     return (
-      <div className="rounded-2xl border border-[color:var(--duo-green)] bg-[color:rgba(88,204,2,0.12)] p-6">
-        {/* Higgsfield-generated celebration loop (spec §17.1) — decorative only;
-            reduced-motion + decode-failure users get the still */}
-        <AmbientArt
-          videoSrc="/art/lesson-complete.mp4"
-          imageSrc="/art/lesson-complete.webp"
-          width={1024}
-          height={1024}
-          className="art-enter mx-auto h-36 w-36 rounded-2xl object-cover"
-        />
-        <h2 className="mt-3 text-center text-lg font-semibold">Lesson complete 🎉</h2>
-        <p className="mt-2 text-sm">
-          Your mastery of <strong>{concept.name}</strong> was updated from real evidence — conceptual{" "}
-          {Math.round((mastery?.conceptual ?? 0) * 100)}%, transfer {Math.round((mastery?.transfer ?? 0) * 100)}%.
-        </p>
-        <p className="mt-1 text-sm">
-          The scheduler has queued this concept for review before you&apos;d start forgetting it — see{" "}
-          <Link href="/review" className="underline">
-            Review
-          </Link>{" "}
-          for when and why.
-        </p>
-        <Link href="/learn" className="mt-4 inline-block btn-primary min-h-12 px-5 py-3 text-white">
-          Back to today&apos;s plan
-        </Link>
-      </div>
+      <LessonComplete
+        conceptName={concept.name}
+        stepsCompleted={steps.length}
+        questionsCorrect={firstTryCorrect}
+        questionsAttempted={attempted}
+        conceptualPct={Math.round((mastery?.conceptual ?? 0) * 100)}
+        transferPct={Math.round((mastery?.transfer ?? 0) * 100)}
+      />
     );
   }
 
-  return (
-    <div>
-      <UnverifiedBanner conceptSlug={lesson.conceptSlug} />
-      <nav aria-label="Lesson progress" className="mt-4 flex gap-1">
-        {steps.map((s, i) => (
-          <span
-            key={s.id}
-            aria-current={i === stepIndex ? "step" : undefined}
-            className={`h-2 flex-1 rounded-full ${i < stepIndex ? "bg-[color:var(--duo-green)]" : i === stepIndex ? "bg-[color:var(--duo-blue)]" : "bg-[color:var(--app-surface-2)]"}`}
-            title={STEP_TITLES[s.type]}
-          />
-        ))}
-      </nav>
+  const isQuestionStep = step.type === "guided" || step.type === "mastery_check";
 
-      <h2 className="mt-4 text-sm font-semibold uppercase tracking-wide text-app-muted">
-        Step {stepIndex + 1} of {steps.length}: {STEP_TITLES[step.type]}
-      </h2>
+  // ---- per-step body -------------------------------------------------------
+  const heading = (
+    <h2
+      ref={headingRef}
+      tabIndex={-1}
+      className="text-sm font-semibold uppercase tracking-wide text-app-muted outline-none"
+    >
+      {STEP_TITLES[step.type]}
+    </h2>
+  );
 
-      <div className="mt-2">
-        {(step.type === "core_idea" || step.type === "intuition") && (
-          <div>
-            <p className="text-base leading-relaxed">
-              {simpler && step.body.simpler ? step.body.simpler : step.body.standard}
-            </p>
-            <GroundedCitationChips conceptSlug={lesson.conceptSlug} fallback={course.citations.filter((c) => step.citationIds.includes(c.id))} />
-            <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} />
-            <button type="button" onClick={advance} className="mt-4 btn-primary min-h-12 px-6 text-white">
-              Continue
-            </button>
-          </div>
-        )}
+  let body: React.ReactNode = null;
+  let footer: React.ReactNode = null;
 
-        {step.type === "visual" && (
-          <div>
-            <p className="mb-2 text-base">{step.prompt}</p>
-            <SolowLab
-              onParamsChange={(p) => {
-                const v = p[step.target.param];
-                const hit = step.target.comparator === "gte" ? v >= step.target.value : v <= step.target.value;
-                if (hit && !visualTargetHit) {
-                  setVisualTargetHit(true);
-                  // visual interaction is mastery evidence too (graph interpretation)
-                  handleEvidence(
-                    {
-                      at: new Date().toISOString(),
-                      conceptSlug: lesson.conceptSlug,
-                      questionType: "visual",
-                      correct: true,
-                      difficulty: 2,
-                      hintsUsed: 0,
-                      timeMs: 0,
-                      expectedSeconds: 60,
-                      confidence: null,
-                      attemptNo: 1,
-                      transferDistance: 0,
-                      misconceptionSlugs: [],
-                    },
-                    true
-                  );
-                }
-              }}
-            />
-            <p className="mt-2 text-sm" role="status" aria-live="polite">
-              {visualTargetHit ? step.successDescription : step.targetDescription}
-            </p>
-            <button
-              type="button"
-              onClick={advance}
-              disabled={!visualTargetHit}
-              className="mt-4 btn-primary min-h-12 px-6 text-white disabled:opacity-40"
-            >
-              Continue
-            </button>
-          </div>
-        )}
-
-        {step.type === "math" && (
-          <div>
-            {(() => {
-              const eq = getEquation(step.equationId);
-              return (
-                <div>
-                  <MathTex latex={eq.latex} block />
-                  <ul className="mt-2 space-y-2 text-sm">
-                    {eq.components.map((c) => (
-                      <li key={c.latex} className="flex items-baseline gap-2">
-                        <MathTex latex={c.latex} /> <span>— {c.meaning}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <GroundedCitationChips conceptSlug={lesson.conceptSlug} fallback={course.citations.filter((c) => step.citationIds.includes(c.id))} />
-                  <ExplainPanel concept={concept} equation={eq} />
-                </div>
-              );
-            })()}
-            <button type="button" onClick={advance} className="mt-4 btn-primary min-h-12 px-6 text-white">
-              Continue
-            </button>
-          </div>
-        )}
-
-        {(step.type === "guided" || step.type === "mastery_check") && (
-          <div>
-            {step.type === "mastery_check" && (
-              <div className="mb-2 flex items-center gap-3">
-                {/* Higgsfield "thinking" mascot (decorative slot §17.2) */}
-                <Image
-                  src="/art/creature-thinking.webp"
-                  alt=""
-                  role="presentation"
-                  width={200}
-                  height={200}
-                  className="art-enter h-12 w-12 shrink-0 rounded-xl object-cover"
-                />
-                <p className="text-sm text-app">
-                  New context, no hints — this checks whether the idea transfers.
-                </p>
-              </div>
-            )}
-            <QuestionCard
-              key={step.questionId}
-              question={getQuestion(step.questionId)}
-              hintsAllowed={step.completionCriterion.kind === "answer_correct" && step.completionCriterion.hintsAllowed}
-              onEvidence={(e, r) => handleEvidence(e, r.correct)}
-            />
-            <button
-              type="button"
-              onClick={advance}
-              disabled={!stepDone}
-              className="mt-4 btn-primary min-h-12 px-6 text-white disabled:opacity-40"
-            >
-              Continue
-            </button>
-          </div>
-        )}
+  if (step.type === "core_idea" || step.type === "intuition") {
+    body = (
+      <div>
+        {heading}
+        <p className="mt-3 text-lg leading-relaxed text-app">
+          {simpler && step.body.simpler ? step.body.simpler : step.body.standard}
+        </p>
+        <GroundedCitationChips
+          conceptSlug={lesson.conceptSlug}
+          fallback={course.citations.filter((c) => step.citationIds.includes(c.id))}
+        />
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
+            Explain
+          </summary>
+          <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} />
+        </details>
       </div>
-    </div>
+    );
+    footer = (
+      <button type="button" onClick={advance} className="btn-primary min-h-14 w-full px-6 text-white">
+        Continue
+      </button>
+    );
+  } else if (step.type === "visual") {
+    body = (
+      <div>
+        {heading}
+        <p className="mb-2 mt-3 text-base text-app">{step.prompt}</p>
+        <SolowLab
+          onParamsChange={(p) => {
+            const v = p[step.target.param];
+            const hit = step.target.comparator === "gte" ? v >= step.target.value : v <= step.target.value;
+            if (hit && !visualTargetHit) {
+              setVisualTargetHit(true);
+              recordVisualEvidence();
+            }
+          }}
+        />
+        <p className="mt-2 text-sm text-app" role="status" aria-live="polite">
+          {visualTargetHit ? step.successDescription : step.targetDescription}
+        </p>
+      </div>
+    );
+    footer = (
+      <button
+        type="button"
+        onClick={advance}
+        disabled={!visualTargetHit}
+        className="btn-primary min-h-14 w-full px-6 text-white disabled:opacity-40"
+      >
+        Continue
+      </button>
+    );
+  } else if (step.type === "math") {
+    const eq = getEquation(step.equationId);
+    body = (
+      <div>
+        {heading}
+        <div className="mt-3">
+          <MathTex latex={eq.latex} block />
+          <ul className="mt-2 space-y-2 text-sm">
+            {eq.components.map((c) => (
+              <li key={c.latex} className="flex items-baseline gap-2">
+                <MathTex latex={c.latex} /> <span>— {c.meaning}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <GroundedCitationChips
+          conceptSlug={lesson.conceptSlug}
+          fallback={course.citations.filter((c) => step.citationIds.includes(c.id))}
+        />
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
+            Explain
+          </summary>
+          <ExplainPanel concept={concept} equation={eq} />
+        </details>
+      </div>
+    );
+    footer = (
+      <button type="button" onClick={advance} className="btn-primary min-h-14 w-full px-6 text-white">
+        Continue
+      </button>
+    );
+  } else if (isQuestionStep) {
+    const qStep = step as QuestionStep;
+    const resolved = resolvedQuestions[qStep.id];
+    const q = resolved?.question;
+    const questionEquation = q
+      ? course.equations.find((e) => e.conceptSlug === q.conceptSlug) ?? null
+      : null;
+    body = !q ? (
+      <div>{heading}</div>
+    ) : (
+      <div>
+        {heading}
+        {step.type === "mastery_check" && (
+          <div className="mb-2 mt-2 flex items-center gap-3">
+            <Image
+              src="/art-v2/eco-think.webp"
+              alt=""
+              role="presentation"
+              width={160}
+              height={160}
+              className="h-12 w-12 shrink-0 rounded-xl object-cover"
+            />
+            <p className="text-sm text-app">New context, no hints — this checks whether the idea transfers.</p>
+          </div>
+        )}
+        {resolved.reason && (
+          <p className="mb-2 mt-2 text-xs text-app-muted" aria-live="polite">
+            {resolved.reason}
+          </p>
+        )}
+        <QuestionCard
+          key={`${qStep.id}-${q.id}`}
+          question={q}
+          hintsAllowed={qStep.completionCriterion.kind === "answer_correct" && qStep.completionCriterion.hintsAllowed}
+          hideInlineFeedback
+          revealAnswerState
+          retryToken={retryToken}
+          onEvidence={(e, r) => handleQuestionEvidence(qStep.id, e, r, q)}
+        />
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
+            Explain
+          </summary>
+          <ExplainPanel concept={getConcept(q.conceptSlug)} equation={questionEquation} />
+        </details>
+      </div>
+    );
+    // No footer here: the QuestionCard's own Check button drives scoring, and
+    // the FeedbackStrip provides Continue (correct) / Try again (wrong).
+  }
+
+  return (
+    <>
+      <LessonShell
+        completed={stepIndex}
+        total={steps.length}
+        onClose={() => setQuitOpen(true)}
+        closeRef={closeRef}
+        banner={<UnverifiedBanner conceptSlug={lesson.conceptSlug} />}
+        body={body}
+        footer={footer}
+        bodyHasStrip={feedback !== null}
+      />
+
+      {feedback && (
+        <FeedbackStrip
+          question={feedback.question}
+          result={feedback.result}
+          onContinue={advance}
+          onRetry={() => {
+            setFeedback(null);
+            setRetryToken((t) => t + 1);
+          }}
+        />
+      )}
+
+      {quitOpen && (
+        <QuitModal
+          onKeepLearning={() => {
+            setQuitOpen(false);
+            closeRef.current?.focus();
+          }}
+        />
+      )}
+    </>
   );
 }

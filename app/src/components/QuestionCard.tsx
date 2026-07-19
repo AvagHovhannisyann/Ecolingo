@@ -12,7 +12,7 @@
  */
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceEvent, Question } from "@/lib/engine/types";
 import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring";
 import { course, misconceptions, getConcept, getEquation } from "@/content/econ13210";
@@ -35,10 +35,27 @@ export function QuestionCard({
   question,
   hintsAllowed = true,
   onEvidence,
+  hideInlineFeedback = false,
+  revealAnswerState = false,
+  retryToken,
 }: {
   question: Question;
   hintsAllowed?: boolean;
   onEvidence: (e: EvidenceEvent, result: ScoreResult) => void;
+  /**
+   * Lesson flow (D-020) opt-ins — all additive, all default-off so /bank and
+   * /review render byte-identically:
+   *  - hideInlineFeedback: suppress the card's own result panel (the lesson's
+   *    FeedbackStrip renders it instead); scoring/evidence are unchanged.
+   *  - revealAnswerState: after scoring, tint MC options green (correct) / red
+   *    (chosen-but-wrong) — a pure visual layer over the same answer key.
+   *  - retryToken: when this number changes, run the card's own retry() (the
+   *    exact reset the inline "Try again" button uses, so attempt/evidence
+   *    semantics are preserved).
+   */
+  hideInlineFeedback?: boolean;
+  revealAnswerState?: boolean;
+  retryToken?: number;
 }) {
   const [startedAt] = useState(() => Date.now());
   const [attemptNo, setAttemptNo] = useState(1);
@@ -119,6 +136,18 @@ export function QuestionCard({
     setActiveSlot(null);
   };
 
+  // Lesson flow drives retry externally via retryToken (the FeedbackStrip's
+  // "Try again"); this runs the SAME retry() as the inline button, so attempt
+  // number and timing evidence stay identical to the default flow.
+  const firstRetryToken = useRef(true);
+  useEffect(() => {
+    if (firstRetryToken.current) {
+      firstRetryToken.current = false;
+      return;
+    }
+    retry();
+  }, [retryToken]);
+
   const activeMisconception =
     result && result.misconceptionSlugs.length > 0
       ? misconceptions.find((m) => m.slug === result.misconceptionSlugs[0]) ?? null
@@ -142,12 +171,25 @@ export function QuestionCard({
           <legend className="sr-only">Answer options</legend>
           {question.options.map((o) => {
             const selected = question.type === "mc_single" ? optionId === o.id : optionIds.includes(o.id);
+            const isCorrectOption =
+              question.type === "mc_single"
+                ? o.id === question.answerKey.correctOptionId
+                : question.answerKey.correctOptionIds.includes(o.id);
+            // Duolingo-style option states, additive & opt-in (revealAnswerState).
+            let stateCls = selected ? "choice-selected" : "choice-idle";
+            if (revealAnswerState && answered) {
+              if (isCorrectOption) {
+                stateCls =
+                  "choice-selected border-[color:var(--duo-green)] bg-[color:rgba(88,204,2,0.16)] [box-shadow:0_2px_0_var(--duo-green-edge)]";
+              } else if (selected) {
+                stateCls =
+                  "choice-selected border-[color:var(--duo-red)] bg-[color:rgba(255,75,75,0.14)] [box-shadow:0_2px_0_var(--duo-red-edge)]";
+              }
+            }
             return (
               <label
                 key={o.id}
-                className={`flex min-h-12 cursor-pointer items-center gap-3 p-3 ${
-                  selected ? "choice-selected" : "choice-idle"
-                }`}
+                className={`flex min-h-12 cursor-pointer items-center gap-3 p-3 ${stateCls}`}
               >
                 <input
                   type={question.type === "mc_single" ? "radio" : "checkbox"}
@@ -352,8 +394,9 @@ export function QuestionCard({
         </p>
       )}
 
-      {/* feedback (IDEA-097/099/101) */}
-      {result && (
+      {/* feedback (IDEA-097/099/101) — hidden in lesson flow, where the
+          FeedbackStrip renders the outcome instead (scoring is unchanged) */}
+      {result && !hideInlineFeedback && (
         <div
           className={`mt-3 p-3 ${
             result.correct
