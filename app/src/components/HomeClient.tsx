@@ -1,15 +1,24 @@
 "use client";
 
 /**
- * Today's plan — the daily loop entry point (docs/02-prd.md §5.2).
- * Deterministic scheduler builds the queue; every review shows its reason.
- * The world-header artwork slot is a Higgsfield-generated background
- * (spec §17.1 "course-world background sequences") — decorative only,
- * never a truth-critical visual (GATE-002).
+ * The learner home (/learn) — a Duolingo-style vertical skill path (D-020,
+ * Wave 2 Stream H). A sticky green section header names the current lesson; a
+ * winding path of 3D nodes below shows completed / current / locked lessons,
+ * a review gate when the scheduler has due reviews, a reward-chest milestone,
+ * the Eco mascot beside the current node, and an end-of-section trophy.
+ *
+ * Behaviour invariants preserved from the previous list view:
+ *  - Prerequisite gating (MOAT-02) — the exact isUnlocked rule (requires-edges
+ *    with mastery evidence, teachable-slug guard).
+ *  - The deterministic scheduler drives what's due (buildReviewQueue/dueNow/
+ *    planToday); the review node surfaces its reason text (§22 explainability).
+ *  - The onboarding invitation ("Personalize your path") for un-onboarded users.
+ *  - The honesty banner (UnverifiedBanner, GATE-001) and the editable study
+ *    plan (minutes/day, exam date).
+ *  - All nodes/stars/locks are CSS/SVG UI; art-v2 images are decorative only
+ *    (GATE-002). Motion is gated behind prefers-reduced-motion in the scoped CSS.
  */
 
-import { AmbientHero } from "./AmbientHero";
-import Image from "next/image";
 import Link from "next/link";
 import { concepts, conceptEdges, course } from "@/content/econ13210";
 import type { Lesson } from "@/lib/engine/types";
@@ -17,8 +26,8 @@ import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { UnverifiedBanner } from "./CitationChips";
-import { StatsBar } from "./StatsBar";
-import { WorldMap } from "./WorldMap";
+import { SectionHeader } from "./path/SectionHeader";
+import { SkillPath, type LessonRow } from "./path/SkillPath";
 
 export function HomeClient() {
   const state = useLearnerState();
@@ -46,29 +55,40 @@ export function HomeClient() {
       .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires" && teachableSlugs.has(e.prereqSlug))
       .every((e) => (state.masteryBySlug[e.prereqSlug]?.evidenceCount ?? 0) > 0);
 
-  const remainingLessons = course.lessons.filter((l) => !state.completedLessonIds.includes(l.id));
-  const unlockedLessons = remainingLessons.filter(isUnlocked);
-  const lockedLessons = remainingLessons.filter((l) => !isUnlocked(l));
+  const prereqNamesFor = (lesson: Lesson) =>
+    conceptEdges
+      .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires")
+      .map((e) => concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
+
+  // The next lesson to do: the first unlocked, not-yet-completed lesson in
+  // course order (linear gating guarantees at most one).
+  const currentLesson = course.lessons.find(
+    (l) => !state.completedLessonIds.includes(l.id) && isUnlocked(l)
+  );
+
+  const rows: LessonRow[] = course.lessons.map((lesson) => {
+    const done = state.completedLessonIds.includes(lesson.id);
+    const status = done ? "done" : lesson.id === currentLesson?.id ? "current" : "locked";
+    return { lesson, status, prereqNames: status === "locked" ? prereqNamesFor(lesson) : [] };
+  });
+
+  // Today's plan (minutes) — still driven by the scheduler budget.
+  const unlockedLessons = course.lessons.filter(
+    (l) => !state.completedLessonIds.includes(l.id) && isUnlocked(l)
+  );
   const today = planToday(
     due,
     unlockedLessons.map((l) => ({ id: l.id, estimatedMinutes: l.estimatedMinutes })),
     state.plan.minutesPerDay
   );
-  const plannedLessons = unlockedLessons.filter((l) => today.lessons.some((t) => t.id === l.id));
+
+  const dueReviewReason = due.length > 0 ? due[0].reasonText : null;
+  const headerTitle = currentLesson ? currentLesson.title : "Section complete — nice work";
+  const headerHref = currentLesson ? `/lesson/${currentLesson.id}` : null;
 
   return (
-    <div>
-      {/* World header — Higgsfield ambient loop over the course-world art
-          (decorative; falls back to the still for reduced-motion users) */}
-      <AmbientHero videoSrc="/video/world-2-solow-ambient.mp4" imageSrc="/worlds/world-2-solow.webp">
-        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-          <p className="text-xs uppercase tracking-wide opacity-80">World 2</p>
-          <h1 className="text-xl font-semibold">Solow growth</h1>
-          <p className="text-sm opacity-90">hard ideas. made intuitive.</p>
-        </div>
-      </AmbientHero>
-
-      <StatsBar state={state} minutesPlanned={today.minutesPlanned} />
+    <div className="sp">
+      <SectionHeader eyebrow="Section 1 · Solow growth" title={headerTitle} href={headerHref} />
 
       <div className="mt-4">
         <UnverifiedBanner />
@@ -125,83 +145,11 @@ export function HomeClient() {
         </div>
       </details>
 
-      <h2 className="mt-6 text-lg font-semibold">Today ({today.minutesPlanned} min planned)</h2>
+      <p className="sp-today">
+        Today <span>· {today.minutesPlanned} min planned</span>
+      </p>
 
-      <ul className="mt-3 space-y-3">
-        {plannedLessons.map((lesson) => (
-          <li key={lesson.id}>
-            <Link
-              href={`/lesson/${lesson.id}`}
-              className="card-lesson block p-4 transition hover:border-[var(--growth-green)] hover:bg-[var(--growth-green-tint)]"
-            >
-              <span className="text-xs font-bold uppercase tracking-wide text-[var(--growth-green-text)]">
-                ★ New lesson · {lesson.estimatedMinutes} min
-              </span>
-              <span className="block text-base font-bold">{lesson.title}</span>
-              <span className="block text-sm text-app-muted">
-                Core idea → intuition → interactive model → math → practice → transfer check
-              </span>
-            </Link>
-          </li>
-        ))}
-        {lockedLessons.map((lesson) => {
-          const prereqs = conceptEdges
-            .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires")
-            .map((e) => concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
-          // "locked" is conveyed by the icon + label + muted surface, not by low
-          // opacity — dimming the text would drop it below AA contrast
-          return (
-            <li key={lesson.id} className="card-lesson bg-[var(--mist-gray)]/25 p-4">
-              <span className="text-xs font-bold uppercase tracking-wide text-app-muted">🔒 Locked · {lesson.estimatedMinutes} min</span>
-              <span className="block text-base font-bold text-app">{lesson.title}</span>
-              <span className="block text-sm text-app-muted">Unlocks after: {prereqs.join(", ")}</span>
-            </li>
-          );
-        })}
-        {today.reviews.map((r) => {
-          const c = concepts.find((x) => x.slug === r.conceptSlug);
-          return (
-            <li key={r.conceptSlug}>
-              <Link
-                href="/review"
-                className="card-lesson block p-4 transition hover:border-[var(--model-blue)] hover:bg-[var(--model-blue-tint)]"
-              >
-                <span className="text-xs font-bold uppercase tracking-wide text-[var(--model-blue-text)]">
-                  ⟳ Review · ~3 min{"overdue" in r && r.overdue ? " · catch-up" : ""}
-                </span>
-                <span className="block text-base font-bold">{c?.name ?? r.conceptSlug}</span>
-                <span className="block text-sm text-app-muted">{r.reasonText}</span>
-              </Link>
-            </li>
-          );
-        })}
-        {plannedLessons.length === 0 && lockedLessons.length === 0 && today.reviews.length === 0 && (
-          <li className="card flex items-center gap-4 p-4 text-sm text-app-muted">
-            {/* Higgsfield "sleeping" mascot — nothing due right now (decorative slot §17.2) */}
-            <Image
-              src="/art/creature-sleeping.webp"
-              alt=""
-              role="presentation"
-              width={200}
-              height={200}
-              className="art-enter h-20 w-20 shrink-0 rounded-2xl object-cover"
-            />
-            <span>
-              Nothing due right now. Your next review is already scheduled —{" "}
-              <Link href="/review" className="underline">
-                see when and why
-              </Link>
-              , or explore the{" "}
-              <Link href="/lab/solow" className="underline">
-                Solow Lab
-              </Link>
-              .
-            </span>
-          </li>
-        )}
-      </ul>
-
-      <WorldMap state={state} />
+      <SkillPath rows={rows} dueReviewReason={dueReviewReason} mascotSrc="/art-v2/eco-point.webp" />
     </div>
   );
 }
