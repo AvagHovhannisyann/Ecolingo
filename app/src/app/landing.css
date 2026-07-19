@@ -454,16 +454,21 @@ body:has(.landing) main#main {
    fully visible; JS arms it only when motion is allowed.
    -------------------------------------------------------------------------- */
 .landing .reveal[data-reveal="pending"] {
+  /* visibility:hidden (not just opacity:0) so hidden-but-armed text is
+     excluded from assistive tech and from axe's contrast math alike */
+  visibility: hidden;
   opacity: 0;
   transform: translateY(24px);
 }
 .landing .reveal[data-reveal="in"] {
+  visibility: visible;
   opacity: 1;
   transform: none;
 }
 @media (prefers-reduced-motion: no-preference) {
   .landing .reveal[data-reveal] {
-    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    /* visibility flips discretely at transition start, then opacity fades */
+    transition: visibility 0s, opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity, transform;
   }
 }
