@@ -18,6 +18,8 @@ import type {
   Question,
 } from "../../lib/engine/types";
 import { buildGeneratedQuestions } from "./generated-questions";
+import { buildMatchPairsSeed } from "./match-pairs-seed";
+import { buildClozeSeedQuestions } from "./cloze-seed";
 
 export const PENDING_CITATION: Citation = {
   id: "cit-pending-solow",
@@ -444,6 +446,12 @@ export const questions: Question[] = [
   // Teacher-ratified output of the D-020 question factory (17 of 24 live
   // drafts accepted; see generated-questions.ts for the per-draft verdicts).
   ...buildGeneratedQuestions(PENDING_CITATION.id),
+  // MATCH PAIRS format seed (Wave 2 Stream AC, D-020 engine work); untouched
+  // by the teacher yet, so provenance stays ai_draft — see match-pairs-seed.ts.
+  ...buildMatchPairsSeed(PENDING_CITATION.id),
+  // CLOZE (fill-in-the-blank with a word bank) seed — ai_draft, not yet
+  // teacher-ratified; see cloze-seed.ts for provenance and content sourcing.
+  ...buildClozeSeedQuestions(PENDING_CITATION.id),
 ];
 
 export const productionFunctionLesson: Lesson = {

@@ -120,7 +120,9 @@ export type QuestionType =
   | "numeric"
   | "equation_assembly"
   | "diagram_label"
-  | "causal_order";
+  | "causal_order"
+  | "match_pairs"
+  | "cloze";
 
 export interface ChoiceOption {
   id: string;
@@ -190,13 +192,40 @@ export interface CausalOrderQuestion extends QuestionBase {
   answerKey: { orderedItemIds: string[] };
 }
 
+export interface MatchPairsQuestion extends QuestionBase {
+  type: "match_pairs";
+  /**
+   * 3–6 term↔definition pairs. Each pair's shared `id` IS the answer key — a
+   * submitted match is correct iff it recombines the same pair id on both
+   * sides (see engine/match-pairs.ts). Both columns render independently
+   * shuffled (engine/match-pairs.ts `shuffledSides`) so tapping is required.
+   */
+  pairs: { id: string; left: string; right: string }[];
+}
+
+/**
+ * CLOZE (fill-in-the-blank with a word bank, Duolingo-style). `template`
+ * carries 1–3 `{{blankId}}` placeholders (parsed strictly by
+ * `engine/cloze.ts#parseTemplate`); `bank` is the full tap-word pool shown to
+ * the learner — every correct fill plus distractors, all distinct. See
+ * `engine/cloze.ts` for the parsing/scoring/validation contract.
+ */
+export interface ClozeQuestion extends QuestionBase {
+  type: "cloze";
+  template: string;
+  bank: string[];
+  answerKey: { fills: Record<string, string> };
+}
+
 export type Question =
   | McSingleQuestion
   | McMultiQuestion
   | NumericQuestion
   | EquationAssemblyQuestion
   | DiagramLabelQuestion
-  | CausalOrderQuestion;
+  | CausalOrderQuestion
+  | MatchPairsQuestion
+  | ClozeQuestion;
 
 /** §22 — never one global percentage */
 export interface MasteryState {

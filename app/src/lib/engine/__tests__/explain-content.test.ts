@@ -121,7 +121,10 @@ describe("ECON 13210 seed content integrity", () => {
 
   it("every question has an answer key, hint, citations, and provenance (GATE-003, §23)", () => {
     for (const q of questions) {
-      expect(q.answerKey).toBeTruthy();
+      // match_pairs has no separate answerKey by design: each pair's shared id
+      // IS the key (engine/match-pairs.ts). Everything else carries answerKey.
+      if (q.type === "match_pairs") expect(q.pairs.length).toBeGreaterThanOrEqual(3);
+      else expect(q.answerKey).toBeTruthy();
       expect(q.hint.length).toBeGreaterThan(0);
       expect(q.citationIds.length).toBeGreaterThan(0);
       expect(["teacher_authored", "ai_draft", "ai_approved"]).toContain(q.provenance);

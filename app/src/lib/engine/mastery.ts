@@ -48,6 +48,17 @@ export function dimensionsFor(qt: QuestionType | "visual" | "review"): (keyof Pi
       return ["conceptual", "procedural"];
     case "review":
       return ["conceptual"];
+    // Appended for the "cloze" question type (D-020 Wave 2 Stream AD):
+    // required to keep this exhaustive switch compiling (strict mode has no
+    // default arm here) once QuestionType gained "cloze" — see engine/types.ts.
+    // Cloze is word-bank term recognition, the closest existing analog to
+    // mc_single/mc_multi, so it informs the same dimension.
+    case "cloze":
+      return ["conceptual"];
+    // match_pairs (Stream AC): term↔definition recognition — conceptual, like
+    // the choice formats.
+    case "match_pairs":
+      return ["conceptual"];
   }
 }
 
