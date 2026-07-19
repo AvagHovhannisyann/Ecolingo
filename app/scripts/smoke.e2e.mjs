@@ -68,6 +68,8 @@ try {
   await page.click("button:has-text('Fairly sure')");
   await page.click("button:has-text('Finish diagnostic')");
   await page.waitForSelector("text=How do you like ideas explained?");
+  await page.click("button:has-text('Continue')"); // survey now ends on a mascot summary screen (D-020)
+  await page.waitForSelector("text=You're all set");
   await page.click("button:has-text('Start learning')");
   await page.waitForSelector("text=Today");
   log("onboarding completes and lands on today's plan");
