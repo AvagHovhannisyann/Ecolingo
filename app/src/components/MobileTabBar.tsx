@@ -12,7 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  LearnIcon, QuestsIcon, ShopIcon, ProfileIcon, TeachIcon,
+  LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
   ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
 import { isNavActive } from "./Sidebar";
@@ -20,7 +20,6 @@ import { isNavActive } from "./Sidebar";
 const TABS = [
   { href: "/learn", label: "Learn", icon: LearnIcon },
   { href: "/quests", label: "Quests", icon: QuestsIcon },
-  { href: "/shop", label: "Shop", icon: ShopIcon },
   { href: "/progress", label: "Profile", icon: ProfileIcon },
 ];
 

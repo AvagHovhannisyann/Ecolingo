@@ -12,7 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  LearnIcon, QuestsIcon, ShopIcon, ProfileIcon, TeachIcon,
+  LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
   ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
 
@@ -21,7 +21,6 @@ type Item = { href: string; label: string; icon: (p: { className?: string }) => 
 const PRIMARY: Item[] = [
   { href: "/learn", label: "Learn", icon: LearnIcon },
   { href: "/quests", label: "Quests", icon: QuestsIcon },
-  { href: "/shop", label: "Shop", icon: ShopIcon },
   { href: "/progress", label: "Profile", icon: ProfileIcon },
   { href: "/teach", label: "Teach", icon: TeachIcon },
 ];
