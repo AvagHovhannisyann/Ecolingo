@@ -1,0 +1,38 @@
+/**
+ * Quests view styling (D-020, Wave 2 Stream K). Only presentational rules that
+ * are awkward as utilities live here — the gold progress fill and the chest
+ * idle/claim motion. All motion is gated behind prefers-reduced-motion so
+ * reduced-motion users get instant, static states (a11y-owned invariant).
+ */
+
+.quest-bar-track {
+  background: var(--app-surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 18px;
+}
+.quest-bar-fill {
+  background: var(--duo-gold);
+  border-radius: 999px;
+  height: 100%;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .quest-bar-fill {
+    transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* a claimable chest gently bobs to draw the eye */
+  .chest-claimable {
+    animation: chest-bob 1.8s ease-in-out infinite;
+  }
+  @keyframes chest-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+}

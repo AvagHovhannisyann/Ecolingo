@@ -8,6 +8,16 @@
  */
 
 import { applyEvidence, initialMastery } from "./engine/mastery";
+import {
+  claimQuest as claimQuestEconomy,
+  defaultEconomy,
+  loseHeart as loseHeartEconomy,
+  recordCorrectAnswers as recordCorrectAnswersEconomy,
+  recordLessonComplete as recordLessonCompleteEconomy,
+  recordReview as recordReviewEconomy,
+  refillWithGems as refillWithGemsEconomy,
+  type EconomyState,
+} from "./engine/economy";
 import type { EvidenceEvent, MasteryState, StudyPlanInput } from "./engine/types";
 
 export interface AuditEntry {
@@ -57,6 +67,13 @@ export interface LearnerState {
   /** total evidence events ever recorded (monotonic; auditLog keeps the tail) */
   auditSeq: number;
   xp: number;
+  /**
+   * Game economy (D-020, Wave 2 Stream K): hearts, gems, streak, quest claims,
+   * and period-scoped activity counters. All mutated through the pure
+   * engine/economy.ts functions. Additive — older persisted states migrate via
+   * spread-with-defaults in loadLearnerState.
+   */
+  economy: EconomyState;
 }
 
 const KEY = "ecolingo.learner.v1";
@@ -71,6 +88,7 @@ export function defaultLearnerState(): LearnerState {
     auditLog: [],
     auditSeq: 0,
     xp: 0,
+    economy: defaultEconomy(),
   };
 }
 
@@ -85,6 +103,13 @@ export function loadLearnerState(): LearnerState {
       ...defaultLearnerState(),
       ...parsed,
       profile: { ...defaultProfile(), ...(parsed.profile ?? {}) },
+      // economy is additive (D-020): spread defaults so states persisted before
+      // the economy landed — or with a partial economy — hydrate safely.
+      economy: {
+        ...defaultEconomy(),
+        ...(parsed.economy ?? {}),
+        counters: { ...defaultEconomy().counters, ...(parsed.economy?.counters ?? {}) },
+      },
     };
   } catch {
     return defaultLearnerState();
@@ -152,4 +177,64 @@ export function resetLearnerState(): LearnerState {
   const fresh = defaultLearnerState();
   saveLearnerState(fresh);
   return fresh;
+}
+
+/* ===========================================================================
+   Economy wiring (D-020, Wave 2 Stream K). Thin LearnerState-level wrappers
+   around the pure engine/economy.ts functions, saved through the same
+   persistence path as every other mutation. Designed to be dropped into
+   `mutateLearnerState((s) => ...)` at the relevant flow points.
+
+   HANDOFF — the architect wires these into the flows owned by other streams:
+     • recordLessonComplete(state, nowISO)  → call when a lesson is finished
+       (advances streak, bumps lesson counters, awards lesson-complete gems).
+     • recordCorrectAnswers(state, nowISO, n) → call per correct question
+       (drives the "Get N questions right" daily quest).
+     • recordConceptReviewed(state, nowISO)  → call when a review is completed
+       (advances streak, bumps the review counter).
+     • loseHeartEconomy(state, nowISO)        → call on a wrong answer in a
+       hearts-gated lesson.
+   The quests / shop pages already call claimQuestOnState + refillHeartsWithGems.
+=========================================================================== */
+
+/** Record a completed lesson in the economy (streak + counters + gems). */
+export function recordLessonComplete(state: LearnerState, nowISO: string): LearnerState {
+  const next = { ...state, economy: recordLessonCompleteEconomy(state.economy, nowISO) };
+  saveLearnerState(next);
+  return next;
+}
+
+/** Record `n` correct answers toward the daily quest. */
+export function recordCorrectAnswers(state: LearnerState, nowISO: string, n = 1): LearnerState {
+  const next = { ...state, economy: recordCorrectAnswersEconomy(state.economy, nowISO, n) };
+  saveLearnerState(next);
+  return next;
+}
+
+/** Record a reviewed concept (streak + review counter). */
+export function recordConceptReviewed(state: LearnerState, nowISO: string): LearnerState {
+  const next = { ...state, economy: recordReviewEconomy(state.economy, nowISO) };
+  saveLearnerState(next);
+  return next;
+}
+
+/** Spend one heart (wrong answer in a hearts-gated lesson). */
+export function loseHeart(state: LearnerState, nowISO: string): LearnerState {
+  const next = { ...state, economy: loseHeartEconomy(state.economy, nowISO) };
+  saveLearnerState(next);
+  return next;
+}
+
+/** Claim a completed quest's reward (guards double-claim per period). */
+export function claimQuestOnState(state: LearnerState, questId: string, nowISO: string): LearnerState {
+  const next = { ...state, economy: claimQuestEconomy(state.economy, questId, nowISO) };
+  saveLearnerState(next);
+  return next;
+}
+
+/** Refill hearts to full by spending gems (no-op if full or too few gems). */
+export function refillHeartsWithGems(state: LearnerState): LearnerState {
+  const next = { ...state, economy: refillWithGemsEconomy(state.economy) };
+  saveLearnerState(next);
+  return next;
 }
