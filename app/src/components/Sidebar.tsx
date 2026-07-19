@@ -12,8 +12,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  LearnIcon, QuestsIcon, ShopIcon, ProfileIcon, TeachIcon,
-  ReviewIcon, LabsIcon, BankIcon, ExamIcon, MoreIcon,
+  LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
+  ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
 
 type Item = { href: string; label: string; icon: (p: { className?: string }) => React.ReactNode };
@@ -21,7 +21,6 @@ type Item = { href: string; label: string; icon: (p: { className?: string }) => 
 const PRIMARY: Item[] = [
   { href: "/learn", label: "Learn", icon: LearnIcon },
   { href: "/quests", label: "Quests", icon: QuestsIcon },
-  { href: "/shop", label: "Shop", icon: ShopIcon },
   { href: "/progress", label: "Profile", icon: ProfileIcon },
   { href: "/teach", label: "Teach", icon: TeachIcon },
 ];
@@ -31,6 +30,7 @@ const MORE: Item[] = [
   { href: "/lab", label: "Labs", icon: LabsIcon },
   { href: "/bank", label: "Bank", icon: BankIcon },
   { href: "/exam", label: "Exam", icon: ExamIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {

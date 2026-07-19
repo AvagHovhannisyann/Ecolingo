@@ -1,19 +1,29 @@
 "use client";
 
 /**
- * Progress — mastery is multi-dimensional (§22): the learner is never
- * reduced to one number. Includes the audit trail (GATE-006 made visible)
- * and the personalization reset control (IDEA-024).
+ * Progress — the learner's trophy room (D-020 dark game restyle).
+ *
+ * Mastery stays multi-dimensional (§22): every concept card shows the five
+ * engine dimensions as separate labeled bars — never one blended number.
+ * Concepts with zero evidence get an explicit "Not started" state instead of
+ * empty bars pretending to be zeros. The audit trail (GATE-006 made visible),
+ * class enrollment (D-012) and the personalization reset control (IDEA-024)
+ * all carry over from the flat UI, restyled onto the dark surface.
  */
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { concepts, misconceptions } from "@/content/econ13210";
-import { dominantMisconception, retentionAt } from "@/lib/engine/mastery";
+import { concepts } from "@/content/econ13210";
 import { resetLearnerState, updateProfile } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
+import { computeStreak } from "@/lib/stats";
 import { fetchMyEnrollment, joinCourseByCode, type EnrollmentSummary } from "@/lib/course";
 import { getSupabase } from "@/lib/supabase";
 import { Achievements } from "./Achievements";
+import { MasteryCard } from "./progress/MasteryCard";
+import { ProgressHero } from "./progress/ProgressHero";
+import { ReviewForecast } from "./progress/ReviewForecast";
+import "./progress/progress.css";
 
 /**
  * "Join your class" — a student enters the teacher's join code to enroll; once
@@ -63,8 +73,8 @@ function JoinClassCard() {
 
   if (phase === "loading") {
     return (
-      <section aria-label="Your class" className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4">
-        <h2 className="text-sm font-medium">Your class</h2>
+      <section aria-label="Your class" className="card mt-6 p-4">
+        <h2 className="text-base font-bold">Your class</h2>
         <p className="mt-1 text-sm text-app-muted" role="status">
           Checking your enrollment…
         </p>
@@ -74,8 +84,8 @@ function JoinClassCard() {
 
   if (phase === "unavailable") {
     return (
-      <section aria-label="Your class" className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4">
-        <h2 className="text-sm font-medium">Your class</h2>
+      <section aria-label="Your class" className="card mt-6 p-4">
+        <h2 className="text-base font-bold">Your class</h2>
         <p className="mt-1 text-sm text-app-muted">
           Class features need the cloud connection — join with your class code once you&apos;re online.
         </p>
@@ -85,9 +95,9 @@ function JoinClassCard() {
 
   if (enrollment) {
     return (
-      <section aria-label="Your class" className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4">
-        <h2 className="text-sm font-medium">Your class</h2>
-        <p className="mt-1 rounded-xl bg-[var(--growth-green-tint)] p-3 text-sm" role="status">
+      <section aria-label="Your class" className="card mt-6 p-4">
+        <h2 className="text-base font-bold">Your class</h2>
+        <p className="mt-2 rounded-xl bg-[var(--growth-green-tint)] p-3 text-sm" role="status">
           ✅ Enrolled in <strong>{enrollment.title}</strong>
         </p>
       </section>
@@ -95,9 +105,9 @@ function JoinClassCard() {
   }
 
   return (
-    <section aria-label="Join your class" className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4">
-      <h2 className="text-sm font-medium">Join your class</h2>
-      <p className="mt-1 text-xs text-app-muted">
+    <section aria-label="Join your class" className="card mt-6 p-4">
+      <h2 className="text-base font-bold">Join your class</h2>
+      <p className="mt-1 text-sm text-app-muted">
         Have a class join code from your teacher? Enter it to connect your progress to the class.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -108,7 +118,7 @@ function JoinClassCard() {
           aria-label="Class join code"
           placeholder="e.g. K7QMP2"
           maxLength={8}
-          className="min-h-12 w-40 rounded-xl border border-[color:var(--app-border)] p-3 font-mono text-sm uppercase tracking-widest"
+          className="min-h-12 w-40 rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3 font-mono text-sm uppercase tracking-widest"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
         />
@@ -122,7 +132,7 @@ function JoinClassCard() {
         </button>
       </div>
       {error && (
-        <p className="mt-2 rounded-xl bg-[var(--coral-tint)] p-3 text-sm text-[var(--deep-ink)]" role="alert">
+        <p className="mt-2 rounded-xl bg-[var(--coral-tint)] p-3 text-sm text-[var(--duo-red-text)]" role="alert">
           {error}
         </p>
       )}
@@ -130,84 +140,80 @@ function JoinClassCard() {
   );
 }
 
-const DIMENSIONS = [
-  ["conceptual", "Conceptual"],
-  ["procedural", "Procedural"],
-  ["graphInterpretation", "Graph reading"],
-  ["formulaRecall", "Formula recall"],
-  ["transfer", "Transfer"],
-] as const;
-
 export function ProgressClient() {
   const state = useLearnerState();
   if (!state) return <p className="p-4 text-sm text-app-muted">Loading progress…</p>;
 
   const nowISO = new Date().toISOString();
-  const studied = concepts.filter((c) => state.masteryBySlug[c.slug]?.evidenceCount);
+  const streak = computeStreak(state.auditLog.map((a) => a.at), nowISO);
+  const started = concepts.filter((c) => (state.masteryBySlug[c.slug]?.evidenceCount ?? 0) > 0);
+  const notStarted = concepts.filter((c) => !(state.masteryBySlug[c.slug]?.evidenceCount ?? 0));
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Progress</h1>
-        <p className="text-sm text-app-muted">XP: {state.xp}</p>
-      </div>
-      <p className="mt-1 text-sm text-app-muted">
-        Mastery, not completion — each dimension is estimated separately from real evidence.
-      </p>
+      <ProgressHero streak={streak} xp={state.xp} />
 
-      {/* join your class (D-012) */}
-      <JoinClassCard />
-
-      {studied.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4 text-sm text-app-muted">
-          No evidence yet. Mastery appears here as you learn and practice.
+      <section aria-label="Concept mastery" className="mt-8">
+        <h2 className="text-lg font-bold">Concept mastery</h2>
+        <p className="mt-1 text-sm text-app-muted">
+          Five dimensions per concept, each estimated separately from real evidence — never one blended score.
         </p>
-      ) : (
-        <ul className="mt-4 space-y-4">
-          {studied.map((c) => {
-            const m = state.masteryBySlug[c.slug];
-            const retention = retentionAt(m, nowISO);
-            const mc = dominantMisconception(m);
-            const mcInfo = mc ? misconceptions.find((x) => x.slug === mc.slug) : null;
-            return (
-              <li key={c.slug} className="rounded-2xl border border-[color:var(--app-border)] p-4">
-                <h2 className="font-medium">{c.name}</h2>
-                <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  {DIMENSIONS.map(([key, label]) => (
-                    <div key={key}>
-                      <dt className="text-xs text-app-muted">{label}</dt>
-                      <dd>
-                        <div className="mt-1 h-2 w-full rounded-full bg-[color:var(--app-surface-2)]" role="img" aria-label={`${label} ${Math.round(m[key] * 100)}%`}>
-                          <div className="h-2 rounded-full bg-[color:var(--duo-green)]" style={{ width: `${Math.round(m[key] * 100)}%` }} />
-                        </div>
-                        <span className="text-xs">{Math.round(m[key] * 100)}%</span>
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="mt-2 text-xs text-app-muted">
-                  Retention estimate now: {Math.round(retention * 100)}% · Confidence: {Math.round(m.confidence * 100)}% ·
-                  Evidence events: {m.evidenceCount}
-                </p>
-                {mcInfo && (
-                  <p className="mt-2 rounded-xl bg-[color:rgba(255,150,0,0.12)] p-2 text-xs text-[color:#ffb060]">
-                    Active mix-up to clear: {mcInfo.description}
+
+        {started.length === 0 ? (
+          <div className="card mt-4 flex items-center gap-4 p-5">
+            {/* Eco shrugging — honest empty state, no fake zero bars (§17.2 decorative) */}
+            <Image
+              src="/art-v2/eco-shrug.webp"
+              alt=""
+              role="presentation"
+              width={512}
+              height={512}
+              className="art-enter h-20 w-20 shrink-0 rounded-2xl border-2 border-[color:var(--app-border)] object-cover"
+            />
+            <p className="text-sm text-app-muted">
+              No evidence yet — mastery bars appear here as you learn and practice. Every concept below starts
+              honestly at &quot;not started&quot;.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-4">
+            {started.map((c) => (
+              <MasteryCard key={c.slug} concept={c} mastery={state.masteryBySlug[c.slug]} nowISO={nowISO} />
+            ))}
+          </ul>
+        )}
+
+        {notStarted.length > 0 && (
+          <>
+            <h3 className="mt-6 text-sm font-bold uppercase tracking-wide text-app-muted">Not started yet</h3>
+            <ul className="pg-ns-grid">
+              {notStarted.map((c) => (
+                <li key={c.slug} className="card pg-ns">
+                  <div className="pg-card-head">
+                    <span className="font-bold">{c.name}</span>
+                    <span className="pg-ns-chip">Not started</span>
+                  </div>
+                  <p className="mt-1 text-sm text-app-muted">
+                    No evidence yet — bars appear once you practice this concept.
                   </p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      {/* read-only scheduler forecast with §22 reasons */}
+      <ReviewForecast state={state} nowISO={nowISO} />
 
       <Achievements state={state} />
 
       {state.auditLog.length > 0 && (
-        <details className="mt-6 rounded-2xl border border-[color:var(--app-border)] p-4">
-          <summary className="cursor-pointer text-sm font-medium">
+        <details className="card mt-8 p-4">
+          <summary className="cursor-pointer text-sm font-bold">
             Evidence audit trail ({state.auditLog.length}) — every mastery change is explainable
           </summary>
-          <ul className="mt-2 space-y-1 text-xs text-app">
+          <ul className="pg-audit-list">
             {[...state.auditLog].reverse().slice(0, 30).map((a, i) => (
               <li key={i}>
                 {new Date(a.at).toLocaleString()} · {a.conceptSlug} · {a.correct ? "correct" : "incorrect"} · signal{" "}
@@ -222,13 +228,16 @@ export function ProgressClient() {
         </details>
       )}
 
-      <section aria-label="Personalization" className="mt-6 rounded-2xl border border-[color:var(--app-border)] p-4">
-        <h2 className="text-sm font-medium">Personalization — you&apos;re in control (edit anytime)</h2>
+      {/* join your class (D-012) */}
+      <JoinClassCard />
+
+      <section aria-label="Personalization" className="card mt-6 p-4">
+        <h2 className="text-base font-bold">Personalization — you&apos;re in control (edit anytime)</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             Explanation order (changes lesson step order only)
             <select
-              className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] p-3"
+              className="mt-1 block w-full rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3"
               value={state.profile.explanationOrder}
               onChange={(e) =>
                 mutateLearnerState((s) =>
@@ -241,7 +250,7 @@ export function ProgressClient() {
               <option value="text_first">Plain words first</option>
             </select>
           </label>
-          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-[color:var(--app-border)] p-3 text-sm">
+          <label className="flex min-h-12 items-center gap-3 rounded-xl border-2 border-[color:var(--app-border)] p-3 text-sm">
             <input
               type="checkbox"
               checked={state.profile.readingLevel === "simpler"}

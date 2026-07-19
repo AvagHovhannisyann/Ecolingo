@@ -41,7 +41,8 @@ export function MiniSolowDiagram({
   const marker = (n: string, cx: number, cy: number) => (
     <g>
       <circle cx={cx} cy={cy} r="11" fill="white" stroke="currentColor" strokeWidth="1.5" />
-      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="12" fontWeight="bold">
+      {/* explicit dark fill: SVG text defaults to black, but be deliberate on the white chip */}
+      <text x={cx} y={cy + 4} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#131f24">
         {n}
       </text>
     </g>
@@ -51,7 +52,8 @@ export function MiniSolowDiagram({
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} className="w-full max-w-md">
       <line x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} stroke="currentColor" strokeWidth="1" />
       <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} stroke="currentColor" strokeWidth="1" />
-      <text x={W - PAD.r} y={H - PAD.b + 20} textAnchor="end" fontSize="11">
+      {/* fill=currentColor: default SVG text fill is black — invisible on the dark game surface */}
+      <text x={W - PAD.r} y={H - PAD.b + 20} textAnchor="end" fontSize="11" fill="currentColor">
         k
       </text>
 
