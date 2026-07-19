@@ -1,0 +1,538 @@
+"use client";
+
+/**
+ * Teacher course compiler (D-020, Wave 2 Stream L).
+ *
+ * The teacher picks source material — sections they already uploaded on /teach,
+ * or fresh pasted text run through the same `sectionize` — and asks the AI to
+ * DRAFT a whole course plan (units → lessons + prerequisite edges). The draft is
+ * never trusted: the API sanitizes server-side, and this client sanitizes AGAIN
+ * with `sanitizeCoursePlan` against the exact section ids it sent, so a
+ * fabricated section reference or a cycle-closing prereq can never render. The
+ * teacher reviews the sanitized plan (including an honest "dropped by sanitizer"
+ * list), unchecks any lesson, and ratifies (GATE-001) — only then does
+ * `planToCourseDraft` mint `planned_unverified` concepts that get persisted.
+ *
+ * No secrets here: the OpenRouter key stays server-side; without it the API
+ * returns 503 and this UI shows the honest degrade path (GATE-009).
+ */
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { sectionize, type DocSection } from "@/lib/engine/ingest";
+import {
+  sanitizeCoursePlan,
+  planToCourseDraft,
+  type CoursePlanSanitizeResult,
+  type DraftCoursePlan,
+  type DroppedPrereqReason,
+} from "@/lib/engine/compile-course";
+import { useTeacherState } from "@/lib/teacher-store";
+import {
+  loadCompiledPlan,
+  saveCompiledPlan,
+  type StoredCompiledPlan,
+} from "./plan-store";
+
+const PROVENANCE = "AI drafted, you approve — nothing reaches students without your sign-off.";
+
+const DROP_REASON_LABEL: Record<DroppedPrereqReason, string> = {
+  unknown_slug: "unknown concept",
+  self_loop: "points at itself",
+  duplicate: "duplicate edge",
+  cycle: "would create a cycle",
+};
+
+type Phase = "input" | "compiling" | "review" | "error";
+
+interface CompileError {
+  kind: "no_provider" | "upstream" | "network" | "empty";
+  message: string;
+}
+
+export function CompileCourseClient() {
+  const teacher = useTeacherState();
+
+  // ── source selection ────────────────────────────────────────────────────
+  const [mode, setMode] = useState<"docs" | "paste">("docs");
+  const [selectedDocId, setSelectedDocId] = useState<string>("");
+  const [pasteTitle, setPasteTitle] = useState("");
+  const [pasted, setPasted] = useState("");
+
+  // ── compile lifecycle ───────────────────────────────────────────────────
+  const [phase, setPhase] = useState<Phase>("input");
+  const [error, setError] = useState<CompileError | null>(null);
+  const [result, setResult] = useState<CoursePlanSanitizeResult | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [compiledTitle, setCompiledTitle] = useState("");
+
+  // ── ratification ────────────────────────────────────────────────────────
+  const [approved, setApproved] = useState<StoredCompiledPlan | null>(() => loadCompiledPlan());
+
+  const docs = useMemo(() => teacher?.docs ?? [], [teacher]);
+
+  // The sections that will actually be sent to the compiler for the current
+  // source selection, plus a heading lookup for rendering source chips. All
+  // hooks run unconditionally (rules of hooks) — teacher-null is handled below.
+  const { sourceTitle, sections } = useMemo(() => {
+    if (mode === "paste") {
+      const text = pasted.trim();
+      if (!text) return { sourceTitle: "", sections: [] as DocSection[] };
+      const doc = sectionize(pasteTitle.trim() || "Pasted material", pasted, new Date(0).toISOString());
+      return { sourceTitle: doc.title, sections: doc.sections };
+    }
+    const doc = docs.find((d) => d.id === selectedDocId) ?? docs[0];
+    return { sourceTitle: doc?.title ?? "", sections: doc?.sections ?? [] };
+  }, [mode, pasted, pasteTitle, docs, selectedDocId]);
+
+  const headingBySection = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of sections) m.set(s.id, s.heading);
+    return m;
+  }, [sections]);
+
+  if (!teacher) {
+    return <p className="p-4 text-sm text-app-muted">Loading teacher workspace…</p>;
+  }
+
+  const canCompile = sections.length > 0 && phase !== "compiling";
+
+  const compile = async () => {
+    setPhase("compiling");
+    setError(null);
+    setResult(null);
+    const allowed = new Set(sections.map((s) => s.id));
+    try {
+      const res = await fetch("/api/compile-course", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sections: sections.map((s) => ({ id: s.id, heading: s.heading, text: s.text })),
+        }),
+      });
+      if (res.status === 503) {
+        setError({
+          kind: "no_provider",
+          message:
+            "Live AI unavailable — set OPENROUTER_API_KEY on the server to draft a course plan. Your sections are still here, ready to compile once it is configured.",
+        });
+        setPhase("error");
+        return;
+      }
+      if (!res.ok) {
+        setError({
+          kind: "upstream",
+          message:
+            "The AI provider didn't answer just now — nothing was drafted. Try again in a moment; your sections are unchanged.",
+        });
+        setPhase("error");
+        return;
+      }
+      const data = (await res.json()) as { plan?: unknown; model?: string };
+      // NEVER trust the response: re-sanitize against the real section ids.
+      const sanitized = sanitizeCoursePlan(data.plan, allowed);
+      if (sanitized.plan.units.length === 0) {
+        setError({
+          kind: "empty",
+          message:
+            "The AI returned nothing usable for this material (every unit was dropped by the sanitizer). Try a longer or clearer document.",
+        });
+        setPhase("error");
+        return;
+      }
+      // default every lesson checked (teacher opts OUT, not in)
+      const initChecked: Record<string, boolean> = {};
+      for (const u of sanitized.plan.units) for (const l of u.lessons) initChecked[l.conceptSlug] = true;
+      setResult(sanitized);
+      setModel(typeof data.model === "string" ? data.model : null);
+      setChecked(initChecked);
+      setCompiledTitle(sourceTitle);
+      setPhase("review");
+    } catch {
+      setError({
+        kind: "network",
+        message: "Couldn't reach the compiler just now — check your connection and try again.",
+      });
+      setPhase("error");
+    }
+  };
+
+  const checkedCount = result
+    ? result.plan.units.reduce((n, u) => n + u.lessons.filter((l) => checked[l.conceptSlug]).length, 0)
+    : 0;
+
+  const ratify = () => {
+    if (!result) return;
+    // Keep only checked lessons; drop units left empty.
+    const filtered: DraftCoursePlan = {
+      units: result.plan.units
+        .map((u) => ({ ...u, lessons: u.lessons.filter((l) => checked[l.conceptSlug]) }))
+        .filter((u) => u.lessons.length > 0),
+      // an edge survives only if both endpoints are still present
+      prereqPairs: result.plan.prereqPairs.filter(([from, to]) => checked[from] && checked[to]),
+    };
+    if (filtered.units.length === 0) return;
+    const draft = planToCourseDraft(filtered, []); // no generated questions yet (future work)
+    const stored: StoredCompiledPlan = {
+      version: 1,
+      approvedAtISO: new Date().toISOString(),
+      model,
+      sourceTitle: compiledTitle,
+      unitCount: filtered.units.length,
+      lessonCount: draft.lessons.length,
+      draft,
+    };
+    saveCompiledPlan(stored);
+    setApproved(stored);
+    setPhase("input");
+    setResult(null);
+  };
+
+  const startOver = () => {
+    setPhase("input");
+    setResult(null);
+    setError(null);
+  };
+
+  return (
+    <div>
+      <Link href="/teach" className="text-sm text-[var(--model-blue-text)] underline">
+        ← Back to teacher workspace
+      </Link>
+
+      <h1 className="mt-2 text-2xl font-bold">Compile a course</h1>
+      <p className="mt-1 text-sm text-app">
+        Turn your uploaded material into a draft course — units, lessons, and the order to learn them in. The AI
+        writes the draft; you review and approve it.
+      </p>
+      <p className="mt-2 rounded-xl bg-[color:rgba(177,140,255,0.16)] p-3 text-sm text-[var(--lavender-text)]">
+        ✦ {PROVENANCE}
+      </p>
+
+      {approved && phase !== "review" && <ApprovedBanner plan={approved} />}
+
+      {/* ── INPUT ──────────────────────────────────────────────────────── */}
+      {phase !== "review" && (
+        <section className="card mt-4 p-4" aria-labelledby="compile-source-heading">
+          <h2 id="compile-source-heading" className="font-bold">
+            1 · Choose source material
+          </h2>
+
+          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Source of material to compile">
+            <button
+              type="button"
+              onClick={() => setMode("docs")}
+              aria-pressed={mode === "docs"}
+              className={`min-h-12 rounded-xl px-4 text-sm ${
+                mode === "docs" ? "btn-primary text-white" : "btn-secondary"
+              }`}
+            >
+              Compile from your uploaded sections
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("paste")}
+              aria-pressed={mode === "paste"}
+              className={`min-h-12 rounded-xl px-4 text-sm ${
+                mode === "paste" ? "btn-primary text-white" : "btn-secondary"
+              }`}
+            >
+              Paste fresh text
+            </button>
+          </div>
+
+          {mode === "docs" &&
+            (docs.length === 0 ? (
+              <p className="mt-3 rounded-xl bg-[var(--coral-tint)] p-3 text-sm text-[var(--deep-ink)]">
+                No uploaded materials yet.{" "}
+                <Link href="/teach" className="underline">
+                  Upload a document on the teacher workspace
+                </Link>{" "}
+                first, or paste fresh text above.
+              </p>
+            ) : (
+              <div className="mt-3">
+                <label htmlFor="compile-doc" className="block text-sm font-medium">
+                  Document
+                </label>
+                <select
+                  id="compile-doc"
+                  className="mt-1 min-h-12 w-full rounded-xl border border-[color:var(--app-border)] bg-app p-2 text-sm text-app"
+                  value={selectedDocId || docs[0].id}
+                  onChange={(e) => setSelectedDocId(e.target.value)}
+                >
+                  {docs.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.title} — {d.sections.length} sections
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+
+          {mode === "paste" && (
+            <div className="mt-3">
+              <label htmlFor="compile-paste-title" className="block text-sm font-medium">
+                Title
+              </label>
+              <input
+                id="compile-paste-title"
+                type="text"
+                placeholder="e.g. Lecture 4 — Solow growth"
+                className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] bg-app p-3 text-sm text-app"
+                value={pasteTitle}
+                onChange={(e) => setPasteTitle(e.target.value)}
+              />
+              <label htmlFor="compile-paste-body" className="mt-3 block text-sm font-medium">
+                Material
+              </label>
+              <textarea
+                id="compile-paste-body"
+                placeholder="Paste lecture notes or a syllabus here…"
+                className="mt-1 block h-40 w-full rounded-xl border border-[color:var(--app-border)] bg-app p-3 text-sm text-app"
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* section preview: id, heading, chars */}
+          {sections.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold">
+                Sections to compile{" "}
+                <span className="stat-chip ml-1 align-middle text-xs">{sections.length}</span>
+              </h3>
+              <ul className="mt-2 space-y-1">
+                {sections.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-[color:var(--app-border)] px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium text-app">§ {s.heading}</span>
+                    <span className="text-xs text-app-muted">
+                      <code className="rounded bg-[var(--mist-gray)] px-1">{s.id}</code> · {s.text.length} chars
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={compile}
+              disabled={!canCompile}
+              className="btn-primary min-h-12 px-5 text-white disabled:opacity-50"
+            >
+              {phase === "compiling" ? "Asking the AI to draft a course plan…" : "Compile course plan"}
+            </button>
+            {phase === "compiling" && (
+              <p className="mt-2 text-xs text-app-muted" role="status">
+                Asking the AI to draft a course plan from {sections.length} section
+                {sections.length === 1 ? "" : "s"}…
+              </p>
+            )}
+          </div>
+
+          {phase === "error" && error && (
+            <p
+              className="mt-3 rounded-xl bg-[var(--coral-tint)] p-3 text-sm text-[var(--deep-ink)]"
+              role="alert"
+            >
+              {error.message}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ── REVIEW ─────────────────────────────────────────────────────── */}
+      {phase === "review" && result && (
+        <ReviewPlan
+          result={result}
+          model={model}
+          sourceTitle={compiledTitle}
+          headingBySection={headingBySection}
+          checked={checked}
+          onToggle={(slug) => setChecked((c) => ({ ...c, [slug]: !c[slug] }))}
+          checkedCount={checkedCount}
+          onApprove={ratify}
+          onCancel={startOver}
+        />
+      )}
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+
+function ApprovedBanner({ plan }: { plan: StoredCompiledPlan }) {
+  return (
+    <div
+      className="mt-4 rounded-2xl border border-[var(--growth-green)] bg-[var(--growth-green-tint)] p-4"
+      role="status"
+    >
+      <p className="font-bold text-[var(--growth-green-text)]">✅ Course plan approved</p>
+      <p className="mt-1 text-sm text-app">
+        {plan.unitCount} unit{plan.unitCount === 1 ? "" : "s"} · {plan.lessonCount} lesson
+        {plan.lessonCount === 1 ? "" : "s"} approved, marked <strong>planned_unverified</strong> until sources
+        attach.
+      </p>
+      <p className="mt-1 text-xs text-app-muted">
+        From “{plan.sourceTitle}”{plan.model ? ` · drafted by ${plan.model}` : ""}. Saved to your workspace;
+        no student sees it until sources are attached and you sign off.
+      </p>
+    </div>
+  );
+}
+
+function ReviewPlan({
+  result,
+  model,
+  sourceTitle,
+  headingBySection,
+  checked,
+  onToggle,
+  checkedCount,
+  onApprove,
+  onCancel,
+}: {
+  result: CoursePlanSanitizeResult;
+  model: string | null;
+  sourceTitle: string;
+  headingBySection: Map<string, string>;
+  checked: Record<string, boolean>;
+  onToggle: (slug: string) => void;
+  checkedCount: number;
+  onApprove: () => void;
+  onCancel: () => void;
+}) {
+  const { plan, droppedUnits, droppedLessons, droppedPrereqPairs } = result;
+  const anyDropped = droppedUnits > 0 || droppedLessons > 0 || droppedPrereqPairs.length > 0;
+
+  return (
+    <section className="mt-4" aria-labelledby="compile-review-heading">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="compile-review-heading" className="font-bold">
+          2 · Review the drafted plan
+        </h2>
+        <span className="text-xs text-app-muted">
+          from “{sourceTitle}”{model ? ` · ${model}` : ""}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-app-muted">
+        Every lesson below is checked by default. Uncheck any you don&apos;t want, then approve. Nothing is shown
+        to students yet — approving saves it as a <strong>planned_unverified</strong> draft.
+      </p>
+
+      {plan.units.map((unit, ui) => (
+        <div key={ui} className="card mt-3 p-4">
+          <h3 className="font-bold">
+            <span className="text-app-muted">Unit {ui + 1}</span> · {unit.title}
+          </h3>
+          <ul className="mt-3 space-y-2">
+            {unit.lessons.map((l) => (
+              <li key={l.conceptSlug} className="rounded-xl border border-[color:var(--app-border)] p-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-5 w-5 shrink-0"
+                    checked={!!checked[l.conceptSlug]}
+                    onChange={() => onToggle(l.conceptSlug)}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-baseline gap-2">
+                      <span className="font-semibold text-app">{l.title}</span>
+                      <code className="rounded bg-[var(--mist-gray)] px-1 text-xs text-[var(--deep-ink)]">
+                        {l.conceptSlug}
+                      </code>
+                      <span className="text-xs text-app-muted">~{l.estimatedMinutes} min</span>
+                    </span>
+                    <span className="mt-1 block text-sm text-app">{l.coreIdea}</span>
+                    <span className="mt-2 flex flex-wrap items-center gap-1">
+                      {l.sourceSectionIds.length === 0 ? (
+                        <span className="text-xs text-app-muted">no source section matched</span>
+                      ) : (
+                        l.sourceSectionIds.map((sid) => (
+                          <span key={sid} className="stat-chip text-xs" title={sid}>
+                            § {headingBySection.get(sid) ?? sid}
+                          </span>
+                        ))
+                      )}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      {/* prerequisite edges */}
+      <div className="card mt-3 p-4">
+        <h3 className="font-bold">Prerequisites (learn-before order)</h3>
+        {plan.prereqPairs.length === 0 ? (
+          <p className="mt-2 text-sm text-app-muted">
+            No prerequisite edges — the sanitizer kept none (every lesson stands alone).
+          </p>
+        ) : (
+          <ol className="mt-2 space-y-1 text-sm">
+            {plan.prereqPairs.map(([from, to], i) => (
+              <li key={i} className="flex items-center gap-2">
+                <code className="rounded bg-[var(--mist-gray)] px-1 text-xs text-[var(--deep-ink)]">{from}</code>
+                <span aria-hidden>→</span>
+                <code className="rounded bg-[var(--mist-gray)] px-1 text-xs text-[var(--deep-ink)]">{to}</code>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
+      {/* sanitizer honesty */}
+      {anyDropped && (
+        <div className="mt-3 rounded-2xl border border-[color:var(--app-border)] bg-[var(--coral-tint)] p-4">
+          <h3 className="font-bold text-[var(--deep-ink)]">Dropped by the sanitizer</h3>
+          <p className="mt-1 text-xs text-[var(--deep-ink)]">
+            Shown for transparency — these were removed so the plan stays honest.
+          </p>
+          <ul className="mt-2 space-y-1 text-sm text-[var(--deep-ink)]">
+            {droppedUnits > 0 && <li>{droppedUnits} unit(s) dropped (empty or malformed).</li>}
+            {droppedLessons > 0 && <li>{droppedLessons} lesson(s) dropped (missing fields or duplicate).</li>}
+            {droppedPrereqPairs.map((d, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-1">
+                <code className="rounded bg-white/50 px-1 text-xs">
+                  {d.pair[0]} → {d.pair[1]}
+                </code>
+                <span>— {DROP_REASON_LABEL[d.reason]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* ratify */}
+      <div className="card mt-4 p-4">
+        <p className="text-sm text-app">
+          <span className="font-semibold">{checkedCount}</span> lesson{checkedCount === 1 ? "" : "s"} selected.
+          Approving saves them to your workspace, each concept <strong>planned_unverified</strong> — no student
+          sees them until sources attach and you sign off.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onApprove}
+            disabled={checkedCount === 0}
+            className="btn-primary min-h-12 px-5 text-white disabled:opacity-50"
+          >
+            Approve course plan
+          </button>
+          <button type="button" onClick={onCancel} className="btn-secondary min-h-12 px-4 text-sm">
+            Discard draft
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}

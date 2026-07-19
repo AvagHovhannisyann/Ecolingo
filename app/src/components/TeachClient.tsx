@@ -554,6 +554,24 @@ export function TeachClient() {
         </span>
       </Link>
 
+      {/* AI course compiler entry point (D-020) — AI drafts a whole course plan
+          from uploaded material; the teacher reviews and ratifies (GATE-001) */}
+      <Link
+        href="/teach/compile"
+        className="card mt-3 flex items-center justify-between gap-2 p-4 hover:border-[var(--lavender)]"
+      >
+        <span>
+          <span className="font-bold">✦ Compile a course</span>
+          <span className="block text-xs text-app-muted">
+            Draft units, lessons &amp; prerequisites from your materials — you review and approve before anything
+            reaches students
+          </span>
+        </span>
+        <span aria-hidden className="text-[var(--lavender-text)]">
+          →
+        </span>
+      </Link>
+
       {/* upload */}
       <div className="card mt-4 p-4">
         <h2 className="font-bold">Add course material</h2>

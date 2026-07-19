@@ -1,31 +1,29 @@
 "use client";
 
 /**
- * Top-right stat strip (D-020): streak flame + count, gems (= XP for now,
- * gem-styled) + count, hearts + count. Wired to the REAL learner state —
- * streak from the deterministic study-day computation, gems from earned XP
- * (mastery evidence only). Hearts are rendered as a component but fed a
- * constant 5 until the hearts economy lands in a later wave.
+ * Top-right stat strip (D-020): streak flame + count, gems + count, hearts +
+ * count. Wired to the REAL learner economy (Wave 2 Stream K):
+ *  - streak  → economy.streakCount (deterministic UTC study-day streak);
+ *  - gems    → economy.gems (earned from lessons, quests, chests);
+ *  - hearts  → heartsAvailable(economy, now), including timed regeneration.
+ * All three update reactively through useLearnerState. The streak and gem
+ * counters populate as the lesson/review flows call the economy helpers
+ * (see learner-state.ts handoff notes).
  *
  * Layout: one fixed top bar. On mobile it spans the screen; on desktop it is
  * offset by the 240px sidebar. Content below is padded to clear it.
  */
 
-import { computeStreak } from "@/lib/stats";
+import { heartsAvailable } from "@/lib/engine/economy";
 import { useLearnerState } from "@/lib/learner-store";
 import { SyncBadge } from "./SyncBadge";
 import { FlameIcon, GemIcon, HeartIcon } from "./icons";
 
-// TODO(hearts-economy): hearts are a fixed 5 until the lives/refill system
-// ships in a later wave. Feed this from learner state when that lands.
-const HEARTS = 5;
-
 export function AppStatBar() {
   const state = useLearnerState();
-  const streak = state
-    ? computeStreak(state.auditLog.map((a) => a.at), new Date().toISOString())
-    : 0;
-  const gems = state?.xp ?? 0;
+  const streak = state?.economy.streakCount ?? 0;
+  const gems = state?.economy.gems ?? 0;
+  const hearts = state ? heartsAvailable(state.economy, new Date().toISOString()) : 0;
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 border-b-2 border-[color:var(--app-border)] bg-[color:rgba(19,31,36,0.92)] backdrop-blur min-[880px]:left-[240px]">
@@ -37,14 +35,14 @@ export function AppStatBar() {
             <span className="text-[color:var(--duo-gold)]">{streak}</span>
             <span className="sr-only">day study streak</span>
           </span>
-          <span className="stat-chip" title="Gems earned from real mastery evidence">
+          <span className="stat-chip" title="Gems earned from lessons, quests, and chests">
             <GemIcon className="h-6 w-6" />
             <span className="text-[color:var(--duo-blue-text)]">{gems}</span>
             <span className="sr-only">gems</span>
           </span>
           <span className="stat-chip" title="Hearts">
             <HeartIcon className="h-6 w-6" />
-            <span className="text-[color:var(--duo-red-text)]">{HEARTS}</span>
+            <span className="text-[color:var(--duo-red-text)]">{hearts}</span>
             <span className="sr-only">hearts</span>
           </span>
         </div>
