@@ -28,6 +28,7 @@ import {
   type DroppedPrereqReason,
 } from "@/lib/engine/compile-course";
 import { useTeacherState } from "@/lib/teacher-store";
+import { attachCompiledPlan, createCourse } from "@/lib/course";
 import {
   loadCompiledPlan,
   saveCompiledPlan,
@@ -162,7 +163,7 @@ export function CompileCourseClient() {
     ? result.plan.units.reduce((n, u) => n + u.lessons.filter((l) => checked[l.conceptSlug]).length, 0)
     : 0;
 
-  const ratify = () => {
+  const ratify = async () => {
     if (!result) return;
     // Keep only checked lessons; drop units left empty.
     const filtered: DraftCoursePlan = {
@@ -183,6 +184,18 @@ export function CompileCourseClient() {
       lessonCount: draft.lessons.length,
       draft,
     };
+    // D-022: bind the ratified plan to a REAL course with its own join code —
+    // that code is what the teacher shares; students who join it get this
+    // plan. In local-only mode (no Supabase) the plan still saves locally and
+    // the confirmation says so honestly (GATE-009).
+    const course = await createCourse(compiledTitle || "Untitled course");
+    if (course) {
+      const bound = await attachCompiledPlan(course.id, stored);
+      if (bound) {
+        stored.courseId = course.id;
+        stored.joinCode = course.joinCode;
+      }
+    }
     saveCompiledPlan(stored);
     setApproved(stored);
     setPhase("input");
@@ -380,6 +393,19 @@ function ApprovedBanner({ plan }: { plan: StoredCompiledPlan }) {
         {plan.lessonCount === 1 ? "" : "s"} approved, marked <strong>planned_unverified</strong> until sources
         attach.
       </p>
+      {plan.joinCode ? (
+        <p className="mt-2 rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3 text-sm">
+          Share this join code with your students:{" "}
+          <code className="text-base font-extrabold tracking-widest text-[var(--growth-green-text)]">{plan.joinCode}</code>
+          <span className="block text-xs text-app-muted">
+            Students sign up, enter the code, and receive this course on their learning path.
+          </span>
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-app-muted" role="note">
+          Cloud unavailable — the plan is saved on this device only; no join code could be created yet.
+        </p>
+      )}
       <p className="mt-1 text-xs text-app-muted">
         From “{plan.sourceTitle}”{plan.model ? ` · drafted by ${plan.model}` : ""}. Saved to your workspace;
         no student sees it until sources are attached and you sign off.

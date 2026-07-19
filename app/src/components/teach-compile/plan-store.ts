@@ -36,6 +36,10 @@ export interface StoredCompiledPlan {
   lessonCount: number;
   /** the real engine types — concepts are planned_unverified, lessons draft */
   draft: CourseDraft;
+  /** D-022: set when the plan was bound to a real course row (cloud mode) */
+  courseId?: string;
+  /** the bound course's join code — what the teacher shares with students */
+  joinCode?: string;
 }
 
 export function loadCompiledPlan(): StoredCompiledPlan | null {

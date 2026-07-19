@@ -349,3 +349,67 @@ export async function fetchClassMastery(courseId: string): Promise<ClassMastery>
     return {};
   }
 }
+
+// ---------------------------------------------------------------------------
+// D-022: compiled-plan binding — a ratified plan attached to a course row is
+// what makes a join code mean something.
+// ---------------------------------------------------------------------------
+
+/** Owner-only write (courses UPDATE RLS). False in local-only mode (GATE-009). */
+export async function attachCompiledPlan(courseId: string, plan: unknown): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  try {
+    const userId = await ensureSession();
+    if (!userId) return false;
+    const { error } = await supabase
+      .from("courses")
+      .update({ compiled_plan: plan, compiled_at: new Date().toISOString() })
+      .eq("id", courseId);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export interface EnrolledCoursePlan {
+  courseId: string;
+  title: string;
+  /** StoredCompiledPlan v1 as ratified by the teacher; shape re-validated by the consumer */
+  plan: unknown;
+  compiledAtISO: string | null;
+}
+
+/**
+ * Student view: the ratified plan of the course the caller is enrolled in.
+ * Null when not enrolled, the teacher hasn't compiled yet, or local-only mode.
+ */
+export async function fetchEnrolledCompiledPlan(): Promise<EnrolledCoursePlan | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  try {
+    const userId = await ensureSession();
+    if (!userId) return null;
+    const { data, error } = await supabase
+      .from("enrollments")
+      .select("course_id, courses(title, compiled_plan, compiled_at)")
+      .eq("user_id", userId)
+      .order("enrolled_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    const raw = data.courses as unknown;
+    const course = (Array.isArray(raw) ? raw[0] : raw) as
+      | { title: string; compiled_plan: unknown; compiled_at: string | null }
+      | null;
+    if (!course?.compiled_plan) return null;
+    return {
+      courseId: data.course_id as string,
+      title: course.title ?? "Your course",
+      plan: course.compiled_plan,
+      compiledAtISO: course.compiled_at ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
