@@ -1,0 +1,362 @@
+/**
+ * Exam plan — scoped styles (Wave 2 Stream N, D-020 dark-game restyle).
+ * CSS Modules (recommended by the Next 16 docs for component-specific
+ * styling — see node_modules/next/dist/docs/01-app/01-getting-started/11-css.md)
+ * so nothing here can collide with class names other streams add to their
+ * own pages. All color pairings below were checked against WCAG AA
+ * (4.5:1 normal text) against every --app-surface* base this file uses.
+ * Motion is confined to `prefers-reduced-motion: no-preference` blocks
+ * (IDEA-175).
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------------
+   Countdown header
+--------------------------------------------------------------------- */
+.header {
+  position: relative;
+  border-radius: 20px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 1.25rem;
+}
+
+/* red-amber-green urgency tint by distance to the exam; each pairing keeps
+   >=4.5:1 contrast for its label text (validated against --app-surface and
+   --app-surface-2 bases). */
+.header--urgent {
+  background: rgba(255, 75, 75, 0.16);
+  border-color: rgba(255, 75, 75, 0.4);
+}
+.header--soon {
+  background: rgba(255, 200, 0, 0.16);
+  border-color: rgba(255, 200, 0, 0.4);
+}
+.header--plenty {
+  background: rgba(88, 204, 2, 0.16);
+  border-color: rgba(88, 204, 2, 0.4);
+}
+.header--none {
+  background: var(--app-surface);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mascot {
+  height: 4.5rem;
+  width: 4.5rem;
+  flex-shrink: 0;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.headerCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow--urgent { color: var(--duo-red-text); }
+.eyebrow--soon { color: #ffd24d; }
+.eyebrow--plenty { color: var(--duo-green-text); }
+.eyebrow--none { color: var(--app-text-muted); }
+
+.countdownHeading {
+  margin: 0.2rem 0 0;
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+
+.countdownNumber {
+  font-size: 2.1rem;
+  font-weight: 800;
+  margin-right: 0.3rem;
+}
+
+.subline {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: var(--app-text-muted);
+  max-width: 42rem;
+}
+
+.dateField {
+  display: block;
+  max-width: 20rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.dateInput {
+  margin-top: 0.35rem;
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 12px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  color: var(--app-text);
+}
+.dateInput:focus-visible {
+  outline: 2px solid var(--duo-blue);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------
+   Section headings
+--------------------------------------------------------------------- */
+.sectionHeading {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.sectionIntro {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--app-text-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Timeline
+--------------------------------------------------------------------- */
+.timeline {
+  position: relative;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 0.55rem;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  width: 2px;
+  background: var(--app-border);
+}
+
+.dayGroup {
+  position: relative;
+  padding-left: 2.1rem;
+}
+
+.dayHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.dayHeading h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.dayMarker {
+  position: absolute;
+  left: 0.05rem;
+  top: 0.18rem;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 999px;
+  background: var(--app-surface-2);
+  border: 2px solid var(--app-border-strong);
+}
+
+.dayGroupToday .dayMarker {
+  background: var(--duo-blue);
+  border-color: var(--duo-blue-edge);
+}
+.dayGroupToday .dayHeading h3 {
+  color: var(--duo-blue-text);
+}
+
+.dayGroupOverdue .dayMarker {
+  background: var(--duo-red);
+  border-color: var(--duo-red-edge);
+}
+.dayGroupOverdue .dayHeading h3 {
+  color: var(--duo-red-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dayGroupToday .dayMarker {
+    animation: exam-pulse-marker 1.8s ease-in-out infinite;
+  }
+}
+@keyframes exam-pulse-marker {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(28, 176, 246, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(28, 176, 246, 0); }
+}
+
+.cardList {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.reviewCard {
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 0.8rem 0.9rem;
+}
+.reviewCardOverdue {
+  border-color: rgba(255, 75, 75, 0.4);
+  background: rgba(255, 75, 75, 0.1);
+}
+.reviewCardExam {
+  border-color: rgba(255, 200, 0, 0.45);
+}
+
+.reviewConcept {
+  margin: 0;
+  font-weight: 700;
+}
+.reviewReason {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--app-text-muted);
+}
+
+.emptyTimeline {
+  margin-top: 1rem;
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: var(--app-text-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reviewCard {
+    animation: exam-item-enter 380ms ease-out both;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Examinable-concepts checklist
+--------------------------------------------------------------------- */
+.checklist {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.checklistItem {
+  display: flex;
+  gap: 0.75rem;
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 0.8rem 0.9rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .checklistItem {
+    animation: exam-item-enter 380ms ease-out both;
+  }
+}
+
+@keyframes exam-item-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.evidenceMark {
+  flex-shrink: 0;
+  height: 1.6rem;
+  width: 1.6rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--app-border-strong);
+  margin-top: 0.1rem;
+}
+.evidenceMarkFilled {
+  background: var(--duo-green);
+  border-color: var(--duo-green-edge);
+}
+.evidenceMarkEmpty {
+  background: transparent;
+}
+
+.checklistBody {
+  flex: 1;
+  min-width: 0;
+}
+.checklistHeadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.checklistName {
+  font-weight: 700;
+}
+
+.evidenceBadge {
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+/* not-started uses the neutral surface pairing already used app-wide;
+   the other three match the mastery-band colors already established in
+   ProgressClient (orange = warning-not-danger, kept distinct from the
+   red reserved for hearts/danger and from the countdown's own red band). */
+.evidenceNotStarted { background: var(--app-surface-2); color: var(--app-text); }
+.evidenceAtRisk { background: rgba(255, 150, 0, 0.16); color: #ffb060; }
+.evidenceDeveloping { background: rgba(255, 200, 0, 0.16); color: #ffd24d; }
+.evidenceStrong { background: rgba(88, 204, 2, 0.16); color: var(--duo-green-text); }
+
+.checklistMeta {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--app-text-muted);
+}
+.checklistNext {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--app-text-muted);
+}
+
+.emptyChecklist {
+  margin-top: 0.75rem;
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: var(--app-text-muted);
+}
