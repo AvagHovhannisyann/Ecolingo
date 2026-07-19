@@ -43,7 +43,7 @@ export function AmbientHero({
   const [videoFailed, setVideoFailed] = useState(false);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-gray-200">
+    <div className="relative overflow-hidden rounded-2xl border border-[color:var(--app-border)]">
       {reducedMotion === false && !videoFailed ? (
         <video
           src={videoSrc}

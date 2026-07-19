@@ -25,7 +25,8 @@ const AXE = readFileSync(require.resolve("axe-core").replace(/axe\.js$/, "axe.mi
 const BASE = process.env.A11Y_BASE || "http://localhost:3100";
 
 const routes = [
-  "/", "/onboarding", "/review", "/lab", "/lab/solow", "/lab/budget",
+  // "/" now redirects to "/learn" (D-020); "/learn" is the learner home.
+  "/", "/learn", "/quests", "/shop", "/onboarding", "/review", "/lab", "/lab/solow", "/lab/budget",
   "/bank", "/exam", "/progress", "/teach", "/teach/analytics",
   "/lesson/lesson-solow-steady-state", "/lesson/lesson-production-function",
 ];

@@ -22,7 +22,7 @@ export function ReviewClient() {
   const state = useLearnerState();
   const [active, setActive] = useState<ReviewItem | null>(null);
   const [doneSlugs, setDoneSlugs] = useState<string[]>([]);
-  if (!state) return <p className="p-4 text-sm text-gray-500">Loading reviews…</p>;
+  if (!state) return <p className="p-4 text-sm text-app-muted">Loading reviews…</p>;
 
   const nowISO = new Date().toISOString();
   const queue = buildReviewQueue({
@@ -70,7 +70,7 @@ export function ReviewClient() {
           />
           <h1 className="text-xl font-semibold">Review: {concept?.name}</h1>
         </div>
-        <p className="mt-1 text-sm text-gray-600">{active.reasonText}</p>
+        <p className="mt-1 text-sm text-app-muted">{active.reasonText}</p>
         <div className="mt-4">
           <QuestionCard key={`${active.conceptSlug}-${q.id}`} question={q} onEvidence={(e, r) => handleEvidence(active, e, r.correct)} />
         </div>
@@ -95,9 +95,9 @@ export function ReviewClient() {
       </div>
 
       {state.auditLog.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-gray-200 p-4 text-sm text-gray-600">
+        <p className="mt-4 rounded-2xl border border-[color:var(--app-border)] p-4 text-sm text-app-muted">
           Nothing to review yet — reviews are scheduled from real evidence. Start with{" "}
-          <Link href="/" className="underline">
+          <Link href="/learn" className="underline">
             today&apos;s lesson
           </Link>
           .
@@ -116,7 +116,7 @@ export function ReviewClient() {
                 height={200}
                 className="art-enter h-20 w-20 shrink-0 rounded-2xl object-cover"
               />
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-app-muted">
                 <p className="font-semibold text-[var(--deep-ink)]">All caught up!</p>
                 <p>Nothing due right now — that&apos;s the schedule working, not you slacking.</p>
               </div>
@@ -126,9 +126,9 @@ export function ReviewClient() {
             {due.map((item) => {
               const c = concepts.find((x) => x.slug === item.conceptSlug);
               return (
-                <li key={item.conceptSlug} className="rounded-2xl border border-gray-300 p-4">
+                <li key={item.conceptSlug} className="rounded-2xl border border-[color:var(--app-border)] p-4">
                   <p className="font-medium">{c?.name}</p>
-                  <p className="mt-1 text-sm text-gray-600">{item.reasonText}</p>
+                  <p className="mt-1 text-sm text-app-muted">{item.reasonText}</p>
                   <button
                     type="button"
                     onClick={() => setActive(item)}
@@ -146,14 +146,14 @@ export function ReviewClient() {
             {upcoming.map((item) => {
               const c = concepts.find((x) => x.slug === item.conceptSlug);
               return (
-                <li key={item.conceptSlug} className="rounded-2xl border border-gray-200 p-3 text-sm">
+                <li key={item.conceptSlug} className="rounded-2xl border border-[color:var(--app-border)] p-3 text-sm">
                   <span className="font-medium">{c?.name}</span> — due {new Date(item.dueAt).toLocaleDateString()}
-                  <span className="block text-gray-600">{item.reasonText}</span>
+                  <span className="block text-app-muted">{item.reasonText}</span>
                 </li>
               );
             })}
             {upcoming.length === 0 && due.length === 0 && (
-              <li className="text-sm text-gray-600">Complete a lesson to start the schedule.</li>
+              <li className="text-sm text-app-muted">Complete a lesson to start the schedule.</li>
             )}
           </ul>
         </>

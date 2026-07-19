@@ -31,7 +31,7 @@ export function BankClient() {
   const published = usePublishedQuestions();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [attemptKey, setAttemptKey] = useState(0);
-  if (!state) return <p className="p-4 text-sm text-gray-500">Loading question bank…</p>;
+  if (!state) return <p className="p-4 text-sm text-app-muted">Loading question bank…</p>;
 
   // teacher-ratified AI drafts (D-014) join the bank next to the seed content;
   // they carry provenance "ai_approved" and are scored by the same engine.
@@ -48,7 +48,7 @@ export function BankClient() {
     return (
       <div>
         <h1 className="text-xl font-semibold">Practice: {concept?.name}</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           {TYPE_LABELS[active.type]} · difficulty {active.difficulty}/5 · ungraded practice — mistakes only teach
           the schedule where to help.
         </p>
@@ -81,7 +81,7 @@ export function BankClient() {
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-2xl border border-gray-200">
+      <div className="relative overflow-hidden rounded-2xl border border-[color:var(--app-border)]">
         <Image
           src="/art/bank-header.webp"
           alt=""
@@ -106,7 +106,7 @@ export function BankClient() {
             <h2 className="font-medium">
               {c.name}
               {m && (
-                <span className="ml-2 text-xs text-gray-500">
+                <span className="ml-2 text-xs text-app-muted">
                   conceptual {Math.round(m.conceptual * 100)}%
                 </span>
               )}
@@ -120,9 +120,9 @@ export function BankClient() {
                       setActiveId(q.id);
                       setAttemptKey((k) => k + 1);
                     }}
-                    className="block min-h-12 w-full rounded-xl border border-gray-300 p-3 text-left hover:bg-gray-50"
+                    className="block min-h-12 w-full rounded-xl border border-[color:var(--app-border)] p-3 text-left hover:bg-[color:var(--app-surface-2)]"
                   >
-                    <span className="text-xs uppercase tracking-wide text-gray-500">
+                    <span className="text-xs uppercase tracking-wide text-app-muted">
                       {TYPE_LABELS[q.type]} · difficulty {q.difficulty}/5
                       {q.transferDistance > 0 ? " · transfer" : ""}
                       {q.provenance === "ai_approved" && (

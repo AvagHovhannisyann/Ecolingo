@@ -10,10 +10,10 @@ import { useSyncExternalStore } from "react";
 import { getSyncStatus, onSyncStatus, type SyncStatus } from "@/lib/sync";
 
 const LABELS: Record<SyncStatus, { text: string; cls: string }> = {
-  local_only: { text: "Local only", cls: "text-gray-500" },
-  syncing: { text: "Syncing…", cls: "text-gray-600" },
-  synced: { text: "Synced ✓", cls: "text-green-700" },
-  error: { text: "Sync error — progress kept locally", cls: "text-orange-700" },
+  local_only: { text: "Local only", cls: "text-app-faint" },
+  syncing: { text: "Syncing…", cls: "text-app-muted" },
+  synced: { text: "Synced ✓", cls: "text-[color:var(--duo-green-text)]" },
+  error: { text: "Sync error — progress kept locally", cls: "text-[color:#ffb060]" },
 };
 
 export function SyncBadge() {

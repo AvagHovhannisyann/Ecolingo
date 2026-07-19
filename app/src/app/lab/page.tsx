@@ -24,7 +24,7 @@ export default function LabHubPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">Visual Labs</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-app-muted">
         Manipulate the models instead of reading about them. Every lab is computed from the model equations
         in code — the geometry always obeys the mathematics.
       </p>
@@ -32,14 +32,14 @@ export default function LabHubPage() {
         {LABS.map((lab) => (
           <li key={lab.title}>
             {lab.href ? (
-              <Link href={lab.href} className="block rounded-2xl border border-gray-900 p-4 hover:bg-gray-50">
+              <Link href={lab.href} className="block rounded-2xl border border-[color:var(--app-border-strong)] p-4 hover:bg-[color:var(--app-surface-2)]">
                 <span className="font-medium">{lab.title}</span>
-                <span className="block text-sm text-gray-600">{lab.description}</span>
+                <span className="block text-sm text-app-muted">{lab.description}</span>
               </Link>
             ) : (
-              <div className="rounded-2xl border border-gray-200 bg-[var(--mist-gray)]/25 p-4">
-                <span className="font-medium text-gray-700">🔒 {lab.title}</span>
-                <span className="block text-sm text-gray-600">{lab.description} · scheduled (see roadmap)</span>
+              <div className="rounded-2xl border border-[color:var(--app-border)] bg-[var(--mist-gray)]/25 p-4">
+                <span className="font-medium text-app">🔒 {lab.title}</span>
+                <span className="block text-sm text-app-muted">{lab.description} · scheduled (see roadmap)</span>
               </div>
             )}
           </li>

@@ -11,6 +11,11 @@
  * Deterministic: no network beyond the local app; every checkpoint prints
  * "✓ <checkpoint>" and the run ends with "SMOKE PASS".
  *
+ * Note (D-020 shell restructure): the learner home moved from `/` to `/learn`
+ * (`/` now redirects there). Every "return home" navigation targets `/learn`
+ * directly; the checkpoints are unchanged — same onboarding invitation, same
+ * gating order, same unlock evidence, just at the new route.
+ *
  * Env:
  *   SMOKE_PORT           app port (default 3200 locally; the main tree uses 3100)
  *   PLAYWRIGHT_MODULE    playwright ESM entry (default the sandbox install)
@@ -36,7 +41,7 @@ async function answerCorrect(optionSubstring, confidence = "Fairly sure") {
 
 try {
   // ---------- onboarding (spec §7) ----------
-  await page.goto(`${BASE}/`);
+  await page.goto(`${BASE}/learn`);
   await page.waitForSelector("text=Personalize your path");
   log("home shows onboarding invitation for new learners");
   await page.click("text=Personalize your path");
@@ -101,7 +106,7 @@ try {
   log("production-function lesson complete with mastery summary");
 
   // ---------- steady-state unlocks, then complete it ----------
-  await page.goto(`${BASE}/`);
+  await page.goto(`${BASE}/learn`);
   await page.waitForSelector('a[href*="lesson-solow-steady-state"]');
   log("steady-state lesson unlocked by production-function mastery evidence");
   await page.click("text=The Solow steady state");
@@ -125,7 +130,7 @@ try {
   log("steady-state lesson complete");
 
   // ---------- golden-rule unlocks ----------
-  await page.goto(`${BASE}/`);
+  await page.goto(`${BASE}/learn`);
   await page.waitForSelector('a[href*="lesson-golden-rule"]');
   log("Golden Rule lesson unlocked by steady-state mastery evidence");
 

@@ -81,7 +81,7 @@ const CELL_STYLE: Record<CellState, { symbol: string; label: string; className: 
   none: {
     symbol: "·",
     label: "no evidence yet",
-    className: "bg-[var(--mist-gray)] text-gray-600",
+    className: "bg-[var(--mist-gray)] text-app-muted",
   },
 };
 
@@ -172,7 +172,7 @@ export function ClassAnalyticsClient() {
         </Link>
       </div>
       <h1 className="text-2xl font-bold">Class analytics</h1>
-      <p className="mt-1 text-sm text-gray-700">
+      <p className="mt-1 text-sm text-app">
         What your class has mastered, and what to reteach next — from live enrollment and mastery data. No student
         names, no single grade.
       </p>
@@ -183,7 +183,7 @@ export function ClassAnalyticsClient() {
 
       {phase === "loading" && (
         <div className="card mt-4 p-4">
-          <p className="text-sm text-gray-500" role="status">
+          <p className="text-sm text-app-muted" role="status">
             Loading class data…
           </p>
         </div>
@@ -220,7 +220,7 @@ function CourseSwitcher({
       </label>
       <select
         id="section-switcher"
-        className="min-h-12 flex-1 rounded-xl border border-gray-400 bg-white p-2 text-sm"
+        className="min-h-12 flex-1 rounded-xl border border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-2 text-sm"
         value={selectedId}
         onChange={(e) => onSwitch(e.target.value)}
       >
@@ -238,7 +238,7 @@ function OfflineCard() {
   return (
     <div className="card mt-4 p-5" role="status">
       <h2 className="font-bold">Cloud connection needed</h2>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-app-muted">
         Class analytics reads your enrolled learners&apos; mastery from the cloud. Once you&apos;re online and students
         have joined with your class code, their progress — and what to reteach next — appears here. Nothing to see yet
         is not an error.
@@ -252,12 +252,12 @@ function EmptyCard({ course }: { course: CourseSummary }) {
     <div className="card mt-4 p-5">
       <h2 className="font-bold">{course.title}</h2>
       <div className="mt-3 inline-block rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
-        <p className="text-xs text-gray-600">Class join code — learners enter this to enroll</p>
+        <p className="text-xs text-app-muted">Class join code — learners enter this to enroll</p>
         <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
           {course.joinCode}
         </p>
       </div>
-      <p className="mt-3 text-sm text-gray-600" role="status">
+      <p className="mt-3 text-sm text-app-muted" role="status">
         No students have enrolled yet. Share your join code — once learners join and start practicing, their mastery
         and your reteach priorities show up here.
       </p>
@@ -307,12 +307,12 @@ function DataView({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-bold">{course.title}</h2>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-app">
               {roster.length} student{roster.length === 1 ? "" : "s"} enrolled
             </p>
           </div>
           <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-2">
-            <p className="text-xs text-gray-600">Join code</p>
+            <p className="text-xs text-app-muted">Join code</p>
             <p className="font-mono text-xl font-bold tracking-[0.25em] text-[var(--growth-green-text)]">
               {course.joinCode}
             </p>
@@ -325,7 +325,7 @@ function DataView({
         <h2 id="reteach-heading" className="font-bold">
           Reteach next
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Ranked by where the class is struggling most. Each card explains why.
         </p>
         <ol className="mt-3 space-y-3">
@@ -347,7 +347,7 @@ function DataView({
                     {badge.label}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-gray-700">{item.reason}</p>
+                <p className="mt-2 text-sm text-app">{item.reason}</p>
               </li>
             );
           })}
@@ -359,7 +359,7 @@ function DataView({
         <h2 id="heatmap-heading" className="font-bold">
           Concept × student heatmap
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Each cell is a learner&apos;s conceptual grasp of a concept. Color and symbol both encode the level, so it
           reads without relying on color.
         </p>
@@ -375,7 +375,7 @@ function DataView({
                   Concept
                 </th>
                 {roster.map((r) => (
-                  <th key={r.userId} scope="col" className="p-2 text-center text-xs font-semibold text-gray-600">
+                  <th key={r.userId} scope="col" className="p-2 text-center text-xs font-semibold text-app-muted">
                     {studentLabel.get(r.userId)}
                   </th>
                 ))}
@@ -417,7 +417,7 @@ function DataView({
         <h2 id="dimensions-heading" className="font-bold">
           Mastery by dimension
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Class averages across the five learning dimensions — never collapsed into one grade. Averaged over students
           who have practiced each concept.
         </p>
@@ -434,7 +434,7 @@ function DataView({
                   </span>
                 </div>
                 {s.studentsWithEvidence === 0 ? (
-                  <p className="mt-2 text-sm text-gray-600">No evidence yet — nobody has practiced this concept.</p>
+                  <p className="mt-2 text-sm text-app-muted">No evidence yet — nobody has practiced this concept.</p>
                 ) : (
                   <ul className="mt-3 space-y-2">
                     {MASTERY_DIMENSIONS.map((dim) => {
@@ -443,11 +443,11 @@ function DataView({
                       return (
                         <li key={dim}>
                           <div className="flex items-center justify-between text-xs">
-                            <span className={isWeakest ? "font-semibold text-[#cf3d3d]" : "text-gray-700"}>
+                            <span className={isWeakest ? "font-semibold text-[#cf3d3d]" : "text-app"}>
                               {DIMENSION_LABELS[dim]}
                               {isWeakest ? " — weakest" : ""}
                             </span>
-                            <span className="tabular-nums text-gray-700">{pct(value)}%</span>
+                            <span className="tabular-nums text-app">{pct(value)}%</span>
                           </div>
                           <div
                             className="bar-track mt-1 h-3 w-full"
@@ -480,7 +480,7 @@ function Legend() {
       {order.map((k) => {
         const s = CELL_STYLE[k];
         return (
-          <li key={k} className="flex items-center gap-1.5 text-xs text-gray-700">
+          <li key={k} className="flex items-center gap-1.5 text-xs text-app">
             <span
               className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-bold ${s.className}`}
               aria-hidden

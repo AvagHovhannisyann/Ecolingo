@@ -22,7 +22,7 @@ export function OnboardingClient() {
   const state = useLearnerState();
   const [stepIndex, setStepIndex] = useState(0);
   const [diagnosticNote, setDiagnosticNote] = useState<string | null>(null);
-  if (!state) return <p className="p-4 text-sm text-gray-500">Loading…</p>;
+  if (!state) return <p className="p-4 text-sm text-app-muted">Loading…</p>;
 
   const step = STEPS[stepIndex];
   const isLast = stepIndex === STEPS.length - 1;
@@ -30,7 +30,7 @@ export function OnboardingClient() {
   const next = () => {
     if (isLast) {
       mutateLearnerState((s) => updateProfile(s, { onboarded: true }));
-      router.push("/");
+      router.push("/learn");
     } else {
       setStepIndex((i) => i + 1);
     }
@@ -48,14 +48,14 @@ export function OnboardingClient() {
         width={1344}
         height={768}
         priority
-        className="art-enter mb-4 h-32 w-full rounded-2xl border border-gray-200 object-cover"
+        className="art-enter mb-4 h-32 w-full rounded-2xl border border-[color:var(--app-border)] object-cover"
       />
       <nav aria-label="Onboarding progress" className="flex gap-1">
         {STEPS.map((s, i) => (
           <span
             key={s}
             aria-current={i === stepIndex ? "step" : undefined}
-            className={`h-2 flex-1 rounded-full ${i <= stepIndex ? "bg-gray-900" : "bg-gray-200"}`}
+            className={`h-2 flex-1 rounded-full ${i <= stepIndex ? "bg-[color:var(--duo-green)]" : "bg-[color:var(--app-surface-2)]"}`}
           />
         ))}
       </nav>
@@ -132,7 +132,7 @@ export function OnboardingClient() {
               type="number"
               min={5}
               max={120}
-              className="mt-1 block w-full rounded-xl border border-gray-400 p-3"
+              className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] p-3"
               value={state.plan.minutesPerDay}
               onChange={(e) =>
                 mutateLearnerState((s) =>
@@ -145,7 +145,7 @@ export function OnboardingClient() {
             Exam date (optional)
             <input
               type="date"
-              className="mt-1 block w-full rounded-xl border border-gray-400 p-3"
+              className="mt-1 block w-full rounded-xl border border-[color:var(--app-border)] p-3"
               value={state.plan.examDateISO?.slice(0, 10) ?? ""}
               onChange={(e) =>
                 mutateLearnerState((s) =>
@@ -181,7 +181,7 @@ export function OnboardingClient() {
       )}
 
       {step === "preferences" && diagnosticNote && (
-        <p className="mt-4 rounded-xl bg-gray-100 p-3 text-sm" role="status">
+        <p className="mt-4 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm" role="status">
           {diagnosticNote}
         </p>
       )}
@@ -206,7 +206,7 @@ export function OnboardingClient() {
               onClick={() => setProfile({ explanationOrder: value })}
             />
           ))}
-          <label className="mt-2 flex min-h-12 items-center gap-3 rounded-xl border border-gray-300 p-3 text-sm">
+          <label className="mt-2 flex min-h-12 items-center gap-3 rounded-xl border border-[color:var(--app-border)] p-3 text-sm">
             <input
               type="checkbox"
               checked={state.profile.readingLevel === "simpler"}
@@ -228,7 +228,7 @@ export function OnboardingClient() {
           </button>
         )}
       </div>
-      <p className="mt-3 text-xs text-gray-500">
+      <p className="mt-3 text-xs text-app-muted">
         Everything here is optional and editable later under Progress → personalization.
       </p>
     </div>
@@ -239,7 +239,7 @@ function StepShell({ title, why, children }: { title: string; why: string; child
   return (
     <section className="mt-6">
       <h1 className="text-xl font-semibold">{title}</h1>
-      <p className="mt-1 text-sm text-gray-600">{why}</p>
+      <p className="mt-1 text-sm text-app-muted">{why}</p>
       <div className="mt-4 space-y-2">{children}</div>
     </section>
   );
@@ -266,7 +266,7 @@ function ChoiceButton({
       }`}
     >
       <span className="font-medium">{label}</span>
-      {hint && <span className={`block text-xs ${selected ? "text-gray-200" : "text-gray-600"}`}>{hint}</span>}
+      {hint && <span className={`block text-xs ${selected ? "text-app-faint" : "text-app-muted"}`}>{hint}</span>}
     </button>
   );
 }

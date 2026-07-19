@@ -54,7 +54,7 @@ function ProposalCard({
         </p>
         {isAi ? (
           <span
-            className="rounded-full bg-[#f4f1ff] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender-text)]"
+            className="rounded-full bg-[color:rgba(177,140,255,0.16)] px-2 py-0.5 text-[11px] font-semibold text-[var(--lavender-text)]"
             title="Suggested by the AI curriculum assistant — approve to make it a real source"
           >
             ✦ AI-suggested
@@ -65,7 +65,7 @@ function ProposalCard({
           </span>
         )}
       </div>
-      <p className="mt-1 text-xs text-gray-600">
+      <p className="mt-1 text-xs text-app-muted">
         {isAi ? (
           <>Why: {link.reason || "the section explains this concept"}</>
         ) : (
@@ -80,7 +80,7 @@ function ProposalCard({
         {" · "}est. p. {section.pageStart}
         {section.pageEnd !== section.pageStart ? `–${section.pageEnd}` : ""}
       </p>
-      <blockquote className="mt-2 border-l-4 border-[var(--mist-gray-deep)] pl-3 text-sm text-gray-700">
+      <blockquote className="mt-2 border-l-4 border-[var(--mist-gray-deep)] pl-3 text-sm text-app">
         {section.text.slice(0, 240)}
         {section.text.length > 240 ? "…" : ""}
       </blockquote>
@@ -149,7 +149,7 @@ function SectionCard({
             <input
               type="text"
               aria-label="Section title"
-              className="min-w-0 flex-1 rounded-xl border border-gray-400 p-2 text-sm"
+              className="min-w-0 flex-1 rounded-xl border border-[color:var(--app-border)] p-2 text-sm"
               value={draft}
               disabled={saving}
               autoFocus
@@ -207,12 +207,12 @@ function SectionCard({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
-          <p className="text-xs text-gray-600">Join code — learners enter this to enroll</p>
+          <p className="text-xs text-app-muted">Join code — learners enter this to enroll</p>
           <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
             {course.joinCode}
           </p>
         </div>
-        <p className="text-sm text-gray-700">{enrolledLabel(course.studentCount)}</p>
+        <p className="text-sm text-app">{enrolledLabel(course.studentCount)}</p>
       </div>
       <Link
         href={`/teach/analytics?course=${course.id}`}
@@ -301,7 +301,7 @@ function ClassSections() {
     return (
       <div className="card mt-4 p-4">
         <h2 className="font-bold">Your sections</h2>
-        <p className="mt-1 text-sm text-gray-500" role="status">
+        <p className="mt-1 text-sm text-app-muted" role="status">
           Setting up your sections…
         </p>
       </div>
@@ -312,7 +312,7 @@ function ClassSections() {
     return (
       <div className="card mt-4 p-4">
         <h2 className="font-bold">Your sections</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-app-muted">
           Class features need the cloud connection — your sections, join codes, and rosters appear here once
           you&apos;re online.
         </p>
@@ -327,7 +327,7 @@ function ClassSections() {
           <h2 id="sections-heading" className="font-bold">
             Your sections
           </h2>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-app-muted">
             Each section has its own join code and roster, and reuses the same grounded sources and question bank.
           </p>
         </div>
@@ -360,7 +360,7 @@ function ClassSections() {
             <input
               id="new-section-title"
               type="text"
-              className="mt-2 block w-full rounded-xl border border-gray-400 p-3 text-sm"
+              className="mt-2 block w-full rounded-xl border border-[color:var(--app-border)] p-3 text-sm"
               placeholder="e.g. ECON 13210 — Fall 2026, Section B"
               value={newTitle}
               disabled={creating}
@@ -428,7 +428,7 @@ export function TeachClient() {
   const [aiBusyDoc, setAiBusyDoc] = useState<string | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
 
-  if (!teacher) return <p className="p-4 text-sm text-gray-500">Loading teacher workspace…</p>;
+  if (!teacher) return <p className="p-4 text-sm text-app-muted">Loading teacher workspace…</p>;
 
   const runAiSuggest = async (doc: TeacherDoc) => {
     setAiBusyDoc(doc.id);
@@ -512,7 +512,7 @@ export function TeachClient() {
   return (
     <div>
       {/* Higgsfield teacher-desk art (approved decorative slot §17.2) */}
-      <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-200">
+      <div className="relative mb-4 overflow-hidden rounded-2xl border border-[color:var(--app-border)]">
         <Image
           src="/art/teach-header.webp"
           alt=""
@@ -528,7 +528,7 @@ export function TeachClient() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-700">
+      <p className="text-sm text-app">
         Upload lecture notes or a syllabus. Ecolingo splits it into sections, then <em>proposes</em> which
         section grounds which concept — with the matched terms shown. Nothing is cited to students until{" "}
         <strong>you approve it</strong>; unmatched concepts stay honestly marked as unverified.
@@ -545,7 +545,7 @@ export function TeachClient() {
       >
         <span>
           <span className="font-bold">Class analytics</span>
-          <span className="block text-xs text-gray-600">
+          <span className="block text-xs text-app-muted">
             See what your class has mastered and what to reteach next
           </span>
         </span>
@@ -592,14 +592,14 @@ export function TeachClient() {
             type="text"
             aria-label="Title for the pasted material"
             placeholder="Title, e.g. Lecture 4 — Solow"
-            className="mt-2 block w-full rounded-xl border border-gray-400 p-3 text-sm"
+            className="mt-2 block w-full rounded-xl border border-[color:var(--app-border)] p-3 text-sm"
             value={pasteTitle}
             onChange={(e) => setPasteTitle(e.target.value)}
           />
           <textarea
             aria-label="Paste lecture notes"
             placeholder="Paste lecture notes here…"
-            className="mt-2 block h-40 w-full rounded-xl border border-gray-400 p-3 text-sm"
+            className="mt-2 block h-40 w-full rounded-xl border border-[color:var(--app-border)] p-3 text-sm"
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
           />
@@ -647,7 +647,7 @@ export function TeachClient() {
                   <button
                     type="button"
                     onClick={() => mutateTeacherState((s) => removeDoc(s, doc.id))}
-                    className="btn-danger min-h-12 px-4 text-sm text-white"
+                    className="btn-danger min-h-12 px-4 text-sm"
                   >
                     Remove
                   </button>
@@ -656,11 +656,11 @@ export function TeachClient() {
             ))}
           </ul>
           {aiNote && (
-            <p className="mt-2 text-xs text-gray-600" role="status">
+            <p className="mt-2 text-xs text-app-muted" role="status">
               {aiNote}
             </p>
           )}
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-app-muted">
             AI suggestions are advisory — they enter the review queue and still need your approval to become a source.
           </p>
         </div>
@@ -673,7 +673,7 @@ export function TeachClient() {
           <span className="stat-chip ml-1 align-middle text-xs">{pendingCount} pending</span>
         </h2>
         {teacher.docs.length === 0 && (
-          <p className="mt-2 text-sm text-gray-600">Upload a document to see proposed concept links here.</p>
+          <p className="mt-2 text-sm text-app-muted">Upload a document to see proposed concept links here.</p>
         )}
         {teacher.docs.length > 0 && pendingCount === 0 && (
           <p className="mt-2 rounded-xl bg-[var(--growth-green-tint)] p-3 text-sm" role="status">
@@ -711,13 +711,13 @@ export function TeachClient() {
                 <span>
                   {grounded ? "✅" : "⚠️"} <strong>{c.name}</strong>
                   {grounded && (
-                    <span className="block text-xs text-gray-600">
+                    <span className="block text-xs text-app-muted">
                       {links.length} approved source{links.length === 1 ? "" : "s"} — students now see real
                       citations
                     </span>
                   )}
                   {!grounded && (
-                    <span className="block text-xs text-gray-600">still planned &amp; unverified</span>
+                    <span className="block text-xs text-app-muted">still planned &amp; unverified</span>
                   )}
                 </span>
                 {grounded && (
@@ -787,7 +787,7 @@ function AuthoredQuestionsSection() {
   return (
     <div className="mt-5">
       <h2 className="font-bold">Practice questions (AI-drafted)</h2>
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-app-muted">
         The AI drafts questions from your approved sources. Confirm the correct answer, then approve — approved
         questions are scored by the deterministic engine, never by the AI.
       </p>
@@ -822,7 +822,7 @@ function AuthoredQuestionsSection() {
                   return (
                     <div key={key} className="mt-3 rounded-xl border border-[var(--lavender)] p-3">
                       <p className="text-sm font-medium">{d.stem}</p>
-                      <p className="mt-1 text-xs text-gray-500">Pick the correct answer (AI suggested one — confirm or change it):</p>
+                      <p className="mt-1 text-xs text-app-muted">Pick the correct answer (AI suggested one — confirm or change it):</p>
                       <div className="mt-2 space-y-1">
                         {d.options.map((opt, oi) => (
                           <label key={oi} className="flex cursor-pointer items-start gap-2 text-sm">
@@ -864,7 +864,7 @@ function AuthoredQuestionsSection() {
                 {authored.length > 0 && (
                   <ul className="mt-3 space-y-1">
                     {authored.map((q) => (
-                      <li key={q.id} className="flex items-center justify-between gap-2 text-xs text-gray-600">
+                      <li key={q.id} className="flex items-center justify-between gap-2 text-xs text-app-muted">
                         <span>✓ {q.stem.length > 60 ? q.stem.slice(0, 57) + "…" : q.stem}</span>
                         <button
                           type="button"
@@ -882,7 +882,7 @@ function AuthoredQuestionsSection() {
           })}
       </ul>
       {note && (
-        <p className="mt-2 text-xs text-gray-600" role="status">
+        <p className="mt-2 text-xs text-app-muted" role="status">
           {note}
         </p>
       )}

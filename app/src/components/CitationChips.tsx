@@ -17,8 +17,8 @@ export function CitationChips({ citations }: { citations: Citation[] }) {
           key={c.id}
           className={
             c.status === "planned_unverified"
-              ? "rounded-full border border-amber-400 bg-amber-50 px-3 py-1 text-xs text-amber-900"
-              : "rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs"
+              ? "rounded-full border border-[color:var(--duo-gold)] bg-[color:rgba(255,200,0,0.12)] px-3 py-1 text-xs text-[color:#ffcf4d]"
+              : "rounded-full border border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] px-3 py-1 text-xs"
           }
         >
           {c.status === "planned_unverified" ? "⚠ " : "📄 "}
@@ -54,7 +54,7 @@ export function UnverifiedBanner({ conceptSlug }: { conceptSlug?: string }) {
   }
   if (anyGrounded) {
     return (
-      <p className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900" role="note">
+      <p className="rounded-xl border border-[color:var(--duo-gold)] bg-[color:rgba(255,200,0,0.12)] p-3 text-sm text-[color:#ffcf4d]" role="note">
         <strong>Partially grounded course.</strong> Some concepts already cite the teacher&apos;s uploaded
         materials; the rest remain <em>planned &amp; unverified</em> until more sources are approved in the{" "}
         <a href="/teach" className="underline">
@@ -65,7 +65,7 @@ export function UnverifiedBanner({ conceptSlug }: { conceptSlug?: string }) {
     );
   }
   return (
-    <p className="rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900" role="note">
+    <p className="rounded-xl border border-[color:var(--duo-gold)] bg-[color:rgba(255,200,0,0.12)] p-3 text-sm text-[color:#ffcf4d]" role="note">
       <strong>Demo course, unverified content.</strong> No teacher materials have been ingested yet, so
       this content is compiled from standard course structure and is marked <em>planned &amp; unverified</em>.
       Citations will attach to real lecture pages once the teacher uploads course files.
