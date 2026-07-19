@@ -1,23 +1,28 @@
 /* ===========================================================================
    Ecolingo marketing landing — self-contained LIGHT theme.
 
-   This page is authored to be moved to `/` at merge. It ships inside the app's
-   root layout, which renders a sticky app header, a fixed mobile tab bar, and a
-   width-capped <main>. A marketing page needs the full viewport and none of the
-   app chrome, and it must stay light even if app globals turn dark. So every
-   rule here is scoped under `.landing`, the landing owns its own colour tokens
-   and Nunito type, and a small set of `body:has(.landing)` rules neutralise the
-   inherited app chrome. Nothing here touches globals.css or layout.tsx.
+   This page is served at `/` inside the app's root layout, which renders the
+   dark game shell: a fixed left <aside> rail, a fixed top <header> stat strip,
+   a bottom <nav> tab bar, and a width-capped <main> inside a desktop
+   left-padding wrapper <div>. A marketing page needs the full viewport and
+   none of the app chrome, and it must stay light even as app globals go dark.
+   So every rule here is scoped under `.landing`, the landing owns its own
+   colour tokens and Nunito type, and a small set of `body:has(.landing)`
+   rules neutralise the inherited app chrome. Nothing here touches
+   globals.css or layout.tsx.
    ========================================================================== */
 
 /* --- Neutralise inherited app chrome so the landing is truly full-bleed --- */
-body:has(.landing) > header {
-  display: none;
-}
+body:has(.landing) > aside,
+body:has(.landing) > header,
 body:has(.landing) > nav[aria-label="Primary mobile"] {
   display: none;
 }
-body:has(.landing) > main#main {
+/* the shell's desktop sidebar offset wrapper */
+body:has(.landing) > div {
+  padding-left: 0;
+}
+body:has(.landing) main#main {
   max-width: none;
   margin: 0;
   padding: 0;
