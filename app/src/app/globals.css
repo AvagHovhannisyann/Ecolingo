@@ -318,3 +318,22 @@ input::placeholder, textarea::placeholder { color: var(--app-text-faint); }
 
   .nav-pop { transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease; }
 }
+
+/* ---------------------------------------------------------------------------
+   Lesson immersion (D-020/D-022): inside a lesson the app chrome disappears —
+   the LessonShell provides its own exit, progress bar, and hearts. Same
+   body:has technique the light landing uses. Also fixes the mobile tab bar
+   overlaying the fixed feedback strip's Continue button.
+   ------------------------------------------------------------------------ */
+body:has([data-lesson-shell]) > aside,
+body:has([data-lesson-shell]) > header,
+body:has([data-lesson-shell]) > nav[aria-label="Primary mobile"] {
+  display: none;
+}
+body:has([data-lesson-shell]) > div {
+  padding-left: 0;
+}
+body:has([data-lesson-shell]) main#main {
+  max-width: none;
+  padding: 0;
+}

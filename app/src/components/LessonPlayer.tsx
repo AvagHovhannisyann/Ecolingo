@@ -119,9 +119,14 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       (q) => q.conceptSlug === fixed.conceptSlug && q.transferDistance === fixed.transferDistance
     );
     const mastery = state?.masteryBySlug[fixed.conceptSlug];
+    // First run of a lesson is DETERMINISTIC: the learner gets the
+    // teacher-authored question for this step (the authored sequence is the
+    // pedagogical canon). Adaptation kicks in on REPLAYS, where variety and
+    // difficulty matched to accumulated mastery are what a repeat needs.
     const shown = Object.values(prev).map((r) => r.question.id);
-    const picked = pickQuestion(pool, mastery, shown);
-    // Documented fallback: use the fixed questionId when adaptive returns null.
+    const isReplay = state?.completedLessonIds.includes(lesson.id) ?? false;
+    const picked = isReplay ? pickQuestion(pool, mastery, shown) : null;
+    // Fallback either way: the step's fixed questionId.
     const resolved: ResolvedQuestion = picked
       ? { question: picked.question, reason: picked.reason }
       : { question: fixed, reason: null };

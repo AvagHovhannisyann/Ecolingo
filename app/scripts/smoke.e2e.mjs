@@ -36,7 +36,9 @@ async function answerCorrect(optionSubstring, confidence = "Fairly sure") {
   await page.click(`label:has-text(${JSON.stringify(optionSubstring)})`);
   await page.click(`button:has-text(${JSON.stringify(confidence)})`);
   await page.click("button:has-text('Check')");
-  await page.waitForSelector("text=✓ Correct");
+  // In the lesson flow the green FeedbackStrip announces success ("Nicely
+  // done!"); bank/review still show the inline "✓ Correct" marker.
+  await page.waitForSelector("text=/Nicely done|✓ Correct/");
 }
 
 try {
@@ -99,11 +101,12 @@ try {
   await page.waitForSelector("text=Guided practice");
   await answerCorrect("adds less output than the one before");
   log("guided practice correct on diminishing marginal product");
-  await page.click("button:has-text('Continue')");
+  // after a scored answer the FeedbackStrip owns Continue (topmost match)
+  await page.locator("button:has-text('Continue')").last().click();
   await page.waitForSelector("text=Mastery check");
   await answerCorrect("each added server contributes less", "Certain");
   log("mastery check: diminishing-returns transfer to a new context");
-  await page.click("button:has-text('Continue')");
+  await page.locator("button:has-text('Continue')").last().click();
   await page.waitForSelector("text=Lesson complete");
   log("production-function lesson complete with mastery summary");
 

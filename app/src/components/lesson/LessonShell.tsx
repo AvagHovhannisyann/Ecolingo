@@ -45,7 +45,7 @@ export function LessonShell({
   const pct = total > 0 ? Math.round((Math.min(completed, total) / total) * 100) : 0;
 
   return (
-    <div className={styles.screen}>
+    <div className={styles.screen} data-lesson-shell>
       <div className={styles.topRow}>
         <button
           ref={closeRef}
