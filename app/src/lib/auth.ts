@@ -1,0 +1,128 @@
+"use client";
+
+/**
+ * Real accounts (D-022) on top of the guest-first anonymous flow.
+ *
+ * The funnel is Duolingo's: everyone starts as a zero-friction guest
+ * (anonymous Supabase session, existing behavior), and creating an account
+ * UPGRADES that anonymous user in place via auth.updateUser — the user id
+ * never changes, so every RLS-owned row (mastery, plans, enrollments,
+ * economy) survives account creation. Signing IN on a device that holds a
+ * guest session simply replaces the session (that guest's cloud rows remain
+ * under the old id; local state re-hydrates from the signed-in account).
+ *
+ * GATE-009: without Supabase env vars every call resolves to a typed
+ * "unavailable" result — the UI shows an honest degrade, never a crash.
+ */
+
+import { getSupabase } from "./supabase";
+
+export type Role = "teacher" | "student";
+
+export type AuthResult =
+  | { ok: true; userId: string }
+  | { ok: false; reason: "unavailable" | "invalid" | "exists" | "weak_password" | "error"; message: string };
+
+export interface AccountInfo {
+  userId: string;
+  email: string | null;
+  isAnonymous: boolean;
+  role: Role | null;
+  displayName: string | null;
+}
+
+/** Pure validation shared by UI and tests. */
+export function validateCredentials(email: string, password: string): { ok: boolean; message: string } {
+  const e = email.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return { ok: false, message: "That doesn't look like an email address." };
+  if (password.length < 8) return { ok: false, message: "Password needs at least 8 characters." };
+  return { ok: true, message: "" };
+}
+
+/** Map Supabase auth errors to honest, learner-readable reasons. */
+export function mapAuthError(message: string): Exclude<AuthResult, { ok: true }> {
+  const m = message.toLowerCase();
+  if (m.includes("already registered") || m.includes("already been registered") || m.includes("already exists"))
+    return { ok: false, reason: "exists", message: "An account with this email already exists — try logging in." };
+  if (m.includes("password") && (m.includes("weak") || m.includes("at least")))
+    return { ok: false, reason: "weak_password", message: "Password needs at least 8 characters." };
+  if (m.includes("invalid login credentials") || m.includes("invalid email or password"))
+    return { ok: false, reason: "invalid", message: "Email or password is incorrect." };
+  return { ok: false, reason: "error", message: "Couldn't reach the account service — your progress is still safe on this device." };
+}
+
+const UNAVAILABLE: AuthResult = {
+  ok: false,
+  reason: "unavailable",
+  message: "Accounts aren't available in this environment — progress stays on this device.",
+};
+
+/**
+ * Create an account. If the current session is anonymous, upgrade it in
+ * place (preserves the user id and all owned data); otherwise sign up fresh.
+ */
+export async function signUpWithEmail(email: string, password: string, role: Role, displayName: string): Promise<AuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return UNAVAILABLE;
+  const valid = validateCredentials(email, password);
+  if (!valid.ok) return { ok: false, reason: "invalid", message: valid.message };
+
+  const { data: sess } = await supabase.auth.getSession();
+  const anon = sess.session?.user?.is_anonymous === true;
+
+  let userId: string | null = null;
+  if (anon) {
+    const { data, error } = await supabase.auth.updateUser({ email: email.trim(), password });
+    if (error) return mapAuthError(error.message);
+    userId = data.user?.id ?? sess.session!.user.id;
+  } else {
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    if (error) return mapAuthError(error.message);
+    userId = data.user?.id ?? null;
+    if (!userId) return { ok: false, reason: "error", message: "Sign-up did not return a user." };
+  }
+
+  // Role + name live on the owner-scoped profiles row (D-022 migration).
+  const { error: profErr } = await supabase
+    .from("profiles")
+    .upsert({ user_id: userId, role, display_name: displayName.trim() || null }, { onConflict: "user_id" });
+  if (profErr) return { ok: false, reason: "error", message: "Account created, but saving your role failed — set it again in Settings." };
+  return { ok: true, userId };
+}
+
+export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return UNAVAILABLE;
+  const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) return mapAuthError(error.message);
+  return { ok: true, userId: data.user.id };
+}
+
+export async function signOut(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  await supabase.auth.signOut().catch(() => {});
+}
+
+/** Current account info for UI (null = no session / no supabase). */
+export async function fetchAccountInfo(): Promise<AccountInfo | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  const user = data.session?.user;
+  if (!user) return null;
+  let role: Role | null = null;
+  let displayName: string | null = null;
+  const { data: prof } = await supabase.from("profiles").select("role, display_name").eq("user_id", user.id).maybeSingle();
+  if (prof) {
+    role = (prof.role as Role | null) ?? null;
+    displayName = (prof.display_name as string | null) ?? null;
+  }
+  return {
+    userId: user.id,
+    email: user.email ?? null,
+    isAnonymous: user.is_anonymous === true,
+    role,
+    displayName,
+  };
+}

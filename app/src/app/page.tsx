@@ -138,7 +138,7 @@ export default function WelcomePage() {
             <LeafMark />
             ecolingo
           </Link>
-          <Link href="/learn" className="l-link l-link--caps">
+          <Link href="/auth" className="l-link l-link--caps">
             I already have an account
           </Link>
         </div>
@@ -176,7 +176,7 @@ export default function WelcomePage() {
                 Get started
               </Link>
               <Link
-                href="/learn"
+                href="/auth"
                 className="l-btn l-btn--secondary l-btn--block"
               >
                 I already have an account
@@ -287,7 +287,7 @@ export default function WelcomePage() {
             <Link href="/onboarding" className="l-link">
               Get started
             </Link>
-            <Link href="/learn" className="l-link">
+            <Link href="/auth" className="l-link">
               Log in
             </Link>
           </nav>
