@@ -12,7 +12,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import {
   createCourse,
   ensureMyCourse,

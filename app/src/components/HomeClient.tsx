@@ -21,7 +21,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { concepts, conceptEdges, course } from "@/content/econ13210";
+import { concepts, conceptEdges, course } from "@/content/active-course";
 import type { Concept, ConceptEdge, Lesson } from "@/lib/engine/types";
 import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";

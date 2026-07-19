@@ -13,7 +13,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import { resetLearnerState, updateProfile } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { computeStreak } from "@/lib/stats";

@@ -20,7 +20,7 @@ import "./analytics/analytics.css";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import {
   ensureMyCourse,
   fetchClassMastery,

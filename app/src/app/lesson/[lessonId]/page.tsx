@@ -1,4 +1,4 @@
-import { course } from "@/content/econ13210";
+import { course } from "@/content/active-course";
 import { LessonPlayer } from "@/components/LessonPlayer";
 import { CompiledLesson } from "@/components/lesson/CompiledLesson";
 

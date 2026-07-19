@@ -9,7 +9,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { concepts, questions } from "@/content/econ13210";
+import { concepts, questions } from "@/content/active-course";
 import { recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useTeacherState } from "@/lib/teacher-store";

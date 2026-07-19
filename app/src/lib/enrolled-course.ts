@@ -68,7 +68,11 @@ export function useEnrolledCourse(refreshKey = 0): EnrolledCourseState {
   useEffect(() => {
     if (getSupabase() === null) return; // cloudless is terminal
     let alive = true;
-    void fetchEnrolledCompiledPlan().then((res) => {
+    // Never hang on a slow/unreachable backend: race the fetch against a
+    // timeout so a stalled Supabase degrades to local mode instead of an
+    // infinite "Loading your plan…" spinner.
+    const timeout = new Promise<"unreachable">((resolve) => setTimeout(() => resolve("unreachable"), 7000));
+    void Promise.race([fetchEnrolledCompiledPlan(), timeout]).then((res) => {
       if (!alive) return;
       // Unreachable ≠ unenrolled: degrade to local demo mode, never to the
       // join gate — a network blip must not hide a student's course.

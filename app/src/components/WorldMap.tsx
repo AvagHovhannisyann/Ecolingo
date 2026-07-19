@@ -9,7 +9,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { worlds } from "@/content/econ13210/worlds";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import type { LearnerState } from "@/lib/learner-state";
 
 export function WorldMap({ state }: { state: LearnerState }) {

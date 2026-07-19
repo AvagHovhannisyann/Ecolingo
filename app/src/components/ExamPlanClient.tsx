@@ -21,7 +21,7 @@
  */
 
 import Link from "next/link";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import { buildReviewQueue } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";

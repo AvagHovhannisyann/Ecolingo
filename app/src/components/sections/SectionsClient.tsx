@@ -12,7 +12,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { course, concepts as demoConcepts } from "@/content/econ13210";
+import { course, concepts as demoConcepts } from "@/content/active-course";
 import { worlds } from "@/content/econ13210/worlds";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
 import { useLearnerState } from "@/lib/learner-store";

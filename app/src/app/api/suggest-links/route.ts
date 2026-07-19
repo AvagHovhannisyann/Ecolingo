@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import { sanitizeAiSuggestions } from "@/lib/engine/ingest";
 
 export const runtime = "nodejs";

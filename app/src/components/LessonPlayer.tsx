@@ -27,7 +27,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Concept, EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
 import type { ScoreResult } from "@/lib/engine/scoring";
 import { pickQuestion } from "@/lib/engine/adaptive";
-import { course, getConcept, getEquation, getQuestion } from "@/content/econ13210";
+import { course, getConcept } from "@/content/active-course";
 import { completeLesson, recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { MathTex } from "./MathTex";
@@ -106,9 +106,10 @@ export function LessonPlayer({
   // Compiled courses carry no approved equations yet (the compiler refuses to
   // fabricate LaTeX — GATE-002); their explain panel gets equation=null rather
   // than someone else's formula.
+  // No built-in course equations remain (D-022); compiled lessons never carry
+  // approved LaTeX. The explain panel simply gets no equation.
   const lessonEquation =
-    course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ??
-    (extraConcepts.length > 0 ? null : getEquation("eq-fundamental"));
+    course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ?? null;
   const step = steps[stepIndex];
 
   // ---- adaptive question resolution (D-020) --------------------------------
@@ -126,7 +127,10 @@ export function LessonPlayer({
     prev: Record<string, ResolvedQuestion>
   ): Record<string, ResolvedQuestion> => {
     if (prev[qStep.id]) return prev;
-    const fixed = extraQuestions.find((q) => q.id === qStep.questionId) ?? getQuestion(qStep.questionId);
+    const fixed = extraQuestions.find((q) => q.id === qStep.questionId);
+    // No built-in course questions remain; a compiled lesson's question step
+    // only resolves from its own plan questions. If none, skip resolution.
+    if (!fixed) return prev;
     // Same concept AND transfer role as the pedagogically-chosen fixed question,
     // so a guided step still draws practice-level and a mastery check still draws
     // transfer-level questions.
@@ -288,8 +292,13 @@ export function LessonPlayer({
       </button>
     );
   } else if (step.type === "math") {
-    const eq = getEquation(step.equationId);
-    body = (
+    // Resolve from the active course's equations (empty now that there is no
+    // built-in course; compiled lessons emit no math steps). If absent, the
+    // step degrades to its heading rather than throwing.
+    const eq = course.equations.find((e) => e.id === step.equationId) ?? null;
+    body = eq === null ? (
+      <div>{heading}</div>
+    ) : (
       <div>
         {heading}
         <div className="mt-3">

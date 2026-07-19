@@ -239,20 +239,8 @@ try {
   );
   log("Reduced motion @/lab/solow: entrance animations off, full diagram shown, k* still computed");
 
-  // Reduced motion at the lesson's visual step (the curve-draw entrance path).
-  await page.goto(`${BASE}/lesson/lesson-solow-steady-state`);
-  await page.waitForSelector('button:has-text("Continue")');
-  await page.click('button:has-text("Continue")'); // core idea -> intuition
-  await page.click('button:has-text("Continue")'); // intuition -> visual (Solow lab)
-  await page.waitForSelector("path.curve-draw-1");
-  const lessonDrawAnim = await page
-    .locator("path.curve-draw-1")
-    .evaluate((el) => getComputedStyle(el).animationName);
-  assert(
-    lessonDrawAnim === "none",
-    `lesson visual step still animates curve-draw under reduce (animationName=${lessonDrawAnim})`
-  );
-  log("Reduced motion @/lesson/lesson-solow-steady-state: visual step loads, curve-draw entrance suppressed");
+  // (The former in-lesson reduced-motion check was dropped with the demo course
+  // — D-022; the lab's own reduced-motion behavior above is the surviving proof.)
 
   // =====================================================================
   // 4. TOUCH TARGETS — buttons >= 44px; sliders >= 24px (WCAG 2.5.8 AA)
