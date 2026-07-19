@@ -382,14 +382,17 @@ export interface EnrolledCoursePlan {
 
 /**
  * Student view: the ratified plan of the course the caller is enrolled in.
- * Null when not enrolled, the teacher hasn't compiled yet, or local-only mode.
+ * Null when genuinely not enrolled (or no plan compiled yet); "unreachable"
+ * when the classroom service cannot be contacted — callers degrade to
+ * local/demo mode for that case (GATE-009), NOT to the join gate, because
+ * a flaky network must never look like "you have no course".
  */
-export async function fetchEnrolledCompiledPlan(): Promise<EnrolledCoursePlan | null> {
+export async function fetchEnrolledCompiledPlan(): Promise<EnrolledCoursePlan | null | "unreachable"> {
   const supabase = getSupabase();
-  if (!supabase) return null;
+  if (!supabase) return "unreachable";
   try {
     const userId = await ensureSession();
-    if (!userId) return null;
+    if (!userId) return "unreachable";
     const { data, error } = await supabase
       .from("enrollments")
       .select("course_id, courses(title, compiled_plan, compiled_at)")
@@ -397,7 +400,8 @@ export async function fetchEnrolledCompiledPlan(): Promise<EnrolledCoursePlan | 
       .order("enrolled_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error || !data) return null;
+    if (error) return "unreachable";
+    if (!data) return null;
     const raw = data.courses as unknown;
     const course = (Array.isArray(raw) ? raw[0] : raw) as
       | { title: string; compiled_plan: unknown; compiled_at: string | null }
@@ -410,6 +414,6 @@ export async function fetchEnrolledCompiledPlan(): Promise<EnrolledCoursePlan | 
       compiledAtISO: course.compiled_at ?? null,
     };
   } catch {
-    return null;
+    return "unreachable";
   }
 }
