@@ -61,27 +61,27 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
 }
 
 export function useEnrolledCourse(refreshKey = 0): EnrolledCourseState {
-  const [state, setState] = useState<EnrolledCourseState>(() =>
-    getSupabase() === null ? "cloudless" : "loading"
-  );
+  // Results are keyed to the refreshKey they were fetched for; a stale key
+  // renders as "loading" — no synchronous setState in the effect needed.
+  const [result, setResult] = useState<{ key: number; value: EnrolledCourseState } | null>(null);
 
   useEffect(() => {
     if (getSupabase() === null) return; // cloudless is terminal
     let alive = true;
-    setState("loading");
     void fetchEnrolledCompiledPlan().then((res) => {
       if (!alive) return;
       // Unreachable ≠ unenrolled: degrade to local demo mode, never to the
       // join gate — a network blip must not hide a student's course.
-      if (res === "unreachable") return setState("cloudless");
-      if (!res) return setState("none");
+      if (res === "unreachable") return setResult({ key: refreshKey, value: "cloudless" });
+      if (!res) return setResult({ key: refreshKey, value: "none" });
       const parsed = parseStoredPlan(res.courseId, res.title, res.plan);
-      setState(parsed ?? "none");
+      setResult({ key: refreshKey, value: parsed ?? "none" });
     });
     return () => {
       alive = false;
     };
   }, [refreshKey]);
 
-  return state;
+  if (getSupabase() === null) return "cloudless";
+  return result && result.key === refreshKey ? result.value : "loading";
 }
