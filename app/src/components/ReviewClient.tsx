@@ -11,7 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { AmbientHero } from "./AmbientHero";
-import { concepts, questions } from "@/content/econ13210";
+import { concepts, questions } from "@/content/active-course";
 import { buildReviewQueue, dueNow } from "@/lib/engine/scheduler";
 import { markReviewed, recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";

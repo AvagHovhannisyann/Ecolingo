@@ -15,7 +15,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceEvent, Question } from "@/lib/engine/types";
 import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring";
-import { course, misconceptions, getConcept, getEquation } from "@/content/econ13210";
+import { course, misconceptions } from "@/content/active-course";
 import { MathTex } from "./MathTex";
 import { ExplainPanel } from "./ExplainPanel";
 import { MiniSolowDiagram } from "./MiniSolowDiagram";
@@ -153,10 +153,23 @@ export function QuestionCard({
       ? misconceptions.find((m) => m.slug === result.misconceptionSlugs[0]) ?? null
       : null;
 
-  const concept = getConcept(question.conceptSlug);
-  const equation =
-    course.equations.find((e) => e.conceptSlug === question.conceptSlug) ??
-    (question.conceptSlug === "steady-state" ? getEquation("eq-fundamental") : null);
+  // No built-in course content (D-022): resolve concept/equation from the
+  // active course's arrays, with a minimal synthesized concept so the Explain
+  // panel always has a valid target instead of throwing.
+  const concept =
+    course.concepts.find((c) => c.slug === question.conceptSlug) ?? {
+      id: question.conceptSlug,
+      slug: question.conceptSlug,
+      name: question.conceptSlug,
+      world: 0,
+      definition: "",
+      locked: false,
+      importance: 3,
+      examinable: true,
+      sourceStatus: "planned_unverified" as const,
+      citationIds: [],
+    };
+  const equation = course.equations.find((e) => e.conceptSlug === question.conceptSlug) ?? null;
 
   const answered = result !== null;
   const answerReady = buildAnswer() !== null;

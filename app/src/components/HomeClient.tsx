@@ -20,23 +20,52 @@
  */
 
 import Link from "next/link";
-import { concepts, conceptEdges, course } from "@/content/econ13210";
-import type { Lesson } from "@/lib/engine/types";
+import { useState } from "react";
+import { concepts, conceptEdges, course } from "@/content/active-course";
+import type { Concept, ConceptEdge, Lesson } from "@/lib/engine/types";
 import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
+import { useEnrolledCourse } from "@/lib/enrolled-course";
 import { UnverifiedBanner } from "./CitationChips";
+import { JoinCourseGate } from "./path/JoinCourseGate";
 import { SectionHeader } from "./path/SectionHeader";
 import { SkillPath, type LessonRow } from "./path/SkillPath";
 
+/** What the path renders — the enrolled course in cloud mode, the demo otherwise. */
+interface CourseView {
+  eyebrow: string;
+  concepts: Concept[];
+  edges: ConceptEdge[];
+  lessons: Lesson[];
+}
+
 export function HomeClient() {
   const state = useLearnerState();
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading your plan…</p>;
+  const [joinRefresh, setJoinRefresh] = useState(0);
+  const enrolled = useEnrolledCourse(joinRefresh);
+  if (!state || enrolled === "loading")
+    return <p className="p-4 text-sm text-app-muted">Loading your plan…</p>;
+
+  // D-022: in cloud mode a student without a course sees the join gate — the
+  // econ demo is no longer the default. Without Supabase env (sandbox/CI) the
+  // demo course still renders, honestly labeled by the UnverifiedBanner.
+  if (enrolled === "none") return <JoinCourseGate onJoined={() => setJoinRefresh((k) => k + 1)} />;
+
+  const view: CourseView =
+    enrolled === "cloudless"
+      ? { eyebrow: "Section 1 · Solow growth", concepts, edges: conceptEdges, lessons: course.lessons }
+      : {
+          eyebrow: `Your course · ${enrolled.courseTitle}`,
+          concepts: enrolled.concepts,
+          edges: enrolled.edges,
+          lessons: enrolled.lessons,
+        };
 
   const nowISO = new Date().toISOString();
   const queue = buildReviewQueue({
     nowISO,
-    concepts,
+    concepts: view.concepts,
     mastery: state.masteryBySlug,
     prevIntervals: state.prevIntervals,
     plan: state.plan,
@@ -49,31 +78,31 @@ export function HomeClient() {
    * only blocks if the course can actually teach it (some lesson covers it) —
    * otherwise the path could deadlock on concepts with no lesson yet.
    */
-  const teachableSlugs = new Set(course.lessons.map((l) => l.conceptSlug));
+  const teachableSlugs = new Set(view.lessons.map((l) => l.conceptSlug));
   const isUnlocked = (lesson: Lesson) =>
-    conceptEdges
+    view.edges
       .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires" && teachableSlugs.has(e.prereqSlug))
       .every((e) => (state.masteryBySlug[e.prereqSlug]?.evidenceCount ?? 0) > 0);
 
   const prereqNamesFor = (lesson: Lesson) =>
-    conceptEdges
+    view.edges
       .filter((e) => e.conceptSlug === lesson.conceptSlug && e.kind === "requires")
-      .map((e) => concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
+      .map((e) => view.concepts.find((c) => c.slug === e.prereqSlug)?.name ?? e.prereqSlug);
 
   // The next lesson to do: the first unlocked, not-yet-completed lesson in
   // course order (linear gating guarantees at most one).
-  const currentLesson = course.lessons.find(
+  const currentLesson = view.lessons.find(
     (l) => !state.completedLessonIds.includes(l.id) && isUnlocked(l)
   );
 
-  const rows: LessonRow[] = course.lessons.map((lesson) => {
+  const rows: LessonRow[] = view.lessons.map((lesson) => {
     const done = state.completedLessonIds.includes(lesson.id);
     const status = done ? "done" : lesson.id === currentLesson?.id ? "current" : "locked";
     return { lesson, status, prereqNames: status === "locked" ? prereqNamesFor(lesson) : [] };
   });
 
   // Today's plan (minutes) — still driven by the scheduler budget.
-  const unlockedLessons = course.lessons.filter(
+  const unlockedLessons = view.lessons.filter(
     (l) => !state.completedLessonIds.includes(l.id) && isUnlocked(l)
   );
   const today = planToday(
@@ -88,7 +117,7 @@ export function HomeClient() {
 
   return (
     <div className="sp">
-      <SectionHeader eyebrow="Section 1 · Solow growth" title={headerTitle} href={headerHref} />
+      <SectionHeader eyebrow={view.eyebrow} title={headerTitle} href={headerHref} />
 
       <div className="mt-4">
         <UnverifiedBanner />

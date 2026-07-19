@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { explainProvider, type ExplainMode, type ExplainOutput } from "@/lib/ai/explain";
 import type { Concept, Equation, Misconception } from "@/lib/engine/types";
-import { course } from "@/content/econ13210";
+import { course } from "@/content/active-course";
 import { MathTex } from "./MathTex";
 import { GroundedCitationChips } from "./CitationChips";
 

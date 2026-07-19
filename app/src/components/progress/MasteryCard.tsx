@@ -7,7 +7,7 @@
  * values. Nothing here ever collapses mastery into one blended number.
  */
 
-import { misconceptions } from "@/content/econ13210";
+import { misconceptions } from "@/content/active-course";
 import { dominantMisconception, retentionAt } from "@/lib/engine/mastery";
 import type { Concept, MasteryState } from "@/lib/engine/types";
 import { DimensionBar } from "./DimensionBar";

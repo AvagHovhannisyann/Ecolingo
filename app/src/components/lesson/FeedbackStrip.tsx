@@ -18,7 +18,7 @@
 import { useEffect, useRef } from "react";
 import type { Question } from "@/lib/engine/types";
 import type { ScoreResult } from "@/lib/engine/scoring";
-import { misconceptions } from "@/content/econ13210";
+import { misconceptions } from "@/content/active-course";
 import { MathTex } from "../MathTex";
 import styles from "./lesson.module.css";
 

@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
-import { course } from "@/content/econ13210";
+import { course } from "@/content/active-course";
 import { LessonPlayer } from "@/components/LessonPlayer";
+import { CompiledLesson } from "@/components/lesson/CompiledLesson";
 
 export function generateStaticParams() {
   return course.lessons.map((l) => ({ lessonId: l.id }));
@@ -9,7 +9,9 @@ export function generateStaticParams() {
 export default async function LessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = await params;
   const lesson = course.lessons.find((l) => l.id === lessonId);
-  if (!lesson) notFound();
+  // Not a demo lesson → try the enrolled course's compiled plan (D-022);
+  // CompiledLesson renders its own honest not-found state for unknown ids.
+  if (!lesson) return <CompiledLesson lessonId={lessonId} />;
   return (
     <>
       {/* Accessible page landmark. The D-020 lesson flow renders its own chrome

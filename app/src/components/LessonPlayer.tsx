@@ -24,10 +24,10 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
+import type { Concept, EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
 import type { ScoreResult } from "@/lib/engine/scoring";
 import { pickQuestion } from "@/lib/engine/adaptive";
-import { course, getConcept, getEquation, getQuestion } from "@/content/econ13210";
+import { course, getConcept } from "@/content/active-course";
 import { completeLesson, recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { MathTex } from "./MathTex";
@@ -55,7 +55,17 @@ interface ResolvedQuestion {
   reason: string | null;
 }
 
-export function LessonPlayer({ lesson }: { lesson: Lesson }) {
+export function LessonPlayer({
+  lesson,
+  extraConcepts = [],
+  extraQuestions = [],
+}: {
+  lesson: Lesson;
+  /** D-022: plan-scoped concepts/questions for compiled courses — checked
+   *  before the static content module so enrolled-course lessons play. */
+  extraConcepts?: Concept[];
+  extraQuestions?: Question[];
+}) {
   const state = useLearnerState();
   const [stepIndex, setStepIndex] = useState(0);
   const [visualTargetHit, setVisualTargetHit] = useState(false);
@@ -72,7 +82,8 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const concept = getConcept(lesson.conceptSlug);
+  const resolveConcept = (slug: string) => extraConcepts.find((c) => c.slug === slug) ?? getConcept(slug);
+  const concept = resolveConcept(lesson.conceptSlug);
 
   /**
    * LESSON-04 adaptation: the equation appears after intuition unless the
@@ -92,8 +103,13 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     return reordered;
   }, [lesson.steps, mathFirst]);
   const simpler = state?.profile.readingLevel === "simpler";
+  // Compiled courses carry no approved equations yet (the compiler refuses to
+  // fabricate LaTeX — GATE-002); their explain panel gets equation=null rather
+  // than someone else's formula.
+  // No built-in course equations remain (D-022); compiled lessons never carry
+  // approved LaTeX. The explain panel simply gets no equation.
   const lessonEquation =
-    course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ?? getEquation("eq-fundamental");
+    course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ?? null;
   const step = steps[stepIndex];
 
   // ---- adaptive question resolution (D-020) --------------------------------
@@ -111,11 +127,14 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     prev: Record<string, ResolvedQuestion>
   ): Record<string, ResolvedQuestion> => {
     if (prev[qStep.id]) return prev;
-    const fixed = getQuestion(qStep.questionId);
+    const fixed = extraQuestions.find((q) => q.id === qStep.questionId);
+    // No built-in course questions remain; a compiled lesson's question step
+    // only resolves from its own plan questions. If none, skip resolution.
+    if (!fixed) return prev;
     // Same concept AND transfer role as the pedagogically-chosen fixed question,
     // so a guided step still draws practice-level and a mastery check still draws
     // transfer-level questions.
-    const pool = course.questions.filter(
+    const pool = [...course.questions, ...extraQuestions].filter(
       (q) => q.conceptSlug === fixed.conceptSlug && q.transferDistance === fixed.transferDistance
     );
     const mastery = state?.masteryBySlug[fixed.conceptSlug];
@@ -273,8 +292,13 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       </button>
     );
   } else if (step.type === "math") {
-    const eq = getEquation(step.equationId);
-    body = (
+    // Resolve from the active course's equations (empty now that there is no
+    // built-in course; compiled lessons emit no math steps). If absent, the
+    // step degrades to its heading rather than throwing.
+    const eq = course.equations.find((e) => e.id === step.equationId) ?? null;
+    body = eq === null ? (
+      <div>{heading}</div>
+    ) : (
       <div>
         {heading}
         <div className="mt-3">
@@ -347,7 +371,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
             Explain
           </summary>
-          <ExplainPanel concept={getConcept(q.conceptSlug)} equation={questionEquation} />
+          <ExplainPanel concept={resolveConcept(q.conceptSlug)} equation={questionEquation} />
         </details>
       </div>
     );

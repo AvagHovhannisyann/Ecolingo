@@ -13,7 +13,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { concepts } from "@/content/econ13210";
+import { concepts } from "@/content/active-course";
 import { resetLearnerState, updateProfile } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { computeStreak } from "@/lib/stats";
@@ -265,20 +265,52 @@ export function ProgressClient() {
         </div>
       </section>
 
-      <div className="mt-6">
+      <DangerZone />
+    </div>
+  );
+}
+
+/**
+ * Guarded destruction (D-022): resetting personalization and progress wipes
+ * streak, mastery, and plan — a one-tap confirm was far too easy to trigger
+ * by accident. The control is collapsed by default and arms only after the
+ * learner types RESET, with the full cost spelled out first (IDEA-024).
+ */
+function DangerZone() {
+  const [confirmText, setConfirmText] = useState("");
+  const armed = confirmText.trim().toUpperCase() === "RESET";
+  return (
+    <details className="mt-8 rounded-2xl border-2 border-[color:var(--app-border)] p-4">
+      <summary className="cursor-pointer text-sm font-bold text-app-muted">Danger zone</summary>
+      <div className="mt-3">
+        <p className="text-sm text-app">
+          <strong>Reset personalization &amp; progress.</strong> This erases your streak, every mastery
+          record, your plan, and your survey answers on this device. There is no undo.
+        </p>
+        <label className="mt-3 block text-sm font-bold text-app-muted" htmlFor="reset-confirm">
+          Type <code className="font-extrabold">RESET</code> to enable the button
+        </label>
+        <input
+          id="reset-confirm"
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          autoComplete="off"
+          className="mt-1 block w-full max-w-xs rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3 text-sm font-bold tracking-widest"
+        />
         <button
           type="button"
-          className="btn-danger min-h-12 px-4 text-sm"
+          disabled={!armed}
+          className="btn-danger mt-3 min-h-12 px-4 text-sm disabled:opacity-40"
           onClick={() => {
-            if (window.confirm("Reset all personalization and progress? This cannot be undone.")) {
-              mutateLearnerState(() => resetLearnerState());
-            }
+            if (!armed) return;
+            mutateLearnerState(() => resetLearnerState());
+            setConfirmText("");
           }}
         >
-          Reset my personalization &amp; progress
+          Erase everything on this device
         </button>
         <p className="mt-1 text-xs text-app-muted">You control your data — this clears everything stored locally (IDEA-024).</p>
       </div>
-    </div>
+    </details>
   );
 }
