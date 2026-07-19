@@ -1,0 +1,223 @@
+/* ===========================================================================
+   /progress — the trophy room (D-020 Wave 2 Stream M).
+
+   Scoped by convention: every selector is prefixed .pg- so this file can be
+   imported from the ProgressClient without colliding with other routes
+   (App-Router global CSS is not unloaded between navigations).
+
+   Design system: dark navy surfaces, 2px structural borders, NO shadows,
+   green = progress, gold = streak/medals, blue = info. All motion sits
+   behind prefers-reduced-motion: no-preference (IDEA-175).
+=========================================================================== */
+
+/* --- hero row: Eco + heading + streak flame ------------------------------ */
+.pg-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+/* the art-v2 renders carry a baked-in paper background (no alpha channel) —
+   frame them as rounded tiles, the same treatment the app shell gives /art */
+.pg-hero-art {
+  width: 104px;
+  height: 104px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 20px;
+  border: 2px solid var(--app-border);
+}
+@media (max-width: 479px) {
+  .pg-hero-art { width: 84px; height: 84px; }
+}
+.pg-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.pg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.pg-chip-img { width: 26px; height: 26px; object-fit: cover; border-radius: 999px; }
+/* an unlit streak: the flame artwork cools off, the count stays readable */
+.pg-chip-cold .pg-chip-img { filter: grayscale(1) brightness(0.85); }
+.pg-chip-unit { font-size: 0.8rem; font-weight: 700; color: var(--app-text-muted); }
+.pg-gold { color: var(--duo-gold); }
+.pg-blue { color: var(--duo-blue-text); }
+
+/* --- per-concept mastery cards ------------------------------------------- */
+.pg-card { padding: 1rem; }
+.pg-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+.pg-evidence-chip {
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--app-text-muted);
+  white-space: nowrap;
+}
+
+/* the five dimension rows: label | fat bar | visible value */
+.pg-dims { margin-top: 0.85rem; display: grid; gap: 0.55rem; }
+.pg-dim {
+  display: grid;
+  grid-template-columns: 7.4rem 1fr 3rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+.pg-dim-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--app-text-muted);
+}
+.pg-dim-value {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text);
+}
+.pg-bar {
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  overflow: hidden;
+}
+.pg-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--duo-green);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-bar-fill { transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1); }
+}
+
+/* retention / confidence meta line — visible §22 text, never blended in */
+.pg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--app-text-muted);
+}
+
+/* active-misconception callout (kept from the flat UI, restyled) */
+.pg-mixup {
+  margin-top: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 150, 0, 0.12);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffb060;
+}
+
+/* --- explicit "not started" state (evidence honesty: no fake zero bars) --- */
+.pg-ns-grid { display: grid; gap: 0.75rem; margin-top: 0.6rem; }
+@media (min-width: 640px) {
+  .pg-ns-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.pg-ns { padding: 0.85rem 1rem; }
+.pg-ns-chip {
+  border: 2px dashed var(--app-border-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--app-text-muted);
+  white-space: nowrap;
+}
+
+/* --- review forecast strip ------------------------------------------------ */
+.pg-forecast-item { padding: 0.8rem 1rem; }
+.pg-forecast-item + .pg-forecast-item { border-top: 2px solid var(--app-border); }
+.pg-forecast-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+.pg-due-chip {
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--duo-blue-text);
+  white-space: nowrap;
+}
+
+/* --- achievements: medal tiles ------------------------------------------- */
+.pg-medals {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.85rem;
+}
+@media (min-width: 640px) {
+  .pg-medals { grid-template-columns: repeat(3, 1fr); }
+}
+.pg-medal {
+  border: 2px solid var(--app-border);
+  border-radius: 16px;
+  background: var(--app-surface);
+  padding: 1rem;
+  text-align: center;
+}
+.pg-medal-earned { border-color: var(--duo-gold); }
+.pg-medal-art { position: relative; width: 96px; height: 96px; margin: 0 auto; }
+.pg-medal-img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+/* locked = dimmed artwork only; the text below stays full-contrast and the
+   state is carried by the lock glyph + "Locked" label, never by faded text */
+.pg-medal-locked .pg-medal-img { filter: grayscale(1) brightness(0.55); }
+.pg-medal-lock {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.pg-medal-title { margin-top: 0.6rem; font-weight: 800; color: var(--app-text); }
+.pg-medal-desc { margin-top: 0.15rem; font-size: 0.78rem; color: var(--app-text-muted); }
+.pg-medal-state { margin-top: 0.45rem; font-size: 0.8rem; font-weight: 800; }
+.pg-medal-earned .pg-medal-state { color: var(--duo-gold); }
+.pg-medal-locked .pg-medal-state { color: var(--app-text-muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .pg-medal-earned .pg-medal-img {
+    animation: pg-medal-pop 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes pg-medal-pop {
+    from { transform: scale(0.85); opacity: 0.6; }
+    to { transform: scale(1); opacity: 1; }
+  }
+}
+
+/* --- audit trail (GATE-006 made visible), restyled onto the dark surface -- */
+.pg-audit-list {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--app-text-muted);
+  font-variant-numeric: tabular-nums;
+}
