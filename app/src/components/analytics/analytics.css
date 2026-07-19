@@ -1,0 +1,198 @@
+/* ===========================================================================
+   Class analytics — dark game-surface styling (D-020 parity), scoped under
+   `.analytics` so it composes with (and never fights) globals.css. Every rule
+   here is presentation only: no analytics numbers are computed in CSS, and
+   nothing here changes what data class-analytics.ts produces.
+   ========================================================================== */
+
+.analytics-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+}
+
+/* Generic content card — same physics as the app's `.card`, kept local so
+   this directory owns its own presentation without touching globals.css. */
+.analytics-card {
+  border-radius: 14px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 1rem;
+}
+
+.analytics-card--status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.25rem;
+}
+
+/* --- Summary stat tiles ---------------------------------------------- */
+.analytics-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+  list-style: none;
+  padding: 0;
+}
+
+.analytics-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  border-radius: 16px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 1rem;
+}
+
+.analytics-tile--struggling { border-color: rgba(255, 75, 75, 0.55); }
+.analytics-tile--healthy { border-color: rgba(88, 204, 2, 0.55); }
+
+.analytics-tile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  width: 2.75rem;
+  border-radius: 12px;
+}
+.analytics-tile__icon--blue { background: rgba(28, 176, 246, 0.16); }
+.analytics-tile__icon--red { background: var(--coral-tint); }
+.analytics-tile__icon--green { background: var(--growth-green-tint); }
+.analytics-tile__icon--neutral { background: var(--app-surface-2); }
+
+.analytics-tile__number {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--app-text);
+}
+
+.analytics-tile__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text-muted);
+}
+
+/* --- Reteach ranking: prioritized tier cards --------------------------- */
+.analytics-tier-card {
+  border-radius: 14px;
+  border-width: 2px;
+  border-style: solid;
+  background: var(--app-surface);
+  padding: 1rem;
+}
+
+.analytics-tier--struggling { border-color: var(--duo-red); }
+.analytics-tier--not_started { border-color: var(--app-border-strong); }
+.analytics-tier--healthy { border-color: var(--duo-green); }
+
+.analytics-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 999px;
+  background: var(--app-surface-2);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.analytics-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  border: 2px solid var(--app-border);
+  padding: 0.2rem 0.6rem 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--app-text);
+}
+.analytics-tier--struggling .analytics-tier-badge { border-color: var(--duo-red); color: var(--duo-red-text); }
+.analytics-tier--not_started .analytics-tier-badge { border-color: var(--app-border-strong); color: var(--duo-blue-text); }
+.analytics-tier--healthy .analytics-tier-badge { border-color: var(--duo-green); color: var(--duo-green-text); }
+
+.analytics-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.analytics-evidence__stat {
+  border-radius: 10px;
+  background: var(--app-surface-2);
+  padding: 0.3rem 0.6rem;
+}
+.analytics-evidence__stat dt {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-faint);
+}
+.analytics-evidence__stat dd {
+  margin: 0;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--app-text);
+}
+.analytics-evidence__stat--red dd { color: var(--duo-red-text); }
+
+/* --- Student spread bars ------------------------------------------------ */
+.analytics-spread-bar {
+  background: var(--app-surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 0.9rem;
+}
+.analytics-spread-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.analytics-spread-bar__fill--green { background: var(--duo-green); }
+.analytics-spread-bar__fill--blue { background: var(--duo-blue); }
+.analytics-spread-bar__fill--red { background: var(--duo-red); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .analytics-spread-bar__fill { transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1); }
+}
+
+/* --- Course switcher select --------------------------------------------- */
+.analytics-select {
+  border-radius: 12px;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-2);
+  color: var(--app-text);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.analytics-select:focus-visible {
+  outline: 2px solid var(--duo-blue);
+  outline-offset: 2px;
+}
+
+/* --- Join-code chip ------------------------------------------------------ */
+.analytics-joincode {
+  display: inline-block;
+  border-radius: 14px;
+  background: var(--growth-green-tint);
+  padding: 0.6rem 1rem;
+}
+.analytics-joincode__code {
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: var(--growth-green-text);
+}
+.analytics-joincode__code--sm {
+  font-size: 1.25rem;
+  letter-spacing: 0.25em;
+}

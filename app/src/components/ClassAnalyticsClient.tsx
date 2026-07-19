@@ -4,16 +4,19 @@
  * Class analytics (Phase 5 — "what do I reteach Thursday?").
  *
  * Reads the owner-only enrollment + mastery substrate (D-015) and turns it into
- * a teacher-actionable view: a ranked "reteach next" list, a colorblind-safe
- * per-concept heatmap, and per-dimension averages that preserve §22.
+ * a teacher-actionable view: summary stat tiles, a ranked "reteach next" list,
+ * a per-concept student-spread breakdown, and per-dimension averages that
+ * preserve §22. Rendered on the dark game surface (D-020 parity) via the
+ * scoped components in `@/components/analytics`.
  *
  * Every number shown comes from the pure engine (src/lib/engine/class-analytics)
- * — this component only arranges and labels. Students are anonymous UUIDs shown
- * as "Student 1..N" in stable enrolledAt order; no PII exists and none is
- * invented. Degrades calmly to an honest offline/empty state (GATE-009): the
- * sandbox browser cannot reach supabase.co, so that is the state it shows — no
- * infinite spinner.
+ * — this component only arranges and labels. Students are anonymous UUIDs; no
+ * PII exists and none is invented. Degrades calmly to an honest offline/empty
+ * state (GATE-009): the sandbox browser cannot reach supabase.co, so that is
+ * the state it shows — no infinite spinner.
  */
+
+import "./analytics/analytics.css";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -28,16 +31,13 @@ import {
   type OwnedCourse,
   type RosterEntry,
 } from "@/lib/course";
-import {
-  classConceptSummary,
-  DIMENSION_LABELS,
-  MASTERY_DIMENSIONS,
-  pct,
-  reteachRanking,
-  studentSpread,
-  type ReteachPriority,
-  type SpreadBucket,
-} from "@/lib/engine/class-analytics";
+import { classConceptSummary, reteachRanking } from "@/lib/engine/class-analytics";
+import { CourseSwitcher } from "./analytics/CourseSwitcher";
+import { DimensionBars } from "./analytics/DimensionBars";
+import { ReteachRanking } from "./analytics/ReteachRanking";
+import { EmptyCard, LoadingCard, OfflineCard } from "./analytics/StatusCards";
+import { StatTiles } from "./analytics/StatTiles";
+import { StudentSpread } from "./analytics/StudentSpread";
 
 type Phase = "loading" | "offline" | "empty" | "data";
 
@@ -58,47 +58,6 @@ function syncCourseParam(courseId: string): void {
   url.searchParams.set("course", courseId);
   window.history.replaceState(null, "", url);
 }
-
-/** heatmap cell state: a spread bucket, or "none" when the student has no evidence */
-type CellState = SpreadBucket | "none";
-
-const CELL_STYLE: Record<CellState, { symbol: string; label: string; className: string }> = {
-  strong: {
-    symbol: "✓",
-    label: "strong",
-    className: "bg-[var(--growth-green-tint)] text-[var(--growth-green-text)]",
-  },
-  developing: {
-    symbol: "~",
-    label: "developing",
-    className: "bg-[var(--model-blue-tint)] text-[var(--model-blue-text)]",
-  },
-  struggling: {
-    symbol: "!",
-    label: "struggling",
-    className: "bg-[var(--coral-tint)] text-[#cf3d3d]",
-  },
-  none: {
-    symbol: "·",
-    label: "no evidence yet",
-    className: "bg-[var(--mist-gray)] text-app-muted",
-  },
-};
-
-const PRIORITY_BADGE: Record<ReteachPriority, { label: string; className: string }> = {
-  struggling: {
-    label: "Reteach",
-    className: "bg-[var(--coral-tint)] text-[#cf3d3d]",
-  },
-  not_started: {
-    label: "Not started",
-    className: "bg-[var(--model-blue-tint)] text-[var(--model-blue-text)]",
-  },
-  healthy: {
-    label: "On track",
-    className: "bg-[var(--growth-green-tint)] text-[var(--growth-green-text)]",
-  },
-};
 
 export function ClassAnalyticsClient() {
   const [phase, setPhase] = useState<Phase>("loading");
@@ -165,7 +124,7 @@ export function ClassAnalyticsClient() {
   };
 
   return (
-    <div>
+    <div className="analytics">
       <div className="mb-4">
         <Link href="/teach" className="text-sm text-[var(--model-blue-text)] underline">
           <span aria-hidden>←</span> Back to teacher workspace
@@ -181,86 +140,13 @@ export function ClassAnalyticsClient() {
         <CourseSwitcher courses={courses} selectedId={selectedId} onSwitch={onSwitch} />
       )}
 
-      {phase === "loading" && (
-        <div className="card mt-4 p-4">
-          <p className="text-sm text-app-muted" role="status">
-            Loading class data…
-          </p>
-        </div>
-      )}
+      {phase === "loading" && <LoadingCard />}
 
       {phase === "offline" && <OfflineCard />}
 
       {phase === "empty" && selected && <EmptyCard course={selected} />}
 
       {phase === "data" && selected && <DataView course={selected} roster={roster} mastery={mastery} />}
-    </div>
-  );
-}
-
-/**
- * Section switcher — lets a teacher who runs several sections of the same course
- * (IDEA-205) view analytics per section. A plain <select> so it stays keyboard-
- * and screen-reader-friendly; each option shows the section title and its live
- * enrolled count.
- */
-function CourseSwitcher({
-  courses,
-  selectedId,
-  onSwitch,
-}: {
-  courses: OwnedCourse[];
-  selectedId: string;
-  onSwitch: (id: string) => void;
-}) {
-  return (
-    <div className="card mt-4 flex flex-wrap items-center gap-2 p-3">
-      <label htmlFor="section-switcher" className="text-sm font-medium">
-        Section
-      </label>
-      <select
-        id="section-switcher"
-        className="min-h-12 flex-1 rounded-xl border border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-2 text-sm"
-        value={selectedId}
-        onChange={(e) => onSwitch(e.target.value)}
-      >
-        {courses.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.title} — {c.studentCount} enrolled
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function OfflineCard() {
-  return (
-    <div className="card mt-4 p-5" role="status">
-      <h2 className="font-bold">Cloud connection needed</h2>
-      <p className="mt-1 text-sm text-app-muted">
-        Class analytics reads your enrolled learners&apos; mastery from the cloud. Once you&apos;re online and students
-        have joined with your class code, their progress — and what to reteach next — appears here. Nothing to see yet
-        is not an error.
-      </p>
-    </div>
-  );
-}
-
-function EmptyCard({ course }: { course: CourseSummary }) {
-  return (
-    <div className="card mt-4 p-5">
-      <h2 className="font-bold">{course.title}</h2>
-      <div className="mt-3 inline-block rounded-xl bg-[var(--growth-green-tint)] px-4 py-3">
-        <p className="text-xs text-app-muted">Class join code — learners enter this to enroll</p>
-        <p className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--growth-green-text)]">
-          {course.joinCode}
-        </p>
-      </div>
-      <p className="mt-3 text-sm text-app-muted" role="status">
-        No students have enrolled yet. Share your join code — once learners join and start practicing, their mastery
-        and your reteach priorities show up here.
-      </p>
     </div>
   );
 }
@@ -274,13 +160,6 @@ function DataView({
   roster: RosterEntry[];
   mastery: ClassMastery;
 }) {
-  // Stable "Student 1..N" labels in enrolledAt order (fetchRoster is ordered asc).
-  const studentLabel = useMemo(() => {
-    const m = new Map<string, string>();
-    roster.forEach((r, i) => m.set(r.userId, `Student ${i + 1}`));
-    return m;
-  }, [roster]);
-
   const summaries = useMemo(() => classConceptSummary(mastery, concepts), [mastery]);
   const ranking = useMemo(() => reteachRanking(summaries, concepts), [summaries]);
   const summaryBySlug = useMemo(
@@ -288,22 +167,19 @@ function DataView({
     [summaries],
   );
 
-  // per-concept, per-student cell state for the heatmap
-  const cellFor = useMemo(() => {
-    const byConcept = new Map<string, Map<string, SpreadBucket>>();
-    for (const c of concepts) {
-      const m = new Map<string, SpreadBucket>();
-      for (const e of studentSpread(mastery, c.slug)) m.set(e.userId, e.bucket);
-      byConcept.set(c.slug, m);
-    }
-    return (conceptSlug: string, userId: string): CellState =>
-      byConcept.get(conceptSlug)?.get(userId) ?? "none";
-  }, [mastery]);
+  const strugglingCount = useMemo(
+    () => ranking.filter((r) => r.priority === "struggling").length,
+    [ranking],
+  );
+  const healthyCount = useMemo(
+    () => ranking.filter((r) => r.priority === "healthy").length,
+    [ranking],
+  );
 
   return (
     <div className="space-y-6">
       {/* a. header */}
-      <div className="card mt-4 p-5">
+      <div className="analytics-card mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-bold">{course.title}</h2>
@@ -311,187 +187,24 @@ function DataView({
               {roster.length} student{roster.length === 1 ? "" : "s"} enrolled
             </p>
           </div>
-          <div className="rounded-xl bg-[var(--growth-green-tint)] px-4 py-2">
+          <div className="analytics-joincode">
             <p className="text-xs text-app-muted">Join code</p>
-            <p className="font-mono text-xl font-bold tracking-[0.25em] text-[var(--growth-green-text)]">
-              {course.joinCode}
-            </p>
+            <p className="analytics-joincode__code analytics-joincode__code--sm">{course.joinCode}</p>
           </div>
         </div>
       </div>
 
-      {/* b. reteach next — the star */}
-      <section aria-labelledby="reteach-heading">
-        <h2 id="reteach-heading" className="font-bold">
-          Reteach next
-        </h2>
-        <p className="mt-1 text-sm text-app-muted">
-          Ranked by where the class is struggling most. Each card explains why.
-        </p>
-        <ol className="mt-3 space-y-3">
-          {ranking.map((item, i) => {
-            const badge = PRIORITY_BADGE[item.priority];
-            return (
-              <li key={item.conceptSlug} className="card p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-bold">
-                    <span
-                      className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--mist-gray)] text-sm"
-                      aria-label={`Priority ${i + 1}`}
-                    >
-                      {i + 1}
-                    </span>
-                    {item.conceptName}
-                  </p>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
-                    {badge.label}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-app">{item.reason}</p>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+      {/* b. summary stat tiles */}
+      <StatTiles studentCount={roster.length} strugglingCount={strugglingCount} healthyCount={healthyCount} />
 
-      {/* c. per-concept heatmap */}
-      <section aria-labelledby="heatmap-heading">
-        <h2 id="heatmap-heading" className="font-bold">
-          Concept × student heatmap
-        </h2>
-        <p className="mt-1 text-sm text-app-muted">
-          Each cell is a learner&apos;s conceptual grasp of a concept. Color and symbol both encode the level, so it
-          reads without relying on color.
-        </p>
-        <Legend />
-        <div className="mt-3 overflow-x-auto">
-          <table className="border-collapse text-sm">
-            <caption className="sr-only">
-              Concepts as rows, students as columns; each cell shows a student&apos;s conceptual level for that concept.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" className="p-2 text-left font-semibold">
-                  Concept
-                </th>
-                {roster.map((r) => (
-                  <th key={r.userId} scope="col" className="p-2 text-center text-xs font-semibold text-app-muted">
-                    {studentLabel.get(r.userId)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {concepts.map((c) => (
-                <tr key={c.slug}>
-                  <th scope="row" className="max-w-[12rem] p-2 text-left font-medium">
-                    {c.name}
-                  </th>
-                  {roster.map((r) => {
-                    const cell = cellFor(c.slug, r.userId);
-                    const style = CELL_STYLE[cell];
-                    const who = studentLabel.get(r.userId);
-                    return (
-                      <td key={r.userId} className="p-1 text-center">
-                        <span
-                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg font-bold ${style.className}`}
-                          title={`${who}, ${c.name}: ${style.label}`}
-                        >
-                          <span aria-hidden>{style.symbol}</span>
-                          <span className="sr-only">
-                            {who}, {c.name}: {style.label}
-                          </span>
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {/* c. reteach next — the star */}
+      <ReteachRanking items={ranking} />
 
-      {/* d. per-concept dimension bars (§22) */}
-      <section aria-labelledby="dimensions-heading">
-        <h2 id="dimensions-heading" className="font-bold">
-          Mastery by dimension
-        </h2>
-        <p className="mt-1 text-sm text-app-muted">
-          Class averages across the five learning dimensions — never collapsed into one grade. Averaged over students
-          who have practiced each concept.
-        </p>
-        <div className="mt-3 space-y-3">
-          {concepts.map((c) => {
-            const s = summaryBySlug.get(c.slug);
-            if (!s) return null;
-            return (
-              <div key={c.slug} className="card p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-bold">{c.name}</p>
-                  <span className="stat-chip text-xs">
-                    {s.studentsWithEvidence} of {s.totalStudents} practiced
-                  </span>
-                </div>
-                {s.studentsWithEvidence === 0 ? (
-                  <p className="mt-2 text-sm text-app-muted">No evidence yet — nobody has practiced this concept.</p>
-                ) : (
-                  <ul className="mt-3 space-y-2">
-                    {MASTERY_DIMENSIONS.map((dim) => {
-                      const value = s.avgByDimension[dim];
-                      const isWeakest = s.weakestDimension === dim;
-                      return (
-                        <li key={dim}>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className={isWeakest ? "font-semibold text-[#cf3d3d]" : "text-app"}>
-                              {DIMENSION_LABELS[dim]}
-                              {isWeakest ? " — weakest" : ""}
-                            </span>
-                            <span className="tabular-nums text-app">{pct(value)}%</span>
-                          </div>
-                          <div
-                            className="bar-track mt-1 h-3 w-full"
-                            role="meter"
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={pct(value)}
-                            aria-label={`${c.name}, ${DIMENSION_LABELS[dim]} class average`}
-                          >
-                            <div className="bar-fill" style={{ width: `${pct(value)}%` }} />
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* d. student spread — labeled horizontal bars, per concept */}
+      <StudentSpread concepts={concepts} mastery={mastery} summaryBySlug={summaryBySlug} />
+
+      {/* e. per-concept dimension bars (§22) */}
+      <DimensionBars concepts={concepts} summaryBySlug={summaryBySlug} />
     </div>
-  );
-}
-
-function Legend() {
-  const order: CellState[] = ["strong", "developing", "struggling", "none"];
-  return (
-    <ul className="mt-3 flex flex-wrap gap-2" aria-label="Heatmap legend">
-      {order.map((k) => {
-        const s = CELL_STYLE[k];
-        return (
-          <li key={k} className="flex items-center gap-1.5 text-xs text-app">
-            <span
-              className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-bold ${s.className}`}
-              aria-hidden
-            >
-              {s.symbol}
-            </span>
-            {s.label}
-            {k === "strong" ? ` (≥${pct(0.7)}%)` : k === "developing" ? ` (${pct(0.4)}–${pct(0.7)}%)` : k === "struggling" ? ` (<${pct(0.4)}%)` : ""}
-          </li>
-        );
-      })}
-    </ul>
   );
 }
