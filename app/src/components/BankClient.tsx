@@ -15,6 +15,7 @@ import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useTeacherState } from "@/lib/teacher-store";
 import { usePublishedQuestions } from "@/lib/published-questions";
 import { playSfx } from "@/lib/sfx";
+import { fireConfetti } from "@/lib/confetti";
 import { QuestionCard } from "./QuestionCard";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -59,6 +60,16 @@ export function BankClient() {
             question={active}
             onEvidence={(e, r) => {
               playSfx(r.correct ? "correct" : "wrong");
+              if (r.correct) {
+                // small burst at the button that was just pressed (IDEA-142
+                // anxiety-free practice still gets the dopamine layer, D-020)
+                const el = document.activeElement as HTMLElement | null;
+                const rect = el?.getBoundingClientRect();
+                fireConfetti({
+                  origin: rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : undefined,
+                  count: 30,
+                });
+              }
               mutateLearnerState((s) => recordEvidence(s, e));
             }}
           />
