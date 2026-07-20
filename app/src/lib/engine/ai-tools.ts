@@ -98,9 +98,9 @@ export const AI_TOOLS: AiTool[] = [
     label: "Accurate graphs",
     description: "Code-rendered, interactive graphs from real functions — never an AI sketch.",
     glyph: "📈",
-    status: "planned",
+    status: "live",
     grounded: true,
-    action: { kind: "none" },
+    action: { kind: "route", href: "/teach/graphs" },
   },
   {
     id: "flashcards",
