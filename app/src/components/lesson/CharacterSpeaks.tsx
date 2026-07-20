@@ -1,25 +1,29 @@
 "use client";
 
 /**
- * Character-speaks presentation (from the Duolingo reference: a character
- * stands beside a speech bubble and a speaker button reads the line aloud).
- * Wraps a lesson text step's content in that layout. Audio uses the browser's
- * Web Speech synthesis:
- *  - SSR/test-safe: renders without the button when speechSynthesis is absent
- *  - degrades silently if speak() throws (GATE-009 spirit)
- *  - any in-flight utterance is cancelled on unmount or re-tap
- * The bubble is plain DOM text — screen readers read it as ordinary content;
- * the speaker button is a labeled toggle and never auto-plays.
+ * Character-speaks presentation (Duolingo-style: a character beside a speech
+ * bubble, with a speaker button that reads the line aloud). Audio is the
+ * shared voice engine (lib/tts): neural ElevenLabs when configured, browser
+ * Web Speech otherwise — so it always works. Each character has its OWN voice.
+ *
+ * While speaking, the character "talks": its body squashes and stretches in
+ * time with the audio's amplitude (a `--talk` CSS variable set every frame), so
+ * it reads as the character actually speaking. (Polished per-character mouth-
+ * frame lip-sync is an art/animation task for Fabel; this is the functional
+ * motion hook, driven by the real sound.)
+ *
+ * SSR/test-safe, respects prefers-reduced-motion, and never lets audio throw
+ * into the lesson (GATE-009 spirit).
  */
 
 import Image from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { resolveCharacterId, speak, stopSpeaking } from "@/lib/tts";
 import styles from "./lesson.module.css";
 
-// Capability never changes within a page's life — subscribe is a no-op.
 const subscribeNever = () => () => {};
-const speechSupported = () => typeof window !== "undefined" && "speechSynthesis" in window;
-const speechSupportedServer = () => false;
+const isBrowser = () => typeof window !== "undefined";
+const isServer = () => false;
 
 function SpeakerIcon({ playing }: { playing: boolean }) {
   return (
@@ -38,43 +42,36 @@ function SpeakerIcon({ playing }: { playing: boolean }) {
 }
 
 export function CharacterSpeaks({ text, characterSrc }: { text: string; characterSrc: string }) {
-  const canSpeak = useSyncExternalStore(subscribeNever, speechSupported, speechSupportedServer);
+  const canSpeak = useSyncExternalStore(subscribeNever, isBrowser, isServer);
   const [playing, setPlaying] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    return () => {
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {
-        /* audio must never break the lesson */
-      }
-    };
-  }, []);
+  useEffect(() => () => stopSpeaking(), []);
+
+  const setTalk = (level: number) => {
+    containerRef.current?.style.setProperty("--talk", level.toFixed(3));
+  };
 
   const toggleSpeak = () => {
-    try {
-      const synth = window.speechSynthesis;
-      if (playing) {
-        synth.cancel();
-        setPlaying(false);
-        return;
-      }
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.95;
-      u.onend = () => setPlaying(false);
-      u.onerror = () => setPlaying(false);
-      utteranceRef.current = u; // keep alive: some engines GC mid-speech otherwise
-      synth.speak(u);
-      setPlaying(true);
-    } catch {
+    if (playing) {
+      stopSpeaking();
       setPlaying(false);
+      setTalk(0);
+      return;
     }
+    setPlaying(true);
+    speak(text, {
+      characterId: resolveCharacterId(characterSrc),
+      onLevel: setTalk,
+      onEnd: () => {
+        setPlaying(false);
+        setTalk(0);
+      },
+    });
   };
 
   return (
-    <div className={styles.speaks}>
+    <div ref={containerRef} className={`${styles.speaks} ${playing ? styles.talking : ""}`}>
       <Image
         src={characterSrc}
         alt=""

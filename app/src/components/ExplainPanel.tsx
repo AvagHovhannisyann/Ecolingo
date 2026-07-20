@@ -15,6 +15,7 @@ import type { TeachingStyle } from "@/lib/engine/teaching-style";
 import { course } from "@/content/active-course";
 import { MathTex } from "./MathTex";
 import { GroundedCitationChips } from "./CitationChips";
+import { SpeakButton } from "./SpeakButton";
 
 const MODES: { mode: ExplainMode; label: string }[] = [
   { mode: "simpler", label: "Explain more simply" },
@@ -108,6 +109,11 @@ export function ExplainPanel({
             >
               {output.generatedBy === "ai" ? "✦ AI tutor" : "Offline tutor"}
             </span>
+            <SpeakButton
+              text={output.segments.filter((s) => s.kind === "text").map((s) => (s.kind === "text" ? s.text : "")).join(" ")}
+              label="Read the explanation aloud"
+              className="ml-auto"
+            />
           </div>
           {output.uncertainty !== "grounded" && (
             <p className="mb-2 text-xs text-[color:#ffcf4d]">

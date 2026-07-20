@@ -78,8 +78,8 @@ export function AiToolkitCard() {
         <span aria-hidden>🧰</span> AI toolkit
       </h2>
       <p className="mt-1 text-sm text-app-muted">
-        Your AI does far more than multiple-choice. Everything below is grounded in your own material — it never
-        invents facts, numbers, or citations.
+        Your AI does far more than multiple-choice. Everything here is grounded in your own material — it never
+        invents facts, numbers, or citations. (Intro clips are generated automatically when you approve a course.)
       </p>
 
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -93,11 +93,16 @@ export function AiToolkitCard() {
                 {tool.glyph}
               </span>
               <div className="min-w-0">
-                <p className="flex items-center gap-2 font-bold">
+                <p className="flex flex-wrap items-center gap-2 font-bold">
                   {tool.label}
                   {!live && (
                     <span className="rounded-full bg-[color:var(--app-surface-2)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-app-muted">
                       Soon
+                    </span>
+                  )}
+                  {live && !tool.grounded && (
+                    <span className="rounded-full bg-[color:rgba(177,140,255,0.16)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--lavender-text)]">
+                      Generative
                     </span>
                   )}
                 </p>
