@@ -304,6 +304,10 @@ export interface CourseDraft {
   concepts: Concept[];
   edges: ConceptEdge[];
   lessons: Lesson[];
+  /** AI-designed roadmap units, in order: title + the lesson ids it groups.
+   *  Concept.world already carries the unit index (1-based); this preserves
+   *  the unit GOAL titles for the student roadmap's banners. */
+  units: { title: string; lessonIds: string[] }[];
 }
 
 /**
@@ -332,9 +336,12 @@ export function planToCourseDraft(plan: DraftCoursePlan, generatedQuestions: Que
 
   const concepts: Concept[] = [];
   const lessons: Lesson[] = [];
+  const units: { title: string; lessonIds: string[] }[] = [];
 
   plan.units.forEach((unit, unitIdx) => {
     const world = unitIdx + 1; // unit ordering, not a claim about a fixed curriculum
+    const unitLessonIds: string[] = [];
+    units.push({ title: unit.title, lessonIds: unitLessonIds });
     unit.lessons.forEach((dl, lessonIdx) => {
       concepts.push({
         id: `c-gen-${dl.conceptSlug}`,
@@ -358,6 +365,7 @@ export function planToCourseDraft(plan: DraftCoursePlan, generatedQuestions: Que
         estimatedMinutes: dl.estimatedMinutes,
         steps: buildLessonSteps(dl, byConcept.get(dl.conceptSlug) ?? [], unitIdx, lessonIdx),
       });
+      unitLessonIds.push(`lesson-gen-${dl.conceptSlug}`);
     });
   });
 
@@ -366,7 +374,7 @@ export function planToCourseDraft(plan: DraftCoursePlan, generatedQuestions: Que
     .filter(([from, to]) => knownSlugs.has(from) && knownSlugs.has(to))
     .map(([from, to]) => ({ prereqSlug: from, conceptSlug: to, kind: "requires" as const }));
 
-  return { concepts, edges, lessons };
+  return { concepts, edges, lessons, units: units.filter((u) => u.lessonIds.length > 0) };
 }
 
 function buildLessonSteps(dl: DraftLesson, questions: Question[], unitIdx: number, lessonIdx: number): LessonStep[] {

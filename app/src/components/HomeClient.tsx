@@ -42,6 +42,8 @@ interface CourseView {
   concepts: Concept[];
   edges: ConceptEdge[];
   lessons: Lesson[];
+  /** AI-designed roadmap units from the ratified plan (empty → client chunking) */
+  units: { title: string; lessonIds: string[] }[];
 }
 
 export function HomeClient() {
@@ -58,12 +60,13 @@ export function HomeClient() {
 
   const view: CourseView =
     enrolled === "cloudless"
-      ? { eyebrow: "Section 1 · Solow growth", concepts, edges: conceptEdges, lessons: course.lessons }
+      ? { eyebrow: "Section 1 · Solow growth", concepts, edges: conceptEdges, lessons: course.lessons, units: [] }
       : {
           eyebrow: `Your course · ${enrolled.courseTitle}`,
           concepts: enrolled.concepts,
           edges: enrolled.edges,
           lessons: enrolled.lessons,
+          units: enrolled.units,
         };
 
   const nowISO = new Date().toISOString();
@@ -191,7 +194,12 @@ export function HomeClient() {
         Today <span>· {today.minutesPlanned} min planned</span>
       </p>
 
-      <SkillPath rows={rows} dueReviewReason={dueReviewReason} mascotSrc="/art-cast/eco-point-scene.webp" />
+      <SkillPath
+        rows={rows}
+        units={view.units}
+        dueReviewReason={dueReviewReason}
+        mascotSrc="/art-cast/eco-point-scene.webp"
+      />
       </div>
 
       <RightRail state={state} />

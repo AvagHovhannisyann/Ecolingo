@@ -120,28 +120,36 @@ a.sp-header__title:hover {
   --unit-edge: #229b9d;
 }
 
-/* ---- unit divider: line + the unit's goal text ---- */
-.sp-divider {
+/* ---- unit banner: filled unit-colored card with the AI-designed goal ---- */
+.sp-banner {
   display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  width: min(100%, 34rem);
+  flex-direction: column;
+  gap: 0.15rem;
+  width: min(100%, 30rem);
   /* extra bottom room so the next unit's floating JUMP pill never collides */
   margin: 0.75rem 0 2.4rem;
   transform: none;
+  border-radius: 18px;
+  padding: 0.85rem 1.1rem;
+  background: var(--unit, var(--growth-green));
+  box-shadow: 0 4px 0 var(--unit-edge, var(--growth-green-deep));
+  color: var(--app-bg); /* deep navy on the unit color — AA, same as sp-header */
 }
-.sp-divider__line {
-  height: 2px;
-  flex: 1;
-  background: var(--app-border);
-  border-radius: 999px;
-}
-.sp-divider__label {
-  flex: none;
-  max-width: 60%;
-  text-align: center;
-  font-size: 0.9rem;
+.sp-banner__eyebrow {
+  font-size: 0.7rem;
   font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.sp-banner__title {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.sp-banner--locked {
+  background: var(--app-surface-2);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
   color: var(--app-text-muted);
 }
 
@@ -168,9 +176,27 @@ a.sp-header__title:hover {
   outline-offset: 6px;
 }
 .sp-node__icon {
+  position: relative;
+  z-index: 1;
   width: 38px;
   height: 38px;
   display: block;
+}
+
+/* glossy top highlight on every colored node (the reference's sheen) */
+.sp-node::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 16px;
+  right: 16px;
+  height: 40%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+.sp-node--locked::before {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .sp-node--done {
@@ -179,7 +205,10 @@ a.sp-header__title:hover {
 }
 .sp-node--current {
   background: var(--unit, var(--growth-green));
-  box-shadow: 0 8px 0 var(--unit-edge, var(--growth-green-deep));
+  /* pressed edge + a soft ambient glow in the unit color */
+  box-shadow:
+    0 8px 0 var(--unit-edge, var(--growth-green-deep)),
+    0 0 34px 4px color-mix(in srgb, var(--unit, var(--growth-green)) 38%, transparent);
 }
 .sp-node--jump {
   background: var(--unit, var(--duo-green));
@@ -198,7 +227,14 @@ a.sp-header__title:hover {
 
 @media (prefers-reduced-motion: no-preference) {
   .sp-node {
-    transition: transform 100ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 100ms;
+    transition: transform 100ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 100ms, filter 100ms;
+  }
+  /* pointer hover: nodes lift and brighten slightly */
+  @media (hover: hover) {
+    a.sp-node:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.06);
+    }
   }
   .sp-node--done:active,
   .sp-node--current:active,
