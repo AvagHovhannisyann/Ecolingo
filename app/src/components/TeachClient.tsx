@@ -28,6 +28,7 @@ import { extractPdfText } from "@/lib/pdf-text";
 import { addDoc, removeDoc } from "@/lib/teacher-state";
 import { mutateTeacherState, useTeacherState } from "@/lib/teacher-store";
 import { TeachingStyleCard } from "./teach/TeachingStyleCard";
+import { AiToolkitCard } from "./teach/AiToolkitCard";
 import { LoadingScreen } from "./LoadingScreen";
 
 /** "N students enrolled", pluralized. */
@@ -615,6 +616,9 @@ export function TeachClient() {
           </span>
         </div>
       </Link>
+
+      {/* ── AI toolkit · everything the AI can make from your material ─────── */}
+      <AiToolkitCard />
 
       {/* ── STEP 3 · the courses you've built ──────────────────────────────── */}
       <ClassSections />
