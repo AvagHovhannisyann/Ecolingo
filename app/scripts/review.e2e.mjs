@@ -17,6 +17,11 @@ const BASE = `http://localhost:${PORT}`;
 
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  // Accounts are mandatory (D-023); CI has no session, so open the auth gate
+  // for headless runs (UX-level routing only — RLS still guards all data).
+  await page.addInitScript(() => {
+    try { localStorage.setItem("eco:e2e-open-gate", "1"); } catch {}
+  });
 const log = (m) => console.log("✓", m);
 
 const problems = [];

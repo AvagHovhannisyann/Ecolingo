@@ -11,6 +11,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useAccountInfo } from "@/lib/use-account";
 import {
   LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
   ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
@@ -50,9 +51,13 @@ function rowClass(active: boolean): string {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const account = useAccountInfo();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const moreActive = MORE.some((m) => isNavActive(pathname, m.href));
+  // The teacher workspace is teacher-only (D-023): students never see the tab.
+  const isTeacher = account.phase === "ready" && account.info?.role === "teacher";
+  const primary = PRIMARY.filter((n) => n.href !== "/teach" || isTeacher);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -74,7 +79,7 @@ export function Sidebar() {
         ecolingo
       </Link>
       <nav aria-label="Primary" className="flex flex-col gap-1.5">
-        {PRIMARY.map((n) => {
+        {primary.map((n) => {
           const active = isNavActive(pathname, n.href);
           const Icon = n.icon;
           return (

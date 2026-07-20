@@ -25,6 +25,7 @@ import { MasteryCard } from "./progress/MasteryCard";
 import { ProgressHero } from "./progress/ProgressHero";
 import { ReviewForecast } from "./progress/ReviewForecast";
 import "./progress/progress.css";
+import { LoadingScreen } from "./LoadingScreen";
 
 /**
  * "Join your class" — a student enters the teacher's join code to enroll; once
@@ -143,7 +144,7 @@ function JoinClassCard() {
 
 export function ProgressClient() {
   const state = useLearnerState();
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading progress…</p>;
+  if (!state) return <LoadingScreen label="Loading progress…" />;
 
   const nowISO = new Date().toISOString();
   const streak = computeStreak(state.auditLog.map((a) => a.at), nowISO);

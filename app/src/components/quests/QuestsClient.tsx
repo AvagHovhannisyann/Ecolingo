@@ -20,6 +20,7 @@ import {
 import { claimQuestOnState } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import "./quests.css";
+import { LoadingScreen } from "../LoadingScreen";
 
 /** Live H:MM:SS countdown to the next UTC midnight (when daily quests reset). */
 function useMidnightCountdown(): string | null {
@@ -115,7 +116,7 @@ export function QuestsClient() {
   // nowISO is recomputed each render; quest progress is a pure read of it.
   const nowISO = new Date().toISOString();
 
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading your quests…</p>;
+  if (!state) return <LoadingScreen label="Loading your quests…" />;
 
   return (
     <section className="mt-2 pb-10">

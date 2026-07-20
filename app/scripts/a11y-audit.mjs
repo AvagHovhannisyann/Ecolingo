@@ -58,6 +58,11 @@ const seen = {};
 
 for (const bp of breakpoints) {
   const page = await browser.newPage({ viewport: { width: bp.width, height: bp.height } });
+  // Accounts are mandatory (D-023); CI has no session, so open the auth gate
+  // for headless runs (UX-level routing only — RLS still guards all data).
+  await page.addInitScript(() => {
+    try { localStorage.setItem("eco:e2e-open-gate", "1"); } catch {}
+  });
   for (const route of routes) {
     await page.goto(BASE + route, { waitUntil: "domcontentloaded" }).catch(() => {});
     await page.waitForTimeout(600);

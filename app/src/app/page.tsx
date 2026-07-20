@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Nunito } from "next/font/google";
+import { AmbientArt } from "@/components/AmbientHero";
 import { Reveal } from "@/components/landing/Reveal";
 import "./landing.css";
 
@@ -147,16 +148,15 @@ export default function WelcomePage() {
       {/* --------------------------------------------------------------- Hero */}
       <section className="l-hero" aria-labelledby="hero-heading">
         <div className="l-container l-hero__grid">
-          {/* Eco v2 hero (art-v2 set, D-020 art reset) */}
+          {/* Eco hero — the Higgsfield wave loop (still image on reduced
+              motion / decode failure), framed as a rounded sticker card */}
           <div className="l-hero__art l-anim--art">
-            <Image
-              className="l-hero__mascot"
-              src="/art-v2/eco-wave.webp"
-              alt="Ecolingo's friendly sprout mascot waving hello"
-              width={512}
-              height={512}
-              priority
-              sizes="(min-width: 720px) 420px, 78vw"
+            <AmbientArt
+              videoSrc="/art-cast/eco-wave-loop.mp4"
+              imageSrc="/art-v2/eco-wave.webp"
+              width={480}
+              height={480}
+              className="l-hero__mascot rounded-[2rem]"
             />
           </div>
 
@@ -170,7 +170,7 @@ export default function WelcomePage() {
             </p>
             <div className="l-cta-stack l-anim l-anim--3">
               <Link
-                href="/onboarding"
+                href="/auth?mode=signup"
                 className="l-btn l-btn--primary l-btn--block"
               >
                 Get started
@@ -265,7 +265,7 @@ export default function WelcomePage() {
               Start your first lesson in under a minute. It&apos;s free.
             </p>
             <Link
-              href="/onboarding"
+              href="/auth?mode=signup"
               className="l-btn l-btn--primary l-final__cta"
             >
               Get started
@@ -278,13 +278,10 @@ export default function WelcomePage() {
       <footer className="l-footer">
         <div className="l-container l-footer__inner">
           <nav className="l-footer__links" aria-label="Footer">
-            <Link href="/teach" className="l-link">
-              Teachers
+            <Link href="/auth?mode=signup" className="l-link">
+              For teachers
             </Link>
-            <Link href="/teach/analytics" className="l-link">
-              Analytics
-            </Link>
-            <Link href="/onboarding" className="l-link">
+            <Link href="/auth?mode=signup" className="l-link">
               Get started
             </Link>
             <Link href="/auth" className="l-link">

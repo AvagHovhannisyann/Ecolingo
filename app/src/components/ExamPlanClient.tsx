@@ -29,10 +29,11 @@ import { ExamChecklist } from "./exam/ExamChecklist";
 import { ExamCountdownHeader } from "./exam/ExamCountdownHeader";
 import { ExamTimeline } from "./exam/ExamTimeline";
 import styles from "./exam/exam.module.css";
+import { LoadingScreen } from "./LoadingScreen";
 
 export function ExamPlanClient() {
   const state = useLearnerState();
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading exam plan…</p>;
+  if (!state) return <LoadingScreen label="Loading exam plan…" />;
 
   const nowISO = new Date().toISOString();
   const examinable = concepts.filter((c) => c.examinable);

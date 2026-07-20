@@ -18,12 +18,13 @@ import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import type { EvidenceEvent, ReviewItem } from "@/lib/engine/types";
 import { playSfx } from "@/lib/sfx";
 import { QuestionCard } from "./QuestionCard";
+import { LoadingScreen } from "./LoadingScreen";
 
 export function ReviewClient() {
   const state = useLearnerState();
   const [active, setActive] = useState<ReviewItem | null>(null);
   const [doneSlugs, setDoneSlugs] = useState<string[]>([]);
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading reviews…</p>;
+  if (!state) return <LoadingScreen label="Loading reviews…" />;
 
   const nowISO = new Date().toISOString();
   const queue = buildReviewQueue({

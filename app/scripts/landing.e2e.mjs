@@ -22,7 +22,7 @@
  * the shell would show that element by default.
  *
  * Walks: hero h1 renders → app chrome (aside/header) is neutralised at
- * desktop width → GET STARTED → /onboarding, I ALREADY HAVE AN ACCOUNT →
+ * desktop width → GET STARTED → /auth (signup mode), I ALREADY HAVE AN ACCOUNT →
  * /learn, wordmark → / → at 390px the mobile tab bar is neutralised too and
  * the page has no horizontal overflow.
  *
@@ -82,12 +82,12 @@ try {
     `app chrome neutralised at desktop width: fixed sidebar <aside> (display=${asideDisplay}) and stat-bar <header> (display=${headerDisplay})`
   );
 
-  // ---------- primary CTA: Get started -> /onboarding ----------
+  // ---------- primary CTA: Get started -> /auth signup (D-023) ----------
   await page.goto(`${BASE}/`);
   await page.locator('a:has-text("Get started")').first().click();
-  await page.waitForURL((url) => pathOf(url) === "/onboarding");
-  await page.waitForSelector("text=Who are you?");
-  log("GET STARTED navigates to /onboarding");
+  await page.waitForURL((url) => pathOf(url) === "/auth");
+  await page.waitForSelector("text=Create your profile");
+  log("GET STARTED navigates to /auth (signup)");
 
   // ---------- secondary CTA: I already have an account -> /auth (D-022) ----------
   await page.goto(`${BASE}/`);
