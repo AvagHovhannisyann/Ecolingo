@@ -9,11 +9,11 @@
  * (GATE-001).
  */
 
-import Image from "next/image";
 import Link from "next/link";
 import { concepts as demoConcepts, course as demoCourse } from "@/content/active-course";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
 import { useLearnerState } from "@/lib/learner-store";
+import { AmbientArt } from "../AmbientHero";
 import { LoadingScreen } from "../LoadingScreen";
 import { JoinCourseGate } from "../path/JoinCourseGate";
 
@@ -37,13 +37,12 @@ export function GuidebookClient() {
   return (
     <div className="mx-auto max-w-xl">
       <div className="flex items-center gap-4">
-        {/* Lumi the owl — the guidebook's librarian */}
-        <Image
-          src="/art-cast/lumi.webp"
-          alt=""
-          role="presentation"
-          width={96}
-          height={96}
+        {/* Lumi the owl reading — Higgsfield loop (still on reduced motion) */}
+        <AmbientArt
+          videoSrc="/art-cast/lumi-reading-loop.mp4"
+          imageSrc="/art-cast/lumi-reading.webp"
+          width={480}
+          height={480}
           className="h-20 w-20 shrink-0 rounded-2xl border-2 border-[color:var(--app-border)] object-cover"
         />
         <div>

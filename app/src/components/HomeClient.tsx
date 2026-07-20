@@ -191,7 +191,7 @@ export function HomeClient() {
         Today <span>· {today.minutesPlanned} min planned</span>
       </p>
 
-      <SkillPath rows={rows} dueReviewReason={dueReviewReason} mascotSrc="/art-v2/eco-point.webp" />
+      <SkillPath rows={rows} dueReviewReason={dueReviewReason} mascotSrc="/art-cast/eco-point-scene.webp" />
       </div>
 
       <RightRail state={state} />

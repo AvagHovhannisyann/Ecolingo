@@ -1,35 +1,38 @@
 "use client";
 
 /**
- * A single node on the skill path (D-020). Big circular 3D node (~70px) with a
- * chunky bottom edge that collapses on :active — the .btn-primary press
- * technique. Node glyphs (star / lock / review) are inline SVG UI, never raster
- * art (GATE-002). Every node has ≥44px target, a focus-visible ring, and an
+ * A single node on the skill path — Duolingo-roadmap parity (D-024). Big 3D
+ * OVAL node (~92×74) with a chunky bottom edge that collapses on :active.
+ * Node color comes from the unit theme (green/purple/teal CSS vars set by
+ * the `sp-unit--*` class on the row); glyphs are inline SVG UI, never raster
+ * art (GATE-002). Every node keeps ≥44px targets, focus rings, and an
  * accessible name; the current node carries aria-current="step".
  *
- * Node type → visual:
- *   done    → gold circle + white star (link back to the lesson)
- *   current → green circle + white star, pulsing halo, floating START tooltip
- *   locked  → gray circle + lock glyph, NOT interactive, caption explains unlock
- *   review  → blue circle + ⟳ glyph, links to /review, reason in its label
+ * Node type → visual (matching the reference screenshots):
+ *   done    → unit-color oval + white star (link back to the lesson)
+ *   current → unit-color oval + white star, dark RING-PLATE around it,
+ *             floating START tooltip, optional mascot on a shadow disc
+ *   locked  → dark gray oval + gray star, NOT interactive, caption explains
+ *   review  → blue oval + ⟳ glyph, links to /review
+ *   jump    → unit-color oval + fast-forward glyph and the floating
+ *             "JUMP HERE?" pill — the entry of a future unit
  */
 
 import Image from "next/image";
 import Link from "next/link";
 
-function StarIcon() {
+function StarIcon({ dim = false }: { dim?: boolean }) {
   return (
-    <svg className="sp-node__icon" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+    <svg className="sp-node__icon" viewBox="0 0 24 24" fill={dim ? "var(--app-border)" : "#fff"} aria-hidden="true">
       <path d="M12 2.6l2.7 5.9 6.4.7-4.8 4.3 1.3 6.3L12 17l-5.6 3.1 1.3-6.3-4.8-4.3 6.4-.7z" />
     </svg>
   );
 }
 
-function LockIcon() {
+function FastForwardIcon() {
   return (
-    <svg className="sp-node__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" aria-hidden="true">
-      <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
-      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" strokeLinecap="round" />
+    <svg className="sp-node__icon" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+      <path d="M4.5 5.5v13l8-6.5zM12.5 5.5v13l8-6.5z" />
     </svg>
   );
 }
@@ -44,7 +47,9 @@ function ReviewIcon() {
 }
 
 export interface PathNodeProps {
-  kind: "done" | "current" | "locked" | "review";
+  kind: "done" | "current" | "locked" | "review" | "jump";
+  /** unit theme class (sp-unit--green / --purple / --teal) */
+  theme?: string;
   offsetX: number;
   ariaLabel: string;
   href?: string;
@@ -54,18 +59,13 @@ export interface PathNodeProps {
   /** current node extras */
   mascotSrc?: string;
   mascotSide?: "left" | "right";
-  /**
-   * Locked-node fast-forward (the Duolingo "JUMP HERE?" pill): when set, a
-   * clickable pill floats above the locked node linking straight into the
-   * lesson — the node itself stays visually locked so the path's gating story
-   * remains honest.
-   */
-  jumpHref?: string;
-  jumpLabel?: string;
+  /** extra row content (the unit's path-side character scene) */
+  children?: React.ReactNode;
 }
 
 export function PathNode({
   kind,
+  theme = "",
   offsetX,
   ariaLabel,
   href,
@@ -73,60 +73,56 @@ export function PathNode({
   captionHint,
   mascotSrc,
   mascotSide = "right",
-  jumpHref,
-  jumpLabel,
+  children,
 }: PathNodeProps) {
   const rowStyle = { "--sp-x": `${offsetX}px` } as React.CSSProperties;
   const isCurrent = kind === "current";
 
   const glyph =
-    kind === "locked" ? <LockIcon /> : kind === "review" ? <ReviewIcon /> : <StarIcon />;
-
-  const nodeInner = (
-    <>
-      {isCurrent && <span className="sp-halo" aria-hidden="true" />}
-      {isCurrent && (
-        <span className="sp-tip" aria-hidden="true">
-          Start
-        </span>
-      )}
-      {glyph}
-    </>
-  );
+    kind === "locked" ? (
+      <StarIcon dim />
+    ) : kind === "review" ? (
+      <ReviewIcon />
+    ) : kind === "jump" ? (
+      <FastForwardIcon />
+    ) : (
+      <StarIcon />
+    );
 
   return (
-    <li className="sp-row" style={rowStyle}>
+    <li className={`sp-row ${theme}`} style={rowStyle}>
       {mascotSrc && (
-        <Image
-          src={mascotSrc}
-          alt=""
-          role="presentation"
-          width={118}
-          height={118}
-          className={`sp-mascot sp-mascot--${mascotSide}`}
-        />
+        <span className={`sp-mascot sp-mascot--${mascotSide}`} aria-hidden="true">
+          <Image src={mascotSrc} alt="" role="presentation" width={118} height={118} />
+        </span>
       )}
 
       {kind === "locked" ? (
-        <span className="sp-jump-wrap">
-          {jumpHref && (
-            <Link href={jumpHref} className="sp-jump" aria-label={jumpLabel ?? "Jump ahead"}>
-              Jump here?
-            </Link>
-          )}
-          <button type="button" className="sp-node sp-node--locked" aria-label={ariaLabel} disabled>
-            {glyph}
-          </button>
-        </span>
+        <button type="button" className="sp-node sp-node--locked" aria-label={ariaLabel} disabled>
+          {glyph}
+        </button>
       ) : (
-        <Link
-          href={href ?? "#"}
-          className={`sp-node sp-node--${kind}`}
-          aria-label={ariaLabel}
-          aria-current={isCurrent ? "step" : undefined}
-        >
-          {nodeInner}
-        </Link>
+        <span className="sp-node-wrap">
+          {isCurrent && <span className="sp-ring" aria-hidden="true" />}
+          {isCurrent && (
+            <span className="sp-tip" aria-hidden="true">
+              Start
+            </span>
+          )}
+          {kind === "jump" && (
+            <span className="sp-tip sp-tip--jump" aria-hidden="true">
+              Jump here?
+            </span>
+          )}
+          <Link
+            href={href ?? "#"}
+            className={`sp-node sp-node--${kind}`}
+            aria-label={ariaLabel}
+            aria-current={isCurrent ? "step" : undefined}
+          >
+            {glyph}
+          </Link>
+        </span>
       )}
 
       {(captionTitle || captionHint) && (
@@ -135,6 +131,8 @@ export function PathNode({
           {captionHint && <span className="sp-caption__hint">{captionHint}</span>}
         </span>
       )}
+
+      {children}
     </li>
   );
 }

@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { AmbientArt } from "../AmbientHero";
 import {
   DAILY_QUESTS,
   MONTHLY_QUESTS,
@@ -120,14 +121,14 @@ export function QuestsClient() {
 
   return (
     <section className="mt-2 pb-10">
-      {/* hero row — Eco (decorative) + heading + reset countdown */}
+      {/* hero row — Pip on its book stack (Higgsfield loop) + reset countdown */}
       <div className="flex items-center gap-4">
-        <Image
-          src="/art-v2/eco-determined.webp"
-          alt=""
-          width={160}
-          height={160}
-          className="art-enter h-20 w-20 shrink-0 object-contain"
+        <AmbientArt
+          videoSrc="/art-cast/pip-sitting-loop.mp4"
+          imageSrc="/art-cast/pip-sitting.webp"
+          width={480}
+          height={480}
+          className="art-enter h-20 w-20 shrink-0 rounded-2xl object-cover"
         />
         <div>
           <h1 className="text-2xl font-black text-app">Daily quests</h1>
