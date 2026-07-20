@@ -15,7 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth";
-import { isTester, needsProfile, useAccountInfo } from "@/lib/use-account";
+import { hasTeacherAccess, isTester, needsProfile, useAccountInfo } from "@/lib/use-account";
 
 export function CreateProfileWall({ compact = false }: { compact?: boolean }) {
   return (
@@ -66,6 +66,7 @@ export function AccountCard() {
   const info = account.info!;
   const name = info.displayName || info.email || "Learner";
   const initial = name.trim().charAt(0).toUpperCase() || "E";
+  const teacher = hasTeacherAccess(account);
 
   return (
     <section className="rounded-3xl border-2 border-[color:var(--app-border)] p-5" aria-label="Your account">
@@ -105,6 +106,18 @@ export function AccountCard() {
           Log out
         </button>
       </div>
+
+      {/* Teachers (and testers) get an unmistakable path to their workspace,
+          right here on the profile — not just a nav row that's easy to miss. */}
+      {teacher && (
+        <Link
+          href="/teach"
+          className="btn-primary mt-4 flex min-h-12 items-center justify-center gap-2 py-3 text-center text-sm font-extrabold uppercase tracking-wide text-white"
+        >
+          <Image src="/art-v2/eco-books.webp" alt="" width={40} height={40} className="h-6 w-6 rounded-md object-cover" />
+          Open teacher workspace
+        </Link>
+      )}
     </section>
   );
 }
