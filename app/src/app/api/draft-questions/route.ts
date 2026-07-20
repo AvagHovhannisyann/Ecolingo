@@ -17,6 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { appendStyle } from "@/lib/engine/teaching-style";
 import {
   sanitizeDraftedQuestions,
   sanitizeDraftedQuestionsMulti,
@@ -78,7 +79,7 @@ export interface BuildDraftPromptArgs {
 /** the exact system+user the route sends — exported so the live eval can't drift */
 export function buildDraftPrompt(args: BuildDraftPromptArgs): { system: string; user: string } {
   const system =
-    'You write multiple-choice practice questions for an intro macroeconomics course. Reply with ONLY a JSON array, no prose. Each element is one of:\n' +
+    'You write multiple-choice practice questions for a course, grounded strictly in the teacher-supplied material. Reply with ONLY a JSON array, no prose. Each element is one of:\n' +
     '  single-answer: {"kind":"single","stem":string,"options":string[4],"correctIndex":number,"rationale":string}\n' +
     '  select-all:    {"kind":"multi","stem":string,"options":string[4-5],"correctIndices":number[2-3],"rationale":string}\n' +
     "For single: exactly 4 options, exactly one correct. For multi: 4–5 options, 2–3 correct (never all). All indices 0-based. Ground every question strictly in the provided facts — never introduce outside claims or numbers. Distractors must be plausible common mistakes. rationale is one sentence on why the correct answer(s) are right.";
@@ -117,6 +118,7 @@ export async function POST(req: Request) {
     sectionText?: unknown;
     count?: unknown;
     tier?: unknown;
+    style?: unknown;
   };
   try {
     body = await req.json();
@@ -131,7 +133,8 @@ export async function POST(req: Request) {
   if (!conceptName || !definition)
     return NextResponse.json({ error: "bad_request", drafts: [], multiDrafts: [] }, { status: 400 });
 
-  const { system, user } = buildDraftPrompt({ conceptName, definition, sectionText, count, tier });
+  const { system: baseSystem, user } = buildDraftPrompt({ conceptName, definition, sectionText, count, tier });
+  const system = appendStyle(baseSystem, body.style);
   const { difficulty, transferDistance } = tierParams(tier);
 
   const controller = new AbortController();

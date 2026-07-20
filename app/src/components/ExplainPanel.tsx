@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { explainProvider, type ExplainMode, type ExplainOutput } from "@/lib/ai/explain";
 import type { Concept, Equation, Misconception } from "@/lib/engine/types";
+import type { TeachingStyle } from "@/lib/engine/teaching-style";
 import { course } from "@/content/active-course";
 import { MathTex } from "./MathTex";
 import { GroundedCitationChips } from "./CitationChips";
@@ -31,6 +32,7 @@ export function ExplainPanel({
   misconception = null,
   simplerVariant = null,
   extraMode,
+  teachingStyle = null,
 }: {
   concept: Concept;
   equation: Equation | null;
@@ -38,6 +40,9 @@ export function ExplainPanel({
   simplerVariant?: string | null;
   /** e.g. surface "why is my answer wrong" from feedback (IDEA-071/108) */
   extraMode?: "why_wrong";
+  /** D-029: the enrolled course's teaching style, so the tutor uses the
+   *  teacher's voice for this learner. */
+  teachingStyle?: TeachingStyle | null;
 }) {
   const [output, setOutput] = useState<ExplainOutput | null>(null);
   const [activeMode, setActiveMode] = useState<ExplainMode | null>(null);
@@ -51,7 +56,7 @@ export function ExplainPanel({
     setOutput(null);
     setReported(false);
     try {
-      const result = await explainProvider.explain({ mode, concept, equation, citations, misconception, simplerVariant });
+      const result = await explainProvider.explain({ mode, concept, equation, citations, misconception, simplerVariant, teachingStyle });
       // ignore a stale response if the learner clicked another mode meanwhile
       setLoadingMode((cur) => {
         if (cur === mode) setOutput(result);

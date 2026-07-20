@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createCourse,
+  deleteCourse,
   listMyCourses,
   renameCourse,
   type OwnedCourse,
@@ -26,6 +27,7 @@ import { sectionize, type TeacherDoc } from "@/lib/engine/ingest";
 import { extractPdfText } from "@/lib/pdf-text";
 import { addDoc, removeDoc } from "@/lib/teacher-state";
 import { mutateTeacherState, useTeacherState } from "@/lib/teacher-store";
+import { TeachingStyleCard } from "./teach/TeachingStyleCard";
 import { LoadingScreen } from "./LoadingScreen";
 
 /** "N students enrolled", pluralized. */
@@ -40,14 +42,31 @@ function enrolledLabel(n: number): string {
 function SectionCard({
   course,
   onRenamed,
+  onDeleted,
 }: {
   course: OwnedCourse;
   onRenamed: (id: string, title: string) => void;
+  onDeleted: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(course.title);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const remove = async () => {
+    setDeleting(true);
+    setError(null);
+    const ok = await deleteCourse(course.id);
+    setDeleting(false);
+    if (!ok) {
+      setError("Couldn't delete just now — try again when you're online.");
+      setConfirmingDelete(false);
+      return;
+    }
+    onDeleted(course.id);
+  };
 
   const save = async () => {
     const title = draft.trim();
@@ -113,20 +132,59 @@ function SectionCard({
         ) : (
           <>
             <h3 className="font-bold">{course.title}</h3>
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(course.title);
-                setEditing(true);
-              }}
-              className="btn-secondary min-h-12 px-4 text-sm"
-              aria-label={`Rename ${course.title}`}
-            >
-              Rename
-            </button>
+            <span className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(course.title);
+                  setEditing(true);
+                }}
+                className="btn-secondary min-h-12 px-4 text-sm"
+                aria-label={`Rename ${course.title}`}
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="btn-danger min-h-12 px-4 text-sm"
+                aria-label={`Delete ${course.title}`}
+              >
+                Delete
+              </button>
+            </span>
           </>
         )}
       </div>
+
+      {confirmingDelete && (
+        <div className="mt-3 rounded-xl border-2 border-[var(--coral)] bg-[var(--coral-tint)] p-3">
+          <p className="text-sm font-bold text-[var(--deep-ink)]">
+            Delete “{course.title}”?
+          </p>
+          <p className="mt-1 text-xs text-[var(--deep-ink)]">
+            Its join code stops working and enrolled students lose access. This can&apos;t be undone.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void remove()}
+              disabled={deleting}
+              className="btn-danger min-h-12 px-4 text-sm disabled:opacity-50"
+            >
+              {deleting ? "Deleting…" : "Delete course"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+              className="btn-secondary min-h-12 px-4 text-sm disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {error && (
         <p className="mt-2 rounded-xl bg-[var(--coral-tint)] p-2 text-xs text-[var(--deep-ink)]" role="alert">
           {error}
@@ -196,6 +254,10 @@ function ClassSections() {
 
   const onRenamed = useCallback((id: string, title: string) => {
     setCourses((cs) => cs.map((c) => (c.id === id ? { ...c, title } : c)));
+  }, []);
+
+  const onDeleted = useCallback((id: string) => {
+    setCourses((cs) => cs.filter((c) => c.id !== id));
   }, []);
 
   const createSection = async () => {
@@ -283,7 +345,7 @@ function ClassSections() {
 
       <ul className="mt-3 space-y-3">
         {courses.map((c) => (
-          <SectionCard key={c.id} course={c} onRenamed={onRenamed} />
+          <SectionCard key={c.id} course={c} onRenamed={onRenamed} onDeleted={onDeleted} />
         ))}
       </ul>
 
@@ -423,8 +485,8 @@ export function TeachClient() {
       <p className="text-sm text-app">
         Build a course from scratch in three steps: <strong>add your materials</strong>, let the AI{" "}
         <strong>draft the course</strong> (units, lessons and the order to learn them), then{" "}
-        <strong>approve it</strong> to get a join code you share with your students. Nothing reaches students
-        until you sign off.
+        <strong>approve it</strong> to get a join code you share with your students. Set your teaching voice once
+        and the AI drafts and tutors in it everywhere. Nothing reaches students until you sign off.
       </p>
 
       {/* ── STEP 1 · add materials ─────────────────────────────────────────── */}
@@ -529,6 +591,9 @@ export function TeachClient() {
           </div>
         )}
       </div>
+
+      {/* ── "Teach like you" · the AI persona the teacher instructs (D-029) ── */}
+      <TeachingStyleCard />
 
       {/* ── STEP 2 · compile with AI (the from-zero course builder) ────────── */}
       <Link

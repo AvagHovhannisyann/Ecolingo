@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { sanitizeCoursePlan, type DraftCoursePlan } from "@/lib/engine/compile-course";
+import { appendStyle } from "@/lib/engine/teaching-style";
 
 export const runtime = "nodejs";
 
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
   const empty: DraftCoursePlan = { units: [], prereqPairs: [] };
   if (!key) return NextResponse.json({ error: "no_provider", plan: empty }, { status: 503 });
 
-  let body: { sections?: InSection[]; mode?: unknown; context?: unknown };
+  let body: { sections?: InSection[]; mode?: unknown; context?: unknown; style?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -165,7 +166,8 @@ export async function POST(req: Request) {
   if (sections.length === 0) return NextResponse.json({ plan: empty });
 
   const allowedSectionIds = new Set(sections.map((s) => s.id));
-  const system = mode === "clarify" ? CLARIFY_SYSTEM_PROMPT : COMPILE_SYSTEM_PROMPT;
+  const baseSystem = mode === "clarify" ? CLARIFY_SYSTEM_PROMPT : COMPILE_SYSTEM_PROMPT;
+  const system = appendStyle(baseSystem, body.style);
   const user = mode === "clarify" ? buildClarifyUser(sections) : buildCompileUser(sections, context);
 
   const controller = new AbortController();

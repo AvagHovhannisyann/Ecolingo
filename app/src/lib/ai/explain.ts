@@ -9,6 +9,7 @@
  */
 
 import type { Citation, Concept, Equation, Misconception } from "../engine/types";
+import type { TeachingStyle } from "../engine/teaching-style";
 
 export type ExplainMode =
   | "simpler"
@@ -28,6 +29,10 @@ export interface ExplainInput {
   /** present for why_wrong */
   misconception: Misconception | null;
   simplerVariant: string | null;
+  /** D-029: the enrolled course's teaching style, layered onto the tutor prompt
+   *  server-side so the AI speaks in the teacher's voice. Only affects the live
+   *  provider; the deterministic fallback ignores it. */
+  teachingStyle?: TeachingStyle | null;
 }
 
 export type Segment = { kind: "text"; text: string } | { kind: "math"; latex: string } | { kind: "graph_ref"; lab: "solow" };
@@ -134,6 +139,7 @@ export class LLMExplainProvider implements ExplainProvider {
           equationMeaning: input.equation?.components.map((c) => c.meaning).join("; ") ?? null,
           misconception: input.misconception?.description ?? null,
           sourceLabels: input.citations.map((c) => c.label),
+          style: input.teachingStyle ?? undefined,
         }),
       });
       if (!res.ok) return { ...base, generatedBy: "deterministic" };

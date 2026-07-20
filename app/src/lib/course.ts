@@ -234,6 +234,31 @@ export async function renameCourse(courseId: string, title: string): Promise<boo
   }
 }
 
+/**
+ * Teacher path: permanently delete a course the caller owns. Owner-scoped by
+ * RLS (courses_owner), so a non-owner's delete simply matches zero rows and
+ * returns false. Enrollments referencing the course cascade at the database
+ * level. false in local-only / unreachable mode (GATE-009).
+ */
+export async function deleteCourse(courseId: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  try {
+    const userId = await ensureSession();
+    if (!userId) return false;
+    const { data, error } = await supabase
+      .from("courses")
+      .delete()
+      .eq("id", courseId)
+      .eq("owner_id", userId)
+      .select("id");
+    if (error) return false;
+    return (data?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 export interface JoinResult {
   ok: boolean;
   courseId?: string;

@@ -26,6 +26,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Concept, Equation, EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
 import type { ScoreResult } from "@/lib/engine/scoring";
+import type { TeachingStyle } from "@/lib/engine/teaching-style";
 import { pickQuestion } from "@/lib/engine/adaptive";
 import { course, getConcept } from "@/content/active-course";
 import { completeLesson, recordEvidence } from "@/lib/learner-state";
@@ -61,6 +62,7 @@ export function LessonPlayer({
   extraConcepts = [],
   extraQuestions = [],
   extraEquations = [],
+  teachingStyle = null,
 }: {
   lesson: Lesson;
   /** D-022: plan-scoped concepts/questions for compiled courses — checked
@@ -70,6 +72,9 @@ export function LessonPlayer({
   /** plan-scoped equations (sample course / future compiled math) — checked
    *  before the static content module so math steps and explain panels resolve. */
   extraEquations?: Equation[];
+  /** D-029: the enrolled course's teaching style, forwarded to every explain
+   *  panel so the tutor speaks in the teacher's voice. */
+  teachingStyle?: TeachingStyle | null;
 }) {
   const state = useLearnerState();
   const [stepIndex, setStepIndex] = useState(0);
@@ -270,7 +275,7 @@ export function LessonPlayer({
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
             Explain
           </summary>
-          <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} />
+          <ExplainPanel concept={concept} equation={lessonEquation} simplerVariant={step.body.simpler ?? null} teachingStyle={teachingStyle} />
         </details>
       </div>
     );
@@ -340,7 +345,7 @@ export function LessonPlayer({
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
             Explain
           </summary>
-          <ExplainPanel concept={concept} equation={eq} />
+          <ExplainPanel concept={concept} equation={eq} teachingStyle={teachingStyle} />
         </details>
       </div>
     );
@@ -384,13 +389,14 @@ export function LessonPlayer({
           hideInlineFeedback
           revealAnswerState
           retryToken={retryToken}
+          teachingStyle={teachingStyle}
           onEvidence={(e, r) => handleQuestionEvidence(qStep.id, e, r, q)}
         />
         <details className="mt-3">
           <summary className="cursor-pointer text-sm font-semibold text-[color:var(--duo-blue-text)]">
             Explain
           </summary>
-          <ExplainPanel concept={resolveConcept(q.conceptSlug)} equation={questionEquation} />
+          <ExplainPanel concept={resolveConcept(q.conceptSlug)} equation={questionEquation} teachingStyle={teachingStyle} />
         </details>
       </div>
     );

@@ -19,6 +19,7 @@
  */
 
 import type { CourseDraft } from "@/lib/engine/compile-course";
+import type { TeachingStyle } from "@/lib/engine/teaching-style";
 
 export const COMPILED_PLAN_KEY = "ecolingo.compiledCoursePlan.v1";
 
@@ -40,6 +41,9 @@ export interface StoredCompiledPlan {
   courseId?: string;
   /** the bound course's join code — what the teacher shares with students */
   joinCode?: string;
+  /** D-029: the teacher's teaching style, so the student tutor speaks in their
+   *  voice. Absent when the teacher kept the default voice. */
+  teachingStyle?: TeachingStyle;
 }
 
 export function loadCompiledPlan(): StoredCompiledPlan | null {
