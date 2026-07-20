@@ -33,10 +33,10 @@ describe("resolveCharacterId", () => {
 
 describe("voiceFor", () => {
   it("gives each known character a distinct voice and falls back to the default", () => {
-    expect(voiceFor("pip").elevenVoiceId).toBe(CHARACTER_VOICES.pip.elevenVoiceId);
-    expect(voiceFor("bo").elevenVoiceId).toBe(CHARACTER_VOICES.bo.elevenVoiceId);
+    expect(voiceFor("pip").kokoroVoiceId).toBe(CHARACTER_VOICES.pip.kokoroVoiceId);
+    expect(voiceFor("bo").kokoroVoiceId).toBe(CHARACTER_VOICES.bo.kokoroVoiceId);
     // distinct voices across the cast
-    const ids = Object.values(CHARACTER_VOICES).map((v) => v.elevenVoiceId);
+    const ids = Object.values(CHARACTER_VOICES).map((v) => v.kokoroVoiceId);
     expect(new Set(ids).size).toBe(ids.length);
     // distinct browser pitches too, so the fallback voices differ
     const pitches = Object.values(CHARACTER_VOICES).map((v) => v.webPitch);

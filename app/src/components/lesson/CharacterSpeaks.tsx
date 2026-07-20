@@ -3,7 +3,7 @@
 /**
  * Character-speaks presentation (Duolingo-style: a character beside a speech
  * bubble, with a speaker button that reads the line aloud). Audio is the
- * shared voice engine (lib/tts): neural ElevenLabs when configured, browser
+ * shared voice engine (lib/tts): our own Kokoro model when configured, browser
  * Web Speech otherwise — so it always works. Each character has its OWN voice.
  *
  * While speaking, the character "talks": its body squashes and stretches in

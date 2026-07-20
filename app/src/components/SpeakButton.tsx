@@ -3,7 +3,7 @@
 /**
  * Reusable read-aloud button (D-033). Drop it next to any written text — a
  * question stem, a tutor explanation — and clicking it speaks that text with
- * the shared voice engine (neural ElevenLabs when configured, browser Web
+ * the shared voice engine (our own Kokoro model when configured, browser Web
  * Speech otherwise). Accessible, SSR-safe, and never throws into the UI.
  */
 

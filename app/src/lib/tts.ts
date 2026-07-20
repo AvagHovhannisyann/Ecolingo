@@ -4,13 +4,14 @@
  * Voice engine (D-033). Click a read-aloud button → the written text is spoken.
  *
  * Two tiers, chosen automatically so audio ALWAYS works (GATE-009):
- *   1. Neural (ElevenLabs) via /api/tts — natural, professional. Used when the
- *      server has a key. The clip's amplitude is metered (Web Audio) so a
- *      character can "talk" in sync with the actual sound.
- *   2. Browser (Web Speech) fallback — free, on-device, no key. Used when the
- *      neural route degrades (503) or errors, or as the only option offline.
+ *   1. Neural — OUR OWN Kokoro-82M model (Apache-2.0, open), served via
+ *      /api/tts from a self-hosted Kokoro server. Natural and professional.
+ *      The clip's amplitude is metered (Web Audio) so a character can "talk"
+ *      in sync with the actual sound.
+ *   2. Browser (Web Speech) fallback — free, on-device, no server. Used when
+ *      the neural route degrades (503) or errors, or as the only option offline.
  *
- * Each character has its OWN voice (a distinct ElevenLabs voice id + a distinct
+ * Each character has its OWN voice (a distinct Kokoro voice + a distinct
  * browser pitch/rate), so the ensemble sounds like different people.
  *
  * `speak()` is browser-only and defensive: audio must never throw into the UI.
@@ -20,8 +21,8 @@
 export interface CharacterVoice {
   id: string;
   label: string;
-  /** ElevenLabs voice id for the neural path */
-  elevenVoiceId: string;
+  /** Kokoro-82M voice id for the neural path (our own open model) */
+  kokoroVoiceId: string;
   /** Web Speech knobs for the fallback path */
   webRate: number;
   webPitch: number;
@@ -30,17 +31,21 @@ export interface CharacterVoice {
 export const DEFAULT_VOICE: CharacterVoice = {
   id: "default",
   label: "Narrator",
-  elevenVoiceId: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm, professional
+  kokoroVoiceId: "af_heart", // warm, natural
   webRate: 0.98,
   webPitch: 1.0,
 };
 
-/** Per-character voices, keyed by the character id derived from its art path. */
+/**
+ * Per-character voices, keyed by the character id derived from its art path.
+ * The neural ids are Kokoro-82M voices (a=American/b=British, f/m gender); the
+ * web pitch/rate keep the ensemble distinct even on the browser fallback.
+ */
 export const CHARACTER_VOICES: Record<string, CharacterVoice> = {
-  "eco-wave": { id: "eco-wave", label: "Eco", elevenVoiceId: "21m00Tcm4TlvDq8ikWAM", webRate: 0.98, webPitch: 1.05 },
-  pip: { id: "pip", label: "Pip", elevenVoiceId: "MF3mGyEYCl7XYWbV9V6O", webRate: 1.06, webPitch: 1.28 }, // Elli — bright
-  lumi: { id: "lumi", label: "Lumi", elevenVoiceId: "EXAVITQu4vr4xnSDxMaL", webRate: 0.96, webPitch: 1.12 }, // Bella — warm
-  bo: { id: "bo", label: "Bo", elevenVoiceId: "pNInz6obpgDQGcFmaJgB", webRate: 0.95, webPitch: 0.9 }, // Adam — deep
+  "eco-wave": { id: "eco-wave", label: "Eco", kokoroVoiceId: "af_heart", webRate: 0.98, webPitch: 1.05 },
+  pip: { id: "pip", label: "Pip", kokoroVoiceId: "bf_emma", webRate: 1.06, webPitch: 1.28 }, // British female — bright
+  lumi: { id: "lumi", label: "Lumi", kokoroVoiceId: "af_bella", webRate: 0.96, webPitch: 1.12 }, // American female — warm
+  bo: { id: "bo", label: "Bo", kokoroVoiceId: "am_adam", webRate: 0.95, webPitch: 0.9 }, // American male — deep
 };
 
 /** Derive a stable character id from an art path, e.g. "/art-cast/pip.webp" → "pip". */
@@ -144,7 +149,7 @@ export function speak(text: string, opts: SpeakOptions = {}): SpeakHandle {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleaned, voiceId: voice.elevenVoiceId }),
+        body: JSON.stringify({ text: cleaned, voiceId: voice.kokoroVoiceId }),
       });
       const type = res.headers.get("content-type") || "";
       if (res.ok && type.startsWith("audio/")) {
