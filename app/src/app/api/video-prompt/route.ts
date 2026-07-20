@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export const MODELS = [
   process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",

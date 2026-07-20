@@ -15,6 +15,8 @@ import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
 
 export const runtime = "nodejs";
+// Handout generation runs the same slow free models as the compiler (D-038).
+export const maxDuration = 60;
 
 export const MODELS = [
   process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
@@ -162,7 +164,7 @@ export async function POST(req: Request) {
   const user = buildGenerateUser(mode, sections, level);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
     for (const model of MODELS) {
       try {

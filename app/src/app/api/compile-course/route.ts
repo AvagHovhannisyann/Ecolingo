@@ -17,6 +17,10 @@ import { sanitizeCoursePlan, type DraftCoursePlan } from "@/lib/engine/compile-c
 import { appendStyle } from "@/lib/engine/teaching-style";
 
 export const runtime = "nodejs";
+// Compiling a whole course from many sections is slow (tens of seconds on the
+// free models). Without this, the platform kills the function early and the
+// teacher sees "the AI provider didn't answer" (D-038).
+export const maxDuration = 60;
 
 export const MODELS = [
   // Verified against the live OpenRouter catalog: the strongest free models,
@@ -171,7 +175,7 @@ export async function POST(req: Request) {
   const user = mode === "clarify" ? buildClarifyUser(sections) : buildCompileUser(sections, context);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
     for (const model of MODELS) {
       try {
