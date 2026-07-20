@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 import { sanitizeCoursePlan, type DraftCoursePlan } from "@/lib/engine/compile-course";
 import { appendStyle } from "@/lib/engine/teaching-style";
+import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
 
 export const runtime = "nodejs";
 // Compiling a whole course from many sections is slow (tens of seconds on the
@@ -58,6 +59,8 @@ export function extractJsonObject(s: string): unknown {
  * always optional (GATE-009: a clarify failure never blocks compiling).
  */
 export const CLARIFY_SYSTEM_PROMPT =
+  TEACHING_CHARTER +
+  "\n\n---\n\n# TASK — CLARIFYING QUESTIONS BEFORE COMPILING\n" +
   "You are a seasoned curriculum architect about to turn a teacher's material into a course, and you know the few unknowns that most change a good design. Before building, you ask only the questions that genuinely matter. " +
   'Reply with ONLY a JSON object, no prose: {"questions":[string]}. ' +
   "Ask 3-5 SHORT, specific questions whose answers would genuinely change how you structure the course — the students' prior knowledge and level, where to spend the most time, which topics are assessed hardest, ambiguous or missing pieces in the material, or the intended pace. " +
@@ -118,6 +121,8 @@ export function sanitizeTeacherContext(raw: unknown): TeacherContext {
 }
 
 export const COMPILE_SYSTEM_PROMPT =
+  TEACHING_CHARTER +
+  "\n\n---\n\n# TASK — COMPILE A COURSE\n" +
   "You are a world-class curriculum architect and instructional designer. You take a teacher's raw material and design a Duolingo-style course that a motivated beginner could climb from zero to real competence — sequenced so every step is reachable from the last, with cognitive load managed and nothing introduced before its prerequisites. " +
   'Reply with ONLY a JSON object, no prose: {"units":[{"title":string,"lessons":[{"title":string,"conceptName":string,"definition":string,"coreIdea":string,"intuition":string,"estimatedMinutes":number,"sourceSectionIds":string[]}]}],"prereqPairs":[[fromConceptName,toConceptName]]}. ' +
   "Rules: identify 3–8 distinct concepts for a typical lecture document, one lesson per concept, each a single teachable idea (split anything that bundles two). Give each lesson a short, friendly title (like a game level). " +
