@@ -15,11 +15,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { concepts } from "@/content/active-course";
 import {
   createCourse,
-  ensureMyCourse,
   listMyCourses,
   renameCourse,
   type OwnedCourse,
 } from "@/lib/course";
+import { getSupabase } from "@/lib/supabase";
 import { SAMPLE_LECTURE_MD, SAMPLE_LECTURE_TITLE } from "@/content/econ13210/sample-lecture";
 import { proposeLinks, sectionize, type ProposedLink, type TeacherDoc } from "@/lib/engine/ingest";
 import { toAuthoredQuestion, type DraftQuestion } from "@/lib/engine/authored";
@@ -96,8 +96,6 @@ function ProposalCard({
     </li>
   );
 }
-
-const DEFAULT_COURSE_TITLE = "ECON 13210 — Intro to Macroeconomic Models";
 
 /** "N students enrolled", pluralized. */
 function enrolledLabel(n: number): string {
@@ -255,22 +253,17 @@ function ClassSections() {
   useEffect(() => {
     let alive = true;
     void (async () => {
+      // No backend configured → the honest "class features need the cloud"
+      // state (GATE-009). Otherwise show whatever this teacher actually owns —
+      // a brand-new teacher legitimately owns NOTHING and gets an empty state,
+      // never a fabricated demo course (D-027).
+      if (getSupabase() === null) {
+        if (alive) setPhase("unavailable");
+        return;
+      }
       const list = await listMyCourses();
       if (!alive) return;
-      if (list.length > 0) {
-        setCourses(list);
-        setPhase("ready");
-        return;
-      }
-      // zero-state: lazily create the teacher's first course (unchanged UX).
-      // A null here means Supabase is unconfigured/unreachable (GATE-009).
-      const first = await ensureMyCourse(DEFAULT_COURSE_TITLE);
-      if (!alive) return;
-      if (!first) {
-        setPhase("unavailable");
-        return;
-      }
-      setCourses([{ ...first, studentCount: 0 }]);
+      setCourses(list);
       setPhase("ready");
     })();
     return () => {
@@ -345,6 +338,25 @@ function ClassSections() {
           {refreshing ? "Refreshing…" : "Refresh"}
         </button>
       </div>
+
+      {courses.length === 0 && !adding && (
+        <div className="card mt-3 flex items-start gap-3 p-4">
+          <Image
+            src="/art-v2/eco-books.webp"
+            alt=""
+            width={96}
+            height={96}
+            className="h-14 w-14 shrink-0 rounded-xl object-cover"
+          />
+          <div>
+            <p className="text-sm font-bold">No sections yet — this is your workspace.</p>
+            <p className="mt-1 text-sm text-app-muted">
+              Compile a course from your materials below, or create a blank section to get a join code you can
+              share with students.
+            </p>
+          </div>
+        </div>
+      )}
 
       <ul className="mt-3 space-y-3">
         {courses.map((c) => (
