@@ -40,3 +40,22 @@ export function useAccountInfo(): AccountState {
 export function needsProfile(state: AccountState): boolean {
   return state.phase === "ready" && (state.info === null || state.info.isAnonymous);
 }
+
+/**
+ * Designated tester accounts (product owner's call): these accounts pass
+ * every role gate — student AND teacher surfaces — so the whole app can be
+ * exercised from one login. UI shows an explicit TEST MODE badge so the
+ * elevated access is never invisible. Client-side convenience only: RLS
+ * still scopes every row server-side to what the account actually owns.
+ */
+export const TEST_ACCOUNT_EMAILS = ["avagh@uchicago.edu"];
+
+export function isTester(info: AccountInfo | null | undefined): boolean {
+  const email = info?.email?.toLowerCase();
+  return !!email && TEST_ACCOUNT_EMAILS.includes(email);
+}
+
+/** Role gate helper: real role, or full access for designated testers. */
+export function hasTeacherAccess(state: AccountState): boolean {
+  return state.phase === "ready" && (state.info?.role === "teacher" || isTester(state.info));
+}

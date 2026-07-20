@@ -15,7 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth";
-import { needsProfile, useAccountInfo } from "@/lib/use-account";
+import { isTester, needsProfile, useAccountInfo } from "@/lib/use-account";
 
 export function CreateProfileWall({ compact = false }: { compact?: boolean }) {
   return (
@@ -79,11 +79,21 @@ export function AccountCard() {
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-extrabold">{name}</h2>
           {info.email && <p className="truncate text-sm text-app-muted">{info.email}</p>}
-          {info.role && (
-            <span className="mt-1 inline-block rounded-full bg-[color:var(--app-surface-2)] px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-app-muted">
-              {info.role}
-            </span>
-          )}
+          <span className="mt-1 flex flex-wrap gap-1.5">
+            {info.role && (
+              <span className="inline-block rounded-full bg-[color:var(--app-surface-2)] px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-app-muted">
+                {info.role}
+              </span>
+            )}
+            {isTester(info) && (
+              <span
+                className="inline-block rounded-full border-2 border-[var(--duo-gold)] px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-[var(--duo-gold)]"
+                title="Designated tester — every surface (student and teacher) is open to this account."
+              >
+                Test mode
+              </span>
+            )}
+          </span>
         </div>
         <button
           type="button"

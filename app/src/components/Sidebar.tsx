@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useAccountInfo } from "@/lib/use-account";
+import { hasTeacherAccess, useAccountInfo } from "@/lib/use-account";
 import {
   LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
   ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
@@ -55,9 +55,8 @@ export function Sidebar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const moreActive = MORE.some((m) => isNavActive(pathname, m.href));
-  // The teacher workspace is teacher-only (D-023): students never see the tab.
-  const isTeacher = account.phase === "ready" && account.info?.role === "teacher";
-  const primary = PRIMARY.filter((n) => n.href !== "/teach" || isTeacher);
+  // Teacher-only tab (D-023); designated testers see everything too.
+  const primary = PRIMARY.filter((n) => n.href !== "/teach" || hasTeacherAccess(account));
 
   useEffect(() => {
     if (!moreOpen) return;

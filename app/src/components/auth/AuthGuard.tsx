@@ -21,7 +21,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
-import { needsProfile, useAccountInfo } from "@/lib/use-account";
+import { hasTeacherAccess, needsProfile, useAccountInfo } from "@/lib/use-account";
 import { LoadingScreen } from "../LoadingScreen";
 
 const PUBLIC_ROUTES = new Set(["/", "/auth", "/auth/reset", "/auth/callback"]);
@@ -46,13 +46,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const teacherOnly = pathname === "/teach" || pathname.startsWith("/teach/");
 
   const signedOut = !isPublic && !bypass && needsProfile(account);
+  // Teacher surfaces open to real teachers AND designated tester accounts
+  // (who get full access to exercise every feature).
   const wrongRole =
     !isPublic &&
     !bypass &&
     teacherOnly &&
     account.phase === "ready" &&
     !needsProfile(account) &&
-    account.info?.role !== "teacher";
+    !hasTeacherAccess(account);
 
   // Already signed in on the login screen → straight to your home (the
   // reverse illogic of the old guest-first flow).
