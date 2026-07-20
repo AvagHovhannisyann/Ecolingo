@@ -29,6 +29,9 @@ export interface EnrolledPlan {
   concepts: Concept[];
   edges: ConceptEdge[];
   lessons: Lesson[];
+  /** AI-designed roadmap units (goal title + lesson ids), when the ratified
+   *  plan carries them; older plans without units fall back to client chunking. */
+  units: { title: string; lessonIds: string[] }[];
 }
 
 export type EnrolledCourseState = "loading" | "cloudless" | "none" | EnrolledPlan;
@@ -49,6 +52,18 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
     (l) => typeof l?.id === "string" && typeof l?.conceptSlug === "string" && Array.isArray(l?.steps)
   );
   if (!conceptsOk || !lessonsOk) return null;
+  // Units are optional and defensively validated: every entry needs a title
+  // and only lesson ids that exist in the plan survive.
+  const lessonIdSet = new Set(lessons.map((l) => l.id));
+  const rawUnits = Array.isArray(draft.units) ? draft.units : [];
+  const units = rawUnits
+    .map((u) => {
+      const r = u as Record<string, unknown>;
+      const title = typeof r?.title === "string" ? r.title.trim() : "";
+      const ids = Array.isArray(r?.lessonIds) ? r.lessonIds.filter((id): id is string => typeof id === "string" && lessonIdSet.has(id)) : [];
+      return { title, lessonIds: ids };
+    })
+    .filter((u) => u.title !== "" && u.lessonIds.length > 0);
   return {
     courseId,
     courseTitle,
@@ -57,6 +72,7 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
     concepts,
     edges,
     lessons,
+    units,
   };
 }
 

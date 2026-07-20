@@ -18,9 +18,13 @@ import { sanitizeCoursePlan, type DraftCoursePlan } from "@/lib/engine/compile-c
 export const runtime = "nodejs";
 
 export const MODELS = [
-  process.env.OPENROUTER_MODEL || "google/gemma-4-26b-a4b-it:free",
-  "openai/gpt-oss-20b:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
+  // Verified against the live OpenRouter catalog: the strongest free models,
+  // strongest first. The 550B ultra reads ~1M tokens of teacher material in
+  // one pass; each fallback keeps the pipeline alive if a tier is saturated.
+  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "tencent/hy3:free",
+  "google/gemma-4-31b-it:free",
 ];
 
 interface InSection {
@@ -112,6 +116,7 @@ export const COMPILE_SYSTEM_PROMPT =
   "You are an expert instructional designer decomposing a teacher's source material into a Duolingo-style course. " +
   'Reply with ONLY a JSON object, no prose: {"units":[{"title":string,"lessons":[{"title":string,"conceptName":string,"definition":string,"coreIdea":string,"intuition":string,"estimatedMinutes":number,"sourceSectionIds":string[]}]}],"prereqPairs":[[fromConceptName,toConceptName]]}. ' +
   "Rules: identify 3–8 distinct concepts for a typical lecture document, one lesson per concept. Give each lesson a short, friendly title (like a game level). " +
+  "Group lessons into coherent UNITS of 3–5 that build on each other; each unit title is a short student-facing GOAL shown as a banner on the learning roadmap (e.g. \"Master the demand curve\") — an outcome phrase, never a chapter number or heading copied verbatim. " +
   "definition, coreIdea and intuition must be grounded ONLY in the provided source text — never introduce outside facts, numbers, or claims. coreIdea is 1–2 sentences stating the concept plainly; intuition is a short everyday analogy or mental picture. " +
   "sourceSectionIds must be chosen ONLY from the exact section ids given. " +
   "prereqPairs lists ordered [before, after] concept-name pairs ONLY where the source implies one concept must be understood before another; omit weak or speculative dependencies and never create a cycle.";

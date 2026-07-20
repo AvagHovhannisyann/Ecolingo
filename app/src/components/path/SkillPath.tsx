@@ -32,13 +32,17 @@ export interface LessonRow {
 
 export interface SkillPathProps {
   rows: LessonRow[];
+  /** AI-designed units from the ratified plan: goal title + lesson ids.
+   *  When present and consistent, they drive the grouping and the banner
+   *  text; otherwise the path falls back to fixed-size chunking. */
+  units?: { title: string; lessonIds: string[] }[];
   /** reason text for the top due review, or null when nothing is due */
   dueReviewReason: string | null;
   /** the Eco pose beside the current node */
   mascotSrc: string;
 }
 
-/** Lessons per visual unit (the reference chunks ~4 nodes per goal). */
+/** Fallback lessons-per-unit when the plan carries no AI units. */
 const UNIT_SIZE = 4;
 
 /** Unit accent cycle from the reference: green → purple → teal. */
@@ -56,14 +60,29 @@ const UNIT_SCENES = [
 // gentle wind: center → right → center → left, repeating
 const WIND = [0, 48, 0, -48];
 
-export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) {
-  const completedCount = rows.filter((r) => r.status === "done").length;
+export function SkillPath({ rows, units: planUnits, dueReviewReason, mascotSrc }: SkillPathProps) {
   const allComplete = rows.length > 0 && rows.every((r) => r.status === "done");
 
-  // Chunk lessons into units; a unit is "active" if it holds the current
-  // lesson, "done" if every lesson in it is done, otherwise "locked".
-  const units: LessonRow[][] = [];
-  for (let i = 0; i < rows.length; i += UNIT_SIZE) units.push(rows.slice(i, i + UNIT_SIZE));
+  // Group lessons into units. The AI-designed units from the ratified plan
+  // win when they cover the rows; otherwise fixed-size chunking. A unit is
+  // "active" if it holds the current lesson, "done" when all done, else locked.
+  const rowById = new Map(rows.map((r) => [r.lesson.id, r]));
+  const units: { label: string | null; rows: LessonRow[] }[] = [];
+  if (planUnits && planUnits.length > 0) {
+    const grouped = new Set<string>();
+    for (const u of planUnits) {
+      const unitRows = u.lessonIds.map((id) => rowById.get(id)).filter((r): r is LessonRow => !!r);
+      unitRows.forEach((r) => grouped.add(r.lesson.id));
+      if (unitRows.length > 0) units.push({ label: u.title, rows: unitRows });
+    }
+    // Any lesson the plan's units missed still belongs on the path.
+    const leftovers = rows.filter((r) => !grouped.has(r.lesson.id));
+    if (leftovers.length > 0) units.push({ label: null, rows: leftovers });
+  }
+  if (units.length === 0) {
+    for (let i = 0; i < rows.length; i += UNIT_SIZE)
+      units.push({ label: null, rows: rows.slice(i, i + UNIT_SIZE) });
+  }
 
   let globalIdx = 0; // continues the wind across units
   const windX = () => WIND[globalIdx++ % WIND.length];
@@ -72,30 +91,31 @@ export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) 
     <ol className="sp-path" aria-label="Your learning path">
       {units.map((unit, u) => {
         const theme = UNIT_THEMES[u % UNIT_THEMES.length];
-        const unitDone = unit.every((r) => r.status === "done");
-        const unitActive = unit.some((r) => r.status === "current");
+        const unitDone = unit.rows.every((r) => r.status === "done");
+        const unitActive = unit.rows.some((r) => r.status === "current");
         const unitLocked = !unitDone && !unitActive;
         const scene = UNIT_SCENES[u % UNIT_SCENES.length];
+        const bannerTitle = unit.label ?? unit.rows[0].lesson.title;
 
         const items: React.ReactNode[] = [];
 
-        // Unit divider (skip before the first unit): line + the unit's goal.
+        // Unit banner (skip before the first unit): a filled, unit-colored
+        // card carrying "UNIT N" and the AI-designed goal for this stretch.
         if (u > 0) {
           items.push(
-            <li key={`div-${u}`} className="sp-divider" aria-hidden="true">
-              <span className="sp-divider__line" />
-              <span className="sp-divider__label">{unit[0].lesson.title}</span>
-              <span className="sp-divider__line" />
+            <li key={`banner-${u}`} className={`sp-banner ${theme}${unitLocked ? " sp-banner--locked" : ""}`}>
+              <span className="sp-banner__eyebrow">Unit {u + 1}</span>
+              <span className="sp-banner__title">{bannerTitle}</span>
             </li>
           );
         }
 
-        unit.forEach((row, i) => {
+        unit.rows.forEach((row, i) => {
           const { lesson, status, prereqNames } = row;
           const offsetX = windX();
           const href = `/lesson/${lesson.id}`;
           // The character scene sits beside the unit's second node.
-          const sceneHere = i === Math.min(1, unit.length - 1);
+          const sceneHere = i === Math.min(1, unit.rows.length - 1);
 
           const sceneEl = sceneHere ? (
             <span
@@ -193,7 +213,7 @@ export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) 
         // Reward chest closing each unit except the last (earned once the
         // unit is complete) — same economy semantics as before.
         if (u < units.length - 1) {
-          const earned = completedCount >= (u + 1) * UNIT_SIZE;
+          const earned = unitDone;
           items.push(
             <li
               className={`sp-row ${theme}`}
