@@ -14,8 +14,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { DAILY_QUESTS, questProgress } from "@/lib/engine/economy";
 import type { LearnerState } from "@/lib/learner-state";
+import { useAccountInfo } from "@/lib/use-account";
 
 export function RightRail({ state }: { state: LearnerState }) {
+  const account = useAccountInfo();
+  // Teacher-only slot (D-023): students shouldn't be steered at the workspace.
+  const isTeacher = account.phase === "ready" && account.info?.role === "teacher";
   const nowISO = new Date().toISOString();
   const quests = DAILY_QUESTS.slice(0, 2).map((q) => ({
     quest: q,
@@ -88,21 +92,23 @@ export function RightRail({ state }: { state: LearnerState }) {
         </Link>
       </section>
 
-      {/* promo slot — the teacher entry point */}
-      <section className="rounded-2xl border-2 border-[color:var(--app-border)] p-4">
-        <div className="flex items-center gap-3">
-          <Image src="/art-v2/eco-books.webp" alt="" width={96} height={96} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
-          <div>
-            <h2 className="text-base font-black">Teach a course</h2>
-            <p className="mt-0.5 text-xs text-app-muted">
-              Upload your materials and Ecolingo compiles them into a path like this one.
-            </p>
+      {/* promo slot — the teacher entry point (teachers only) */}
+      {isTeacher && (
+        <section className="rounded-2xl border-2 border-[color:var(--app-border)] p-4">
+          <div className="flex items-center gap-3">
+            <Image src="/art-v2/eco-books.webp" alt="" width={96} height={96} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+            <div>
+              <h2 className="text-base font-black">Your workspace</h2>
+              <p className="mt-0.5 text-xs text-app-muted">
+                Upload materials and Ecolingo compiles them into a path like this one.
+              </p>
+            </div>
           </div>
-        </div>
-        <Link href="/teach" className="btn-secondary mt-3 block min-h-10 py-2 text-center text-sm font-extrabold uppercase">
-          Open teacher workspace
-        </Link>
-      </section>
+          <Link href="/teach" className="btn-secondary mt-3 block min-h-10 py-2 text-center text-sm font-extrabold uppercase">
+            Open teacher workspace
+          </Link>
+        </section>
+      )}
     </aside>
   );
 }

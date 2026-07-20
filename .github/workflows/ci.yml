@@ -70,6 +70,7 @@ jobs:
           # Each gate exits non-zero on failure; `set -e` (GH Actions default for
           # `run:`) then fails the step. The server runs in the background of THIS
           # step so a bad `&` can never mask a later step's exit code.
+          SMOKE_PORT=3100 node scripts/auth-gate.e2e.mjs
           SMOKE_PORT=3100 node scripts/smoke.e2e.mjs
           SMOKE_PORT=3100 node scripts/teach-smoke.e2e.mjs
           SMOKE_PORT=3100 node scripts/lab-keyboard.e2e.mjs

@@ -15,6 +15,7 @@ import {
   LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
   ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
+import { useAccountInfo } from "@/lib/use-account";
 import { isNavActive } from "./Sidebar";
 
 const TABS = [
@@ -43,8 +44,12 @@ function tabClass(active: boolean): string {
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const account = useAccountInfo();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const sheetActive = SHEET.some((s) => isNavActive(pathname, s.href));
+  // Teacher workspace is teacher-only (D-023): students never see the entry.
+  const isTeacher = account.phase === "ready" && account.info?.role === "teacher";
+  const sheet = SHEET.filter((n) => n.href !== "/teach" || isTeacher);
+  const sheetActive = sheet.some((s) => isNavActive(pathname, s.href));
 
   useEffect(() => {
     if (!sheetOpen) return;
@@ -66,7 +71,7 @@ export function MobileTabBar() {
           aria-label="More destinations"
           className="fixed inset-x-0 bottom-[68px] z-50 mx-2 rounded-3xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface)] p-2 min-[880px]:hidden"
         >
-          {SHEET.map((n) => {
+          {sheet.map((n) => {
             const active = isNavActive(pathname, n.href);
             const Icon = n.icon;
             return (

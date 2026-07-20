@@ -34,6 +34,7 @@ import {
   saveCompiledPlan,
   type StoredCompiledPlan,
 } from "./plan-store";
+import { LoadingScreen } from "../LoadingScreen";
 
 const PROVENANCE = "AI drafted, you approve — nothing reaches students without your sign-off.";
 
@@ -100,7 +101,7 @@ export function CompileCourseClient() {
   }, [sections]);
 
   if (!teacher) {
-    return <p className="p-4 text-sm text-app-muted">Loading teacher workspace…</p>;
+    return <LoadingScreen label="Loading teacher workspace…" />;
   }
 
   const canCompile = sections.length > 0 && phase !== "compiling";

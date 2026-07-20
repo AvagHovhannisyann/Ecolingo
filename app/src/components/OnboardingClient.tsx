@@ -27,6 +27,7 @@ import { DiagnosticStep } from "./DiagnosticStep";
 import { OptionCards, type OptionItem } from "./onboarding/OptionCards";
 import { SurveyScreen } from "./onboarding/SurveyScreen";
 import "./onboarding/survey.css";
+import { LoadingScreen } from "./LoadingScreen";
 
 type Role = NonNullable<LearnerProfile["role"]>;
 type Objective = NonNullable<LearnerProfile["objective"]>;
@@ -124,7 +125,7 @@ export function OnboardingClient() {
     headingRef.current?.focus();
   }, [stepIndex]);
 
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading…</p>;
+  if (!state) return <LoadingScreen label="Loading…" />;
 
   const step = STEPS[stepIndex];
   const goNext = () => setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));

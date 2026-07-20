@@ -17,6 +17,7 @@ import { usePublishedQuestions } from "@/lib/published-questions";
 import { playSfx } from "@/lib/sfx";
 import { fireConfetti } from "@/lib/confetti";
 import { QuestionCard } from "./QuestionCard";
+import { LoadingScreen } from "./LoadingScreen";
 
 const TYPE_LABELS: Record<string, string> = {
   mc_single: "Multiple choice",
@@ -35,7 +36,7 @@ export function BankClient() {
   const published = usePublishedQuestions();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [attemptKey, setAttemptKey] = useState(0);
-  if (!state) return <p className="p-4 text-sm text-app-muted">Loading question bank…</p>;
+  if (!state) return <LoadingScreen label="Loading question bank…" />;
 
   // teacher-ratified AI drafts (D-014) join the bank next to the seed content;
   // they carry provenance "ai_approved" and are scored by the same engine.

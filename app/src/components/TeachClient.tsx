@@ -29,6 +29,7 @@ import { draftQuestionsForConcept } from "@/lib/ai/draft-questions";
 import { linkKey, type TeacherState } from "@/lib/teacher-state";
 import { addAuthoredQuestion, addDoc, approveLink, rejectLink, removeAuthoredQuestion, removeDoc } from "@/lib/teacher-state";
 import { mutateTeacherState, useTeacherState } from "@/lib/teacher-store";
+import { LoadingScreen } from "./LoadingScreen";
 
 function ProposalCard({
   doc,
@@ -428,7 +429,7 @@ export function TeachClient() {
   const [aiBusyDoc, setAiBusyDoc] = useState<string | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
 
-  if (!teacher) return <p className="p-4 text-sm text-app-muted">Loading teacher workspace…</p>;
+  if (!teacher) return <LoadingScreen label="Loading teacher workspace…" />;
 
   const runAiSuggest = async (doc: TeacherDoc) => {
     setAiBusyDoc(doc.id);

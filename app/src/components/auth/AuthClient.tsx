@@ -28,6 +28,7 @@ import {
   type Role,
 } from "@/lib/auth";
 import { playSfx } from "@/lib/sfx";
+import { AmbientArt } from "../AmbientHero";
 
 type Mode = "login" | "signup";
 
@@ -109,6 +110,14 @@ export function AuthClient() {
       </div>
 
       <div className="flex flex-1 flex-col justify-center py-6">
+        {/* Eco waves you in — the Higgsfield loop (still on reduced motion) */}
+        <AmbientArt
+          videoSrc="/art-cast/eco-wave-loop.mp4"
+          imageSrc="/art-v2/eco-wave.webp"
+          width={480}
+          height={480}
+          className="mx-auto mb-4 h-24 w-24 rounded-2xl border-2 border-[color:var(--app-border)] object-cover"
+        />
         <h1 className="text-center text-2xl font-extrabold">
           {mode === "login" ? "Log in" : "Create your profile"}
         </h1>

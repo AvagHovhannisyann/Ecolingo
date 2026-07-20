@@ -3,6 +3,7 @@ import { nunito } from "@/fonts/nunito";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { AppStatBar } from "@/components/AppStatBar";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppStatBar />
         <div className="min-[880px]:pl-[240px]">
           <main id="main" className="mx-auto max-w-3xl px-4 pb-28 pt-16 min-[880px]:pb-12">
-            {children}
+            <AuthGuard>{children}</AuthGuard>
           </main>
         </div>
         <MobileTabBar />
