@@ -24,9 +24,15 @@
  *      end-to-end proof that the REAL route strips a fully hostile payload.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sanitizeCoursePlan, slugify, type DraftCoursePlan } from "../compile-course";
 import { POST, extractJsonObject } from "../../../app/api/compile-course/route";
+
+// These tests assert the OpenRouter contract; keep Groq (the newer primary
+// provider) out of the chain so ambient GROQ_API_KEY can't reorder attempts.
+beforeEach(() => {
+  vi.stubEnv("GROQ_API_KEY", "");
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

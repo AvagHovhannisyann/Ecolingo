@@ -12,16 +12,14 @@
  */
 
 import { NextResponse } from "next/server";
+import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-export const MODELS = [
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "tencent/hy3:free",
-  "google/gemma-4-31b-it:free",
-];
+// The provider chain (Groq primary, OpenRouter free fallback) lives in
+// lib/ai/providers. Re-exported as MODELS (the OpenRouter list) for parity.
+export const MODELS = OPENROUTER_MODELS;
 
 /**
  * The brief for the LLM that writes the video prompt. It is rich on purpose —
@@ -75,8 +73,7 @@ export function sanitizeVideoPrompt(raw: string): string {
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return NextResponse.json({ error: "no_provider" }, { status: 503 });
+  if (!hasAnyProvider()) return NextResponse.json({ error: "no_provider" }, { status: 503 });
 
   let body: { title?: unknown; units?: unknown };
   try {
@@ -93,21 +90,21 @@ export async function POST(req: Request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    for (const model of MODELS) {
+    for (const attempt of llmAttempts()) {
       try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const res = await fetch(attempt.url, {
           method: "POST",
           signal: controller.signal,
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
+          headers: { Authorization: `Bearer ${attempt.apiKey}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
           body: JSON.stringify({
-            model,
-            provider: { sort: "throughput" },
+            model: attempt.model,
             // Output is one short line (the sanitizer caps it), but reasoning
-            // free models spend completion tokens thinking first — at 120 the
+            // models spend completion tokens thinking first — at 120 the
             // reasoning starved the actual prompt to empty (D-041). Headroom for
             // reasoning + the short line. Cost unaffected ($0 free models).
             max_tokens: 800,
             temperature: 0.8,
+            ...attempt.extraBody,
             messages: [
               { role: "system", content: VIDEO_PROMPT_SYSTEM },
               { role: "user", content: buildVideoPromptUser(title, units) },
@@ -118,7 +115,7 @@ export async function POST(req: Request) {
         const data = await res.json();
         const content: string = data?.choices?.[0]?.message?.content ?? "";
         const prompt = sanitizeVideoPrompt(content);
-        if (prompt.length >= 8) return NextResponse.json({ prompt, model });
+        if (prompt.length >= 8) return NextResponse.json({ prompt, model: attempt.model });
       } catch {
         if (controller.signal.aborted) break;
       }

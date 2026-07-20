@@ -34,7 +34,7 @@
  * ZERO production-code changes.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   sanitizeDraftedQuestions,
   sanitizeDraftedQuestionsMulti,
@@ -42,6 +42,12 @@ import {
   tierParams,
 } from "../authored";
 import { POST, extractJsonArray, buildDraftPrompt } from "../../../app/api/draft-questions/route";
+
+// These tests assert the OpenRouter contract; keep Groq (the newer primary
+// provider) out of the chain so ambient GROQ_API_KEY can't reorder attempts.
+beforeEach(() => {
+  vi.stubEnv("GROQ_API_KEY", "");
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

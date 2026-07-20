@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
 import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
+import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/providers";
 import {
   sanitizeDraftedQuestions,
   sanitizeDraftedQuestionsMulti,
@@ -32,15 +33,10 @@ export const runtime = "nodejs";
 // Drafting questions calls the slow free models (D-038).
 export const maxDuration = 60;
 
-export const MODELS = [
-  // Verified against the live OpenRouter catalog: the strongest free models,
-  // strongest first. The 550B ultra reads ~1M tokens of teacher material in
-  // one pass; each fallback keeps the pipeline alive if a tier is saturated.
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "tencent/hy3:free",
-  "google/gemma-4-31b-it:free",
-];
+// The provider chain (Groq primary, OpenRouter free fallback) lives in
+// lib/ai/providers. Re-exported as MODELS (the OpenRouter list) for the opt-in
+// live eval harness.
+export const MODELS = OPENROUTER_MODELS;
 
 export function extractJsonArray(s: string): unknown {
   const f = s.replace(/```(?:json)?/gi, "");
@@ -118,8 +114,8 @@ function partitionRaw(parsed: unknown): { singles: unknown[]; multis: unknown[] 
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return NextResponse.json({ error: "no_provider", drafts: [], multiDrafts: [] }, { status: 503 });
+  if (!hasAnyProvider())
+    return NextResponse.json({ error: "no_provider", drafts: [], multiDrafts: [] }, { status: 503 });
 
   let body: {
     conceptName?: unknown;
@@ -149,20 +145,20 @@ export async function POST(req: Request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 40_000);
   try {
-    for (const model of MODELS) {
+    for (const attempt of llmAttempts()) {
       try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const res = await fetch(attempt.url, {
           method: "POST",
           signal: controller.signal,
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
+          headers: { Authorization: `Bearer ${attempt.apiKey}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
           body: JSON.stringify({
-            model,
-            provider: { sort: "throughput" },
-            // Reasoning free models spend completion tokens thinking before the
-            // JSON array; too small a budget starves the actual answer to empty
+            model: attempt.model,
+            // Reasoning models spend completion tokens thinking before the JSON
+            // array; too small a budget starves the actual answer to empty
             // (D-041). Headroom for reasoning + the questions. Cost unaffected ($0).
             max_tokens: 3000,
             temperature: 0.4,
+            ...attempt.extraBody,
             messages: [
               { role: "system", content: system },
               { role: "user", content: user },
@@ -186,7 +182,7 @@ export async function POST(req: Request) {
           difficulty,
           transferDistance,
         }));
-        return NextResponse.json({ drafts, multiDrafts, model, tier });
+        return NextResponse.json({ drafts, multiDrafts, model: attempt.model, tier });
       } catch {
         if (controller.signal.aborted) break;
       }
