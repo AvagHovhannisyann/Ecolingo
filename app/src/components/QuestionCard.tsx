@@ -20,6 +20,7 @@ import { course, misconceptions } from "@/content/active-course";
 import { fireConfetti } from "@/lib/confetti";
 import { MathTex } from "./MathTex";
 import { ExplainPanel } from "./ExplainPanel";
+import { SpeakButton } from "./SpeakButton";
 import { MiniSolowDiagram } from "./MiniSolowDiagram";
 
 function shuffled<T>(xs: T[], seed: number): T[] {
@@ -214,7 +215,10 @@ export function QuestionCard({
 
   return (
     <div className="rounded-2xl border border-[color:var(--app-border)] p-4">
-      <p className="font-medium">{question.stem}</p>
+      <div className="flex items-start gap-2">
+        <p className="flex-1 font-medium">{question.stem}</p>
+        <SpeakButton text={question.stem} label="Read the question aloud" />
+      </div>
 
       {/* format-specific input */}
       {(question.type === "mc_single" || question.type === "mc_multi") && (

@@ -128,6 +128,17 @@
   object-fit: contain;
   border-radius: 18px;
   border: 2px solid var(--app-border);
+  transform-origin: 50% 100%;
+}
+/* Talking motion (D-033): the character squashes/stretches with the audio
+   amplitude (--talk, 0..1, set per frame by the voice engine) so it reads as
+   speaking. Motion-safe only; reduced-motion users get the icon state instead. */
+@media (prefers-reduced-motion: no-preference) {
+  .talking .speaksChar {
+    transform: scaleY(calc(1 + var(--talk, 0) * 0.13)) scaleX(calc(1 - var(--talk, 0) * 0.06))
+      translateY(calc(var(--talk, 0) * -2px));
+    transition: transform 60ms linear;
+  }
 }
 .bubble {
   position: relative;
