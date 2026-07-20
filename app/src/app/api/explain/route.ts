@@ -11,6 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { appendStyle } from "@/lib/engine/teaching-style";
 
 export const runtime = "nodejs";
 
@@ -51,13 +52,16 @@ interface Body {
   equationMeaning?: string | null;
   misconception?: string | null;
   sourceLabels?: string[];
+  /** D-029: the enrolled course's teaching style — re-sanitized here, layered
+   *  onto the tutor prompt so students hear the teacher's own voice. */
+  style?: unknown;
 }
 
 // The grounding contract, factored out verbatim so the live eval can send the
 // EXACT same system prompt + facts the route sends. Changing either of these
 // changes the deployed behavior — the eval is meant to catch that.
 export const TUTOR_SYSTEM_PROMPT =
-  "You are Ecolingo's economics tutor for an intro macro course. Explain using ONLY the provided facts; never add outside claims, never invent numbers, never cite or name sources or page numbers (the app attaches citations itself). Be warm, plain, and concise. Output plain prose only — no markdown headers, no LaTeX, no bullet characters.";
+  "You are Ecolingo's course tutor. Explain using ONLY the provided facts; never add outside claims, never invent numbers, never cite or name sources or page numbers (the app attaches citations itself). Be warm, plain, and concise. Output plain prose only — no markdown headers, no LaTeX, no bullet characters.";
 
 /**
  * Grounding block: the model may use ONLY these facts. It must not cite sources
@@ -101,7 +105,7 @@ export async function POST(req: Request) {
   // sources (the client attaches real citations) and must not invent numbers.
   const facts = buildFacts(body);
 
-  const system = TUTOR_SYSTEM_PROMPT;
+  const system = appendStyle(TUTOR_SYSTEM_PROMPT, body.style);
   const user = `${facts}\n\nTask: ${instruction}`;
 
   const controller = new AbortController();

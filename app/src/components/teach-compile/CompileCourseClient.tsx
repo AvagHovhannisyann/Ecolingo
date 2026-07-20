@@ -28,6 +28,8 @@ import {
   type DroppedPrereqReason,
 } from "@/lib/engine/compile-course";
 import { useTeacherState } from "@/lib/teacher-store";
+import { useTeachingStyle } from "@/lib/teaching-style-store";
+import { isDefaultTeachingStyle } from "@/lib/engine/teaching-style";
 import { attachCompiledPlan, createCourse } from "@/lib/course";
 import {
   loadCompiledPlan,
@@ -54,6 +56,9 @@ interface CompileError {
 
 export function CompileCourseClient() {
   const teacher = useTeacherState();
+  // D-029: the teacher's saved voice shapes the drafted course and rides along
+  // on the ratified plan so students later hear that same voice from the tutor.
+  const teachingStyle = useTeachingStyle();
 
   // ── source selection ────────────────────────────────────────────────────
   const [mode, setMode] = useState<"docs" | "paste">("docs");
@@ -122,6 +127,7 @@ export function CompileCourseClient() {
         body: JSON.stringify({
           mode: "clarify",
           sections: sections.map((s) => ({ id: s.id, heading: s.heading, text: s.text })),
+          style: teachingStyle,
         }),
       });
       if (res.ok) {
@@ -155,6 +161,7 @@ export function CompileCourseClient() {
               .map((q, i) => ({ question: q, answer: (clarifyAnswers[i] ?? "").trim() }))
               .filter((a) => a.answer),
           },
+          style: teachingStyle,
         }),
       });
       if (res.status === 503) {
@@ -228,6 +235,10 @@ export function CompileCourseClient() {
       unitCount: filtered.units.length,
       lessonCount: draft.lessons.length,
       draft,
+      // D-029: persist the teacher's voice with the course (jsonb, no schema
+      // change) so the student-facing tutor speaks in it later. Omit when the
+      // teacher hasn't customised it, keeping default plans byte-identical.
+      teachingStyle: isDefaultTeachingStyle(teachingStyle) ? undefined : teachingStyle,
     };
     // D-022: bind the ratified plan to a REAL course with its own join code —
     // that code is what the teacher shares; students who join it get this

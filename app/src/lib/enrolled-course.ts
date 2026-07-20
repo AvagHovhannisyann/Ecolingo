@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from "react";
 import type { Concept, ConceptEdge, Equation, Lesson, Question } from "./engine/types";
+import { sanitizeTeachingStyle, isDefaultTeachingStyle, type TeachingStyle } from "./engine/teaching-style";
 import { fetchEnrolledCompiledPlan } from "./course";
 import { getSupabase } from "./supabase";
 import { useAccountInfo, isTester, type AccountState } from "./use-account";
@@ -42,6 +43,9 @@ export interface EnrolledPlan {
   /** True only for the built-in SAMPLE course shown to tester accounts, so the
    *  UI can label it honestly as demo/test content (never a real enrollment). */
   isSample?: boolean;
+  /** D-029: the teacher's teaching style, when they customised it — the tutor
+   *  layers it onto its prompt so students hear the teacher's own voice. */
+  teachingStyle?: TeachingStyle;
 }
 
 export type EnrolledCourseState = "loading" | "cloudless" | "none" | EnrolledPlan;
@@ -77,6 +81,8 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
   // Questions/equations are optional (AI-compiled plans omit them today).
   const questions = Array.isArray(draft.questions) ? (draft.questions as Question[]) : [];
   const equations = Array.isArray(draft.equations) ? (draft.equations as Equation[]) : [];
+  // Teaching style is optional; a customised one flows to the tutor prompt.
+  const style = p.teachingStyle !== undefined ? sanitizeTeachingStyle(p.teachingStyle) : undefined;
   return {
     courseId,
     courseTitle,
@@ -88,6 +94,7 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
     units,
     questions,
     equations,
+    teachingStyle: style && !isDefaultTeachingStyle(style) ? style : undefined,
   };
 }
 

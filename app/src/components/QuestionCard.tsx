@@ -14,6 +14,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvidenceEvent, Question } from "@/lib/engine/types";
+import type { TeachingStyle } from "@/lib/engine/teaching-style";
 import { scoreAnswer, type Answer, type ScoreResult } from "@/lib/engine/scoring";
 import { course, misconceptions } from "@/content/active-course";
 import { fireConfetti } from "@/lib/confetti";
@@ -39,6 +40,7 @@ export function QuestionCard({
   hideInlineFeedback = false,
   revealAnswerState = false,
   retryToken,
+  teachingStyle = null,
 }: {
   question: Question;
   hintsAllowed?: boolean;
@@ -57,6 +59,9 @@ export function QuestionCard({
   hideInlineFeedback?: boolean;
   revealAnswerState?: boolean;
   retryToken?: number;
+  /** D-029: the enrolled course's teaching style, forwarded to the explain
+   *  panel so the tutor uses the teacher's voice. */
+  teachingStyle?: TeachingStyle | null;
 }) {
   const [startedAt] = useState(() => Date.now());
   const [attemptNo, setAttemptNo] = useState(1);
@@ -531,6 +536,7 @@ export function QuestionCard({
             equation={equation}
             misconception={activeMisconception}
             extraMode={result.correct ? undefined : "why_wrong"}
+            teachingStyle={teachingStyle}
           />
         </div>
       )}

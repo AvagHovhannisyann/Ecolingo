@@ -47,6 +47,7 @@ export function CompiledLesson({ lessonId }: { lessonId: string }) {
         extraConcepts={enrolled.concepts}
         extraQuestions={enrolled.questions}
         extraEquations={enrolled.equations}
+        teachingStyle={enrolled.teachingStyle ?? null}
       />
     </>
   );
