@@ -24,6 +24,8 @@ const MODE_TITLE: Record<string, string> = {
   study_guide: "Study guide",
   worked_examples: "Worked examples",
   key_points: "Key points",
+  flashcards: "Flashcards",
+  misconceptions: "Misconceptions",
 };
 
 export function AiToolkitCard() {

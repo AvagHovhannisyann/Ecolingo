@@ -22,12 +22,22 @@ afterEach(() => {
 });
 
 describe("normalizeMode", () => {
-  it("accepts the three live modes and defaults everything else to study_guide", () => {
-    expect(normalizeMode("worked_examples")).toBe("worked_examples");
-    expect(normalizeMode("key_points")).toBe("key_points");
-    expect(normalizeMode("study_guide")).toBe("study_guide");
+  it("accepts every live mode and defaults everything else to study_guide", () => {
+    for (const m of ["worked_examples", "key_points", "study_guide", "flashcards", "misconceptions", "rubric", "reading_level"]) {
+      expect(normalizeMode(m)).toBe(m);
+    }
     expect(normalizeMode("nonsense")).toBe("study_guide");
     expect(normalizeMode(undefined)).toBe("study_guide");
+  });
+});
+
+describe("buildGenerateUser reading-level", () => {
+  it("bakes the target level into the reading_level task", () => {
+    const simpler = buildGenerateUser("reading_level", [{ heading: "P", text: "the passage" }], "simpler");
+    const advanced = buildGenerateUser("reading_level", [{ heading: "P", text: "the passage" }], "advanced");
+    expect(simpler).toMatch(/SIMPLER reader/);
+    expect(advanced).toMatch(/MORE ADVANCED reader/);
+    expect(simpler).toContain("the passage");
   });
 });
 

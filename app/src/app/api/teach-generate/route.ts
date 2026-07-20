@@ -23,7 +23,14 @@ export const MODELS = [
   "google/gemma-4-31b-it:free",
 ];
 
-export type GenerateMode = "study_guide" | "worked_examples" | "key_points";
+export type GenerateMode =
+  | "study_guide"
+  | "worked_examples"
+  | "key_points"
+  | "flashcards"
+  | "misconceptions"
+  | "rubric"
+  | "reading_level";
 
 const MODE_INSTRUCTION: Record<GenerateMode, string> = {
   study_guide:
@@ -32,10 +39,37 @@ const MODE_INSTRUCTION: Record<GenerateMode, string> = {
     "Produce WORKED EXAMPLES: for each concept that admits one, a heading naming the concept and a body that walks through one example step by step. Use ONLY quantities and facts that appear in the material — never invent numbers. If the material contains no numbers for a concept, give a concrete qualitative walkthrough instead.",
   key_points:
     "Produce a KEY-POINTS CHEAT SHEET: for each topic, a short heading and 1–3 crisp must-know bullet-style sentences (write them as sentences, not with bullet characters). Keep it tight — this is a one-pager.",
+  flashcards:
+    "Produce FLASHCARDS: each heading is the FRONT of a card (a short question or a term to recall), each body is the BACK (the concise, correct answer). Make one card per key fact or term in the material; ground every card strictly in it and never invent facts.",
+  misconceptions:
+    "Produce a MISCONCEPTIONS guide: for each concept in the material, a heading naming the concept and a body stating the single most common misconception students hold about it and how to correct it. Ground the correction in the material; never invent facts.",
+  rubric:
+    "Produce a GRADING RUBRIC for the assignment or prompt described in the material: each heading is one criterion being assessed, and its body describes what distinguishes performance levels (Excellent / Proficient / Developing) for that criterion. Keep criteria specific to the assignment; do not invent requirements the prompt doesn't imply.",
+  reading_level:
+    "Re-pitch the passage in the material to a different reading level. Keep EVERY fact identical — change only wording, sentence length and complexity, never the meaning. Return a single section: heading \"Adapted passage\", body = the rewritten passage.",
 };
 
+/** Modes whose "material" is text the teacher typed (a prompt/passage), not
+ *  uploaded documents — the UI collects it inline. */
+export const FREEFORM_MODES: GenerateMode[] = ["rubric", "reading_level"];
+
+const ALL_MODES: GenerateMode[] = [
+  "study_guide",
+  "worked_examples",
+  "key_points",
+  "flashcards",
+  "misconceptions",
+  "rubric",
+  "reading_level",
+];
+
 export function normalizeMode(v: unknown): GenerateMode {
-  return v === "worked_examples" || v === "key_points" ? v : "study_guide";
+  return typeof v === "string" && (ALL_MODES as string[]).includes(v) ? (v as GenerateMode) : "study_guide";
+}
+
+export type ReadingLevel = "simpler" | "advanced";
+export function normalizeLevel(v: unknown): ReadingLevel {
+  return v === "advanced" ? "advanced" : "simpler";
 }
 
 export const GENERATE_SYSTEM_PROMPT =
@@ -84,9 +118,17 @@ export function sanitizeGuide(raw: unknown): GuideSection[] {
 export function buildGenerateUser(
   mode: GenerateMode,
   sections: { heading: string; text: string }[],
+  level?: ReadingLevel,
 ): string {
   const material = sections.map((s) => `### ${s.heading}\n${s.text}`).join("\n\n");
-  return `MATERIAL:\n${material}\n\nTask: ${MODE_INSTRUCTION[mode]}\n\nReturn the JSON object.`;
+  let task = MODE_INSTRUCTION[mode];
+  if (mode === "reading_level") {
+    task +=
+      level === "advanced"
+        ? " Target a MORE ADVANCED reader: you may use precise terminology and assume strong background."
+        : " Target a SIMPLER reader: use short sentences and plain words a beginner can follow; define any term you must keep.";
+  }
+  return `MATERIAL:\n${material}\n\nTask: ${task}\n\nReturn the JSON object.`;
 }
 
 interface InSection {
@@ -98,7 +140,7 @@ export async function POST(req: Request) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return NextResponse.json({ error: "no_provider", sections: [] }, { status: 503 });
 
-  let body: { mode?: unknown; sections?: InSection[]; style?: unknown };
+  let body: { mode?: unknown; sections?: InSection[]; style?: unknown; level?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -106,6 +148,7 @@ export async function POST(req: Request) {
   }
 
   const mode = normalizeMode(body.mode);
+  const level = normalizeLevel(body.level);
   const sections = (body.sections ?? [])
     .map((s) => ({
       heading: typeof s.heading === "string" ? s.heading.slice(0, 200) : "",
@@ -116,7 +159,7 @@ export async function POST(req: Request) {
   if (sections.length === 0) return NextResponse.json({ sections: [] });
 
   const system = appendStyle(GENERATE_SYSTEM_PROMPT, body.style);
-  const user = buildGenerateUser(mode, sections);
+  const user = buildGenerateUser(mode, sections, level);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
