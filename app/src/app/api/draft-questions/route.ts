@@ -28,6 +28,8 @@ import {
 } from "@/lib/engine/authored";
 
 export const runtime = "nodejs";
+// Drafting questions calls the slow free models (D-038).
+export const maxDuration = 60;
 
 export const MODELS = [
   // Verified against the live OpenRouter catalog: the strongest free models,
@@ -142,7 +144,7 @@ export async function POST(req: Request) {
   const { difficulty, transferDistance } = tierParams(tier);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const timeout = setTimeout(() => controller.abort(), 40_000);
   try {
     for (const model of MODELS) {
       try {

@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 // Primary is chosen for the free tier's reliability+latency (see D-010); the
 // rest are availability fallbacks. The deterministic provider is the client's
