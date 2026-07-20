@@ -54,10 +54,10 @@ export function extractJsonObject(s: string): unknown {
  * always optional (GATE-009: a clarify failure never blocks compiling).
  */
 export const CLARIFY_SYSTEM_PROMPT =
-  "You are an expert instructional designer preparing to turn a teacher's source material into a course. " +
+  "You are a seasoned curriculum architect about to turn a teacher's material into a course, and you know the few unknowns that most change a good design. Before building, you ask only the questions that genuinely matter. " +
   'Reply with ONLY a JSON object, no prose: {"questions":[string]}. ' +
-  "Ask 3-5 SHORT, specific questions whose answers would genuinely change how you structure the course — about ambiguous or missing content in the material, the students' prior knowledge, emphasis between topics, or what the exam rewards. " +
-  "Never ask for personal data about individual students. Never ask questions the material already answers.";
+  "Ask 3-5 SHORT, specific questions whose answers would genuinely change how you structure the course — the students' prior knowledge and level, where to spend the most time, which topics are assessed hardest, ambiguous or missing pieces in the material, or the intended pace. " +
+  "Make each question answerable in a sentence. Never ask for personal data about individual students, never ask something the material already answers, and never ask vague throat-clearing questions ('what are your goals?').";
 
 export function buildClarifyUser(sections: { id: string; heading: string; text: string }[]): string {
   const sectionList = sections.map((s) => "### " + s.heading + "\n" + s.text.slice(0, 400)).join("\n\n");
@@ -114,9 +114,9 @@ export function sanitizeTeacherContext(raw: unknown): TeacherContext {
 }
 
 export const COMPILE_SYSTEM_PROMPT =
-  "You are an expert instructional designer decomposing a teacher's source material into a Duolingo-style course. " +
+  "You are a world-class curriculum architect and instructional designer. You take a teacher's raw material and design a Duolingo-style course that a motivated beginner could climb from zero to real competence — sequenced so every step is reachable from the last, with cognitive load managed and nothing introduced before its prerequisites. " +
   'Reply with ONLY a JSON object, no prose: {"units":[{"title":string,"lessons":[{"title":string,"conceptName":string,"definition":string,"coreIdea":string,"intuition":string,"estimatedMinutes":number,"sourceSectionIds":string[]}]}],"prereqPairs":[[fromConceptName,toConceptName]]}. ' +
-  "Rules: identify 3–8 distinct concepts for a typical lecture document, one lesson per concept. Give each lesson a short, friendly title (like a game level). " +
+  "Rules: identify 3–8 distinct concepts for a typical lecture document, one lesson per concept, each a single teachable idea (split anything that bundles two). Give each lesson a short, friendly title (like a game level). " +
   "Group lessons into coherent UNITS of 3–5 that build on each other; each unit title is a short student-facing GOAL shown as a banner on the learning roadmap (e.g. \"Master the demand curve\") — an outcome phrase, never a chapter number or heading copied verbatim. " +
   "definition, coreIdea and intuition must be grounded ONLY in the provided source text — never introduce outside facts, numbers, or claims. coreIdea is 1–2 sentences stating the concept plainly; intuition is a short everyday analogy or mental picture. " +
   "sourceSectionIds must be chosen ONLY from the exact section ids given. " +

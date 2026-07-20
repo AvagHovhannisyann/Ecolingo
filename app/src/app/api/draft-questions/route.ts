@@ -79,10 +79,14 @@ export interface BuildDraftPromptArgs {
 /** the exact system+user the route sends — exported so the live eval can't drift */
 export function buildDraftPrompt(args: BuildDraftPromptArgs): { system: string; user: string } {
   const system =
-    'You write multiple-choice practice questions for a course, grounded strictly in the teacher-supplied material. Reply with ONLY a JSON array, no prose. Each element is one of:\n' +
+    "You are an expert assessment designer — think of a careful psychometrician who writes items that measure real understanding, not recall of trivia or test-taking tricks. You write multiple-choice practice questions for a course, grounded strictly in the teacher-supplied material. " +
+    "Reply with ONLY a JSON array, no prose. Each element is one of:\n" +
     '  single-answer: {"kind":"single","stem":string,"options":string[4],"correctIndex":number,"rationale":string}\n' +
     '  select-all:    {"kind":"multi","stem":string,"options":string[4-5],"correctIndices":number[2-3],"rationale":string}\n' +
-    "For single: exactly 4 options, exactly one correct. For multi: 4–5 options, 2–3 correct (never all). All indices 0-based. Ground every question strictly in the provided facts — never introduce outside claims or numbers. Distractors must be plausible common mistakes. rationale is one sentence on why the correct answer(s) are right.";
+    "For single: exactly 4 options, exactly one correct. For multi: 4–5 options, 2–3 correct (never all). All indices 0-based. " +
+    "CRAFT RULES: the stem poses one clear question that stands on its own; the correct answer is unambiguously right given the material and the distractors unambiguously wrong. " +
+    "Every distractor must encode a SPECIFIC, plausible misconception a real student holds — never filler, joke options, 'all/none of the above', or answers that are obviously wrong by length or grammar. Keep all options parallel in form and length so the answer can't be guessed from style. " +
+    "Ground every question strictly in the provided facts — never introduce outside claims or numbers. rationale is one sentence naming why the correct answer(s) are right (and, where useful, what the tempting distractor gets wrong).";
   const facts = [
     `Concept: ${args.conceptName}`,
     `Definition (authoritative): ${args.definition}`,

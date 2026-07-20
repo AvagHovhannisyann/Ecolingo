@@ -78,10 +78,8 @@ export function AiToolkitCard() {
         <span aria-hidden>🧰</span> AI toolkit
       </h2>
       <p className="mt-1 text-sm text-app-muted">
-        Your AI does far more than multiple-choice. Tools marked{" "}
-        <span className="font-semibold text-app">grounded</span> work only from your material (never inventing
-        facts, numbers, or citations); <span className="font-semibold text-app">generative</span> tools create new
-        illustrative media and are labelled as such.
+        Your AI does far more than multiple-choice. Everything here is grounded in your own material — it never
+        invents facts, numbers, or citations. (Intro clips are generated automatically when you approve a course.)
       </p>
 
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">

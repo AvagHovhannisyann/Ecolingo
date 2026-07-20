@@ -9,14 +9,41 @@
 
 export type VideoModelChoice = "wan2.2" | "hunyuan";
 
-export const VIDEO_MODEL_LABELS: Record<VideoModelChoice, string> = {
-  "wan2.2": "Wan 2.2 (Alibaba) — fast, efficient",
-  hunyuan: "HunyuanVideo (Tencent) — highest quality",
-};
-
 export type VideoOutcome =
   | { ok: true; video: string; model: string }
   | { ok: false; reason: "no_provider" | "timeout" | "error"; message?: string };
+
+/**
+ * Fully automatic course-intro clip (D-032): the LLM writes a cinematic prompt
+ * from the course topic, then HunyuanVideo renders it. The teacher never writes
+ * a prompt. Best-effort — any step degrading (no key) surfaces as a clean
+ * reason, never a blocked flow or a fake clip.
+ */
+export async function autoCourseIntroVideo(
+  title: string,
+  units: string[],
+): Promise<VideoOutcome & { prompt?: string }> {
+  let prompt = "";
+  try {
+    const res = await fetch("/api/video-prompt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, units }),
+    });
+    if (res.status === 503) return { ok: false, reason: "no_provider" };
+    if (res.ok) {
+      const data = (await res.json()) as { prompt?: string };
+      prompt = typeof data.prompt === "string" ? data.prompt : "";
+    }
+  } catch {
+    return { ok: false, reason: "error" };
+  }
+  // Fall back to a plain topic prompt if the writer was unavailable but video is.
+  if (!prompt) prompt = `A cinematic, abstract visual evoking the subject of "${title}", soft light, slow camera.`;
+  // The user's directive: intro clips are rendered by HunyuanVideo.
+  const outcome = await generateVideo(prompt, { model: "hunyuan" });
+  return { ...outcome, prompt };
+}
 
 export async function generateVideo(
   prompt: string,

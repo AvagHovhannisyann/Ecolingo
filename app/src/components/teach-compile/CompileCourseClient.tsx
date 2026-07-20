@@ -30,6 +30,7 @@ import {
 import { useTeacherState } from "@/lib/teacher-store";
 import { useTeachingStyle } from "@/lib/teaching-style-store";
 import { isDefaultTeachingStyle } from "@/lib/engine/teaching-style";
+import { autoCourseIntroVideo } from "@/lib/ai/video";
 import { attachCompiledPlan, createCourse } from "@/lib/course";
 import {
   loadCompiledPlan,
@@ -82,6 +83,9 @@ export function CompileCourseClient() {
 
   // ── ratification ────────────────────────────────────────────────────────
   const [approved, setApproved] = useState<StoredCompiledPlan | null>(() => loadCompiledPlan());
+  // D-032: an intro clip is rendered automatically on approval (HunyuanVideo);
+  // the teacher never writes a prompt. Honest, non-blocking status.
+  const [introVideo, setIntroVideo] = useState<IntroVideoState>({ phase: "idle" });
 
   const docs = useMemo(() => teacher?.docs ?? [], [teacher]);
 
@@ -254,6 +258,17 @@ export function CompileCourseClient() {
     }
     saveCompiledPlan(stored);
     setApproved(stored);
+
+    // D-032: kick off the automatic intro clip — the LLM writes the prompt and
+    // HunyuanVideo renders it. Non-blocking and best-effort: approval never
+    // waits on it, and it degrades honestly if video isn't configured.
+    const unitTitles = filtered.units.map((u) => u.title);
+    setIntroVideo({ phase: "generating" });
+    void autoCourseIntroVideo(compiledTitle || "this course", unitTitles).then((r) => {
+      if (r.ok) setIntroVideo({ phase: "ready", url: r.video, prompt: r.prompt });
+      else setIntroVideo({ phase: r.reason === "no_provider" ? "unavailable" : "failed" });
+    });
+
     setPhase("input");
     setResult(null);
   };
@@ -279,7 +294,7 @@ export function CompileCourseClient() {
         ✦ {PROVENANCE}
       </p>
 
-      {approved && phase !== "review" && <ApprovedBanner plan={approved} />}
+      {approved && phase !== "review" && <ApprovedBanner plan={approved} introVideo={introVideo} />}
 
       {phase === "clarify" && (
         <section className="card mt-4 p-4" aria-label="Tell the AI about your class">
@@ -526,7 +541,7 @@ export function CompileCourseClient() {
 
 // ───────────────────────────────────────────────────────────────────────────
 
-function ApprovedBanner({ plan }: { plan: StoredCompiledPlan }) {
+function ApprovedBanner({ plan, introVideo }: { plan: StoredCompiledPlan; introVideo: IntroVideoState }) {
   return (
     <div
       className="mt-4 rounded-2xl border border-[var(--growth-green)] bg-[var(--growth-green-tint)] p-4"
@@ -555,6 +570,57 @@ function ApprovedBanner({ plan }: { plan: StoredCompiledPlan }) {
         From “{plan.sourceTitle}”{plan.model ? ` · drafted by ${plan.model}` : ""}. Saved to your workspace;
         no student sees it until sources are attached and you sign off.
       </p>
+
+      {/* D-032: the automatic intro clip (HunyuanVideo). The teacher writes
+          nothing — it's generated for them and shown here when ready. */}
+      <IntroVideoBlock state={introVideo} title={plan.sourceTitle} />
+    </div>
+  );
+}
+
+/** Discriminated status for the auto-generated intro clip (D-032). */
+type IntroVideoState =
+  | { phase: "idle" }
+  | { phase: "generating" }
+  | { phase: "ready"; url: string; prompt?: string }
+  | { phase: "unavailable" }
+  | { phase: "failed" };
+
+function IntroVideoBlock({ state, title }: { state: IntroVideoState; title: string }) {
+  if (state.phase === "idle") return null;
+  return (
+    <div className="mt-3 rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3">
+      <p className="text-sm font-bold">
+        <span aria-hidden>🎬</span> Intro clip
+        <span className="ml-2 rounded-full bg-[color:rgba(177,140,255,0.16)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--lavender-text)]">
+          Auto · Illustrative
+        </span>
+      </p>
+      {state.phase === "generating" && (
+        <p className="mt-1 flex items-center gap-2 text-sm text-app-muted" role="status">
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--app-border)] border-t-[var(--lavender)]" aria-hidden />
+          Rendering a short intro for “{title}” with HunyuanVideo — this keeps going in the background.
+        </p>
+      )}
+      {state.phase === "ready" && (
+        <div className="mt-2">
+          <video controls src={state.url} className="w-full rounded-lg border border-[color:var(--app-border)]" />
+          <a href={state.url} download="ecolingo-intro.mp4" className="btn-secondary mt-2 inline-block min-h-11 px-4 py-2 text-sm">
+            Download clip
+          </a>
+          <p className="mt-1 text-xs text-app-muted">Illustrative motion — never a factual source.</p>
+        </div>
+      )}
+      {state.phase === "unavailable" && (
+        <p className="mt-1 text-xs text-app-muted">
+          Auto-video isn&apos;t configured on the server (needs HF_TOKEN) — your course is fully approved without it.
+        </p>
+      )}
+      {state.phase === "failed" && (
+        <p className="mt-1 text-xs text-app-muted">
+          The intro clip couldn&apos;t render this time — no problem, your course is approved regardless.
+        </p>
+      )}
     </div>
   );
 }

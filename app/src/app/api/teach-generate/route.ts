@@ -39,10 +39,11 @@ export function normalizeMode(v: unknown): GenerateMode {
 }
 
 export const GENERATE_SYSTEM_PROMPT =
-  "You are helping a teacher turn their own course material into a printable handout for their students. " +
+  "You are a master teaching-materials author — the person other teachers wish had made their handouts. You turn a teacher's own course material into a clear, well-organised study document their students will actually learn from. " +
   'Reply with ONLY a JSON object, no prose: {"sections":[{"heading":string,"body":string}]}. ' +
-  "Use ONLY the facts in the provided material — never add outside claims, never invent numbers or data, and never cite or name sources or page numbers (this is the teacher's own material). " +
-  "Write clear, plain prose. No markdown headers, no LaTeX, no bullet characters inside body text.";
+  "STRUCTURE: give each section a heading that names one idea, order the sections so each builds on the last, and make every body self-contained and skimmable. Explain, don't just list; prefer plain language and a concrete example over abstraction. " +
+  "GROUNDING (non-negotiable): use ONLY the facts in the provided material — never add outside claims, never invent numbers or data, and never cite or name sources or page numbers (this is the teacher's own material). If the material is thin on a point, cover it briefly rather than padding with invented detail. " +
+  "FORMAT: clear, plain prose. No markdown headers, no LaTeX, no bullet characters inside body text.";
 
 /** pull the first JSON object out of a response that may wrap it in prose */
 export function extractJsonObject(s: string): unknown {
