@@ -22,6 +22,7 @@ import {
   fetchAccountInfo,
   requestPasswordReset,
   signInWithEmail,
+  signInWithGoogle,
   signUpWithEmail,
   validateCredentials,
   type Role,
@@ -29,6 +30,17 @@ import {
 import { playSfx } from "@/lib/sfx";
 
 type Mode = "login" | "signup";
+
+function GoogleG() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.1 3.57-5.17 3.57-8.81z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.08.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.72-4.95H1.27v3.1A12 12 0 0 0 12 24z" />
+      <path fill="#FBBC05" d="M5.28 14.29a7.2 7.2 0 0 1 0-4.58v-3.1H1.27a12 12 0 0 0 0 10.78l4.01-3.1z" />
+      <path fill="#EA4335" d="M12 4.77c1.76 0 3.35.6 4.6 1.8l3.44-3.44A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.27 6.61l4.01 3.1C6.22 6.88 8.87 4.77 12 4.77z" />
+    </svg>
+  );
+}
 
 export function AuthClient() {
   const router = useRouter();
@@ -41,6 +53,7 @@ export function AuthClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const destinationFor = (r: Role | null) => (r === "teacher" ? "/teach" : "/learn");
 
@@ -144,7 +157,7 @@ export function AuthClient() {
             <input
               type="text"
               autoComplete="name"
-              placeholder="Name (shown to your class)"
+              placeholder="Name (optional — shown to your class)"
               aria-label="Display name"
               maxLength={60}
               className="block w-full border-b-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-4 text-base outline-none focus:bg-[color:var(--app-surface)]"
@@ -163,27 +176,43 @@ export function AuthClient() {
           />
           <div className="relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               placeholder="Password"
               aria-label="Password"
-              className="block w-full bg-[color:var(--app-surface-2)] p-4 pr-24 text-base outline-none focus:bg-[color:var(--app-surface)]"
+              className="block w-full bg-[color:var(--app-surface-2)] p-4 pr-28 text-base outline-none focus:bg-[color:var(--app-surface)]"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !busy) void submit();
               }}
             />
-            {mode === "login" && (
+            <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+              {/* eye toggle (reference signup screen) */}
               <button
                 type="button"
-                onClick={() => void forgot()}
-                disabled={busy}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold uppercase tracking-wide text-app-muted hover:text-[var(--model-blue-text)]"
+                onClick={() => setShowPassword((s) => !s)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-app-muted hover:text-[var(--model-blue-text)]"
               >
-                Forgot?
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="2.6" />
+                  {showPassword && <path d="M4 4l16 16" strokeLinecap="round" />}
+                </svg>
               </button>
-            )}
+              {mode === "login" && (
+                <button
+                  type="button"
+                  onClick={() => void forgot()}
+                  disabled={busy}
+                  className="text-xs font-extrabold uppercase tracking-wide text-app-muted hover:text-[var(--model-blue-text)]"
+                >
+                  Forgot?
+                </button>
+              )}
+            </span>
           </div>
         </div>
 
@@ -213,16 +242,23 @@ export function AuthClient() {
           <span className="h-0.5 flex-1 bg-[color:var(--app-border)]" />
         </div>
 
-        {/* Google OAuth ships once provider credentials exist in the Supabase
-            dashboard — rendered honestly disabled rather than pretending. */}
+        {/* Google OAuth (reference signup screen): live button through
+            Supabase signInWithOAuth; if the provider is off server-side the
+            typed error surfaces honestly instead of a dead redirect. */}
         <button
           type="button"
-          disabled
-          aria-disabled="true"
-          title="Google sign-in is coming — it needs OAuth credentials configured on the project."
-          className="btn-secondary min-h-13 w-full text-sm font-bold uppercase tracking-wide text-app-muted"
+          disabled={busy}
+          onClick={() => {
+            setError(null);
+            setNotice(null);
+            void signInWithGoogle().then((res) => {
+              if (!res.ok) setError(res.message);
+            });
+          }}
+          className="btn-secondary inline-flex min-h-13 w-full items-center justify-center gap-2 text-sm font-extrabold uppercase tracking-wide"
         >
-          Google — coming soon
+          <GoogleG />
+          Google
         </button>
 
         <p className="mt-6 text-center text-xs leading-relaxed text-app-muted">

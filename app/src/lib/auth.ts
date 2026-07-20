@@ -48,6 +48,12 @@ export function mapAuthError(message: string): Exclude<AuthResult, { ok: true }>
     return { ok: false, reason: "weak_password", message: "Password needs at least 8 characters." };
   if (m.includes("invalid login credentials") || m.includes("invalid email or password"))
     return { ok: false, reason: "invalid", message: "Email or password is incorrect." };
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider"))
+    return {
+      ok: false,
+      reason: "unavailable",
+      message: "Google sign-in isn't switched on for this project yet — use email for now.",
+    };
   return { ok: false, reason: "error", message: "Couldn't reach the account service — your progress is still safe on this device." };
 }
 
@@ -83,11 +89,37 @@ export async function signUpWithEmail(email: string, password: string, role: Rol
   }
 
   // Role + name live on the owner-scoped profiles row (D-022 migration).
-  const { error: profErr } = await supabase
+  const saved = await saveProfile(userId, role, displayName);
+  if (!saved) return { ok: false, reason: "error", message: "Account created, but saving your role failed — set it again in Settings." };
+  return { ok: true, userId };
+}
+
+/** Upsert the owner-scoped profiles row. Shared by email signup and the OAuth callback. */
+export async function saveProfile(userId: string, role: Role, displayName: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  const { error } = await supabase
     .from("profiles")
     .upsert({ user_id: userId, role, display_name: displayName.trim() || null }, { onConflict: "user_id" });
-  if (profErr) return { ok: false, reason: "error", message: "Account created, but saving your role failed — set it again in Settings." };
-  return { ok: true, userId };
+  return !error;
+}
+
+/**
+ * Google OAuth (Duolingo's GOOGLE button). Redirects to Google via Supabase
+ * and lands back on /auth/callback, which captures the session and — for
+ * first-time OAuth users — asks who they are (student/teacher) before
+ * routing home. Returns only on failure (success navigates away).
+ */
+export async function signInWithGoogle(): Promise<AuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return UNAVAILABLE;
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: redirectTo ? { redirectTo } : undefined,
+  });
+  if (error) return mapAuthError(error.message);
+  return { ok: true, userId: "" }; // browser is navigating to Google
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
