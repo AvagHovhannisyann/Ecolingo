@@ -337,3 +337,36 @@ body:has([data-lesson-shell]) main#main {
   max-width: none;
   padding: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   Print (D-030): teacher handouts (/teach/print, /teach/exam) print clean —
+   the app chrome drops away, the page goes light, and screen-only controls
+   (marked data-print-hide) are removed. Reuses the same child selectors the
+   lesson-immersion rule above uses, so it stays in lock-step with the shell.
+   ------------------------------------------------------------------------ */
+@media print {
+  body > aside,
+  body > header,
+  body > nav[aria-label="Primary mobile"],
+  [data-print-hide] {
+    display: none !important;
+  }
+  body > div {
+    padding-left: 0 !important;
+  }
+  body main#main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .print-page,
+  .print-page * {
+    color: #000 !important;
+  }
+  .print-break {
+    break-before: page;
+  }
+}
