@@ -16,12 +16,13 @@ export async function generateHandout(
   mode: string,
   sections: { heading: string; text: string }[],
   style?: TeachingStyle | null,
+  opts?: { level?: "simpler" | "advanced" },
 ): Promise<GenerateOutcome> {
   try {
     const res = await fetch("/api/teach-generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, sections, style: style ?? undefined }),
+      body: JSON.stringify({ mode, sections, style: style ?? undefined, level: opts?.level }),
     });
     if (res.status === 503) return { ok: false, reason: "no_provider" };
     if (!res.ok) return { ok: false, reason: "error" };

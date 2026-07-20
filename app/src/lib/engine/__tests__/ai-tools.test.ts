@@ -32,6 +32,14 @@ describe("AI tools registry", () => {
 
   it("live generate modes are exactly the grounded generator's contract", () => {
     // These must match /api/teach-generate's accepted modes.
-    expect(new Set(liveGenerateModes())).toEqual(new Set(["study_guide", "worked_examples", "key_points"]));
+    expect(new Set(liveGenerateModes())).toEqual(
+      new Set(["study_guide", "worked_examples", "key_points", "flashcards", "misconceptions"]),
+    );
+  });
+
+  it("every tool is now live (no 'Soon') and actionable", () => {
+    expect(plannedTools()).toHaveLength(0);
+    expect(liveTools()).toHaveLength(AI_TOOLS.length);
+    expect(AI_TOOLS.every((t) => t.action.kind !== "none")).toBe(true);
   });
 });
