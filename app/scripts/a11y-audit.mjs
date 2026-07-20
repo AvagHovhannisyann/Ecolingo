@@ -37,10 +37,18 @@ const breakpoints = [
 
 // D-013: the only accepted serious violation is the brand primary CTA contrast
 // (.btn-primary in the app shell, .l-btn--primary on the light landing — same
-// white-on-brand-green pairing, same rationale).
-const isBrandButtonException = (v, node) =>
-  v.id === "color-contrast" &&
-  node.target.some((t) => String(t).includes(".btn-primary") || String(t).includes(".l-btn--primary"));
+// white-on-brand-green pairing, same rationale). Axe picks the most specific
+// UNIQUE selector for a node — when the class isn't unique on the page it
+// emits e.g. `a[href="/auth?mode=signup"]` — so the class must be checked on
+// the node's own HTML, not only on the selector string.
+const isBrandButtonException = (v, node) => {
+  if (v.id !== "color-contrast") return false;
+  const bySelector = node.target.some(
+    (t) => String(t).includes(".btn-primary") || String(t).includes(".l-btn--primary")
+  );
+  const byClass = /class="[^"]*(?:btn-primary|l-btn--primary)[^"]*"/.test(String(node.html ?? ""));
+  return bySelector || byClass;
+};
 
 const browser = await launchBrowser();
 

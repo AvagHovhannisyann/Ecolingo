@@ -33,6 +33,12 @@ export function SectionHeader({
           <span className="sp-header__title">{title}</span>
         )}
       </div>
+      <Link href="/guidebook" className="sp-header__guide" aria-label="Open the guidebook — this section's key ideas">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+          <path d="M12 6.5C10.5 5 8.4 4.5 6 4.5c-.8 0-1.5.1-2 .2V18c.5-.1 1.2-.2 2-.2 2.4 0 4.5.5 6 2 1.5-1.5 3.6-2 6-2 .8 0 1.5.1 2 .2V4.7c-.5-.1-1.2-.2-2-.2-2.4 0-4.5.5-6 2z" />
+          <path d="M12 6.5v13.3" strokeLinecap="round" />
+        </svg>
+      </Link>
       <Link href="/sections" className="sp-header__guide" aria-label="Course sections and roadmap">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
           <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19a1 1 0 0 1 1 1v13.5a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 18.5z" />

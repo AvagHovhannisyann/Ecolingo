@@ -54,6 +54,14 @@ export interface PathNodeProps {
   /** current node extras */
   mascotSrc?: string;
   mascotSide?: "left" | "right";
+  /**
+   * Locked-node fast-forward (the Duolingo "JUMP HERE?" pill): when set, a
+   * clickable pill floats above the locked node linking straight into the
+   * lesson — the node itself stays visually locked so the path's gating story
+   * remains honest.
+   */
+  jumpHref?: string;
+  jumpLabel?: string;
 }
 
 export function PathNode({
@@ -65,6 +73,8 @@ export function PathNode({
   captionHint,
   mascotSrc,
   mascotSide = "right",
+  jumpHref,
+  jumpLabel,
 }: PathNodeProps) {
   const rowStyle = { "--sp-x": `${offsetX}px` } as React.CSSProperties;
   const isCurrent = kind === "current";
@@ -98,9 +108,16 @@ export function PathNode({
       )}
 
       {kind === "locked" ? (
-        <button type="button" className="sp-node sp-node--locked" aria-label={ariaLabel} disabled>
-          {glyph}
-        </button>
+        <span className="sp-jump-wrap">
+          {jumpHref && (
+            <Link href={jumpHref} className="sp-jump" aria-label={jumpLabel ?? "Jump ahead"}>
+              Jump here?
+            </Link>
+          )}
+          <button type="button" className="sp-node sp-node--locked" aria-label={ariaLabel} disabled>
+            {glyph}
+          </button>
+        </span>
       ) : (
         <Link
           href={href ?? "#"}

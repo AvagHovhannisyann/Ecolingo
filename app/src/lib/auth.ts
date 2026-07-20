@@ -48,6 +48,12 @@ export function mapAuthError(message: string): Exclude<AuthResult, { ok: true }>
     return { ok: false, reason: "weak_password", message: "Password needs at least 8 characters." };
   if (m.includes("invalid login credentials") || m.includes("invalid email or password"))
     return { ok: false, reason: "invalid", message: "Email or password is incorrect." };
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider"))
+    return {
+      ok: false,
+      reason: "unavailable",
+      message: "Google sign-in isn't switched on for this project yet — use email for now.",
+    };
   return { ok: false, reason: "error", message: "Couldn't reach the account service — your progress is still safe on this device." };
 }
 
@@ -83,11 +89,37 @@ export async function signUpWithEmail(email: string, password: string, role: Rol
   }
 
   // Role + name live on the owner-scoped profiles row (D-022 migration).
-  const { error: profErr } = await supabase
+  const saved = await saveProfile(userId, role, displayName);
+  if (!saved) return { ok: false, reason: "error", message: "Account created, but saving your role failed — set it again in Settings." };
+  return { ok: true, userId };
+}
+
+/** Upsert the owner-scoped profiles row. Shared by email signup and the OAuth callback. */
+export async function saveProfile(userId: string, role: Role, displayName: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  const { error } = await supabase
     .from("profiles")
     .upsert({ user_id: userId, role, display_name: displayName.trim() || null }, { onConflict: "user_id" });
-  if (profErr) return { ok: false, reason: "error", message: "Account created, but saving your role failed — set it again in Settings." };
-  return { ok: true, userId };
+  return !error;
+}
+
+/**
+ * Google OAuth (Duolingo's GOOGLE button). Redirects to Google via Supabase
+ * and lands back on /auth/callback, which captures the session and — for
+ * first-time OAuth users — asks who they are (student/teacher) before
+ * routing home. Returns only on failure (success navigates away).
+ */
+export async function signInWithGoogle(): Promise<AuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return UNAVAILABLE;
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: redirectTo ? { redirectTo } : undefined,
+  });
+  if (error) return mapAuthError(error.message);
+  return { ok: true, userId: "" }; // browser is navigating to Google
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
@@ -96,6 +128,29 @@ export async function signInWithEmail(email: string, password: string): Promise<
   const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
   if (error) return mapAuthError(error.message);
   return { ok: true, userId: data.user.id };
+}
+
+/** Duolingo's "FORGOT?" — email a recovery link that lands on /auth/reset. */
+export async function requestPasswordReset(email: string): Promise<{ ok: boolean; message: string }> {
+  const supabase = getSupabase();
+  if (!supabase)
+    return { ok: false, message: "Accounts aren't available in this environment — progress stays on this device." };
+  const e = email.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return { ok: false, message: "Enter your email above first, then tap FORGOT." };
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset` : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(e, redirectTo ? { redirectTo } : undefined);
+  if (error) return { ok: false, message: mapAuthError(error.message).message };
+  return { ok: true, message: "Check your email — we sent you a link to reset your password." };
+}
+
+/** Complete a recovery: set the new password on the recovery session. */
+export async function completePasswordReset(password: string): Promise<AuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return UNAVAILABLE;
+  if (password.length < 8) return { ok: false, reason: "weak_password", message: "Password needs at least 8 characters." };
+  const { data, error } = await supabase.auth.updateUser({ password });
+  if (error) return mapAuthError(error.message);
+  return { ok: true, userId: data.user?.id ?? "" };
 }
 
 export async function signOut(): Promise<void> {

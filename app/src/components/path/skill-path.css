@@ -224,6 +224,52 @@ a.sp-header__title:hover {
   }
 }
 
+/* ---- fast-forward "JUMP HERE?" pill above a locked node ---- */
+.sp-jump-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sp-jump {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--app-surface);
+  border: 2px solid var(--duo-blue);
+  color: var(--duo-blue);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.sp-jump::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: var(--duo-blue);
+}
+.sp-jump:hover {
+  background: var(--app-surface-2);
+}
+.sp-jump:focus-visible {
+  outline: 3px solid var(--duo-blue);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sp-jump {
+    animation: sp-tip-bob 1.8s ease-in-out infinite;
+  }
+}
+
 /* ---- captions under a node (locked lessons: title + unlock reason) ---- */
 .sp-caption {
   margin-top: 0.55rem;

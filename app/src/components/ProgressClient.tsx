@@ -20,6 +20,7 @@ import { computeStreak } from "@/lib/stats";
 import { fetchMyEnrollment, joinCourseByCode, type EnrollmentSummary } from "@/lib/course";
 import { getSupabase } from "@/lib/supabase";
 import { Achievements } from "./Achievements";
+import { AccountCard } from "./auth/AccountCard";
 import { MasteryCard } from "./progress/MasteryCard";
 import { ProgressHero } from "./progress/ProgressHero";
 import { ReviewForecast } from "./progress/ReviewForecast";
@@ -151,6 +152,11 @@ export function ProgressClient() {
 
   return (
     <div>
+      {/* Duolingo profile-tab parity: your account (or the create-profile wall) */}
+      <div className="mb-6">
+        <AccountCard />
+      </div>
+
       <ProgressHero streak={streak} xp={state.xp} />
 
       <section aria-label="Concept mastery" className="mt-8">

@@ -10,12 +10,19 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+// Baked-in defaults so auth works on ANY deployment (Vercel previews included)
+// without per-host env configuration. These are the PUBLISHABLE client values —
+// shipped to every browser by design; RLS is the security boundary, not these.
+// Env vars still win when present (e.g. pointing a fork at another project).
+const DEFAULT_URL = "https://gucwcjsvuuoytzptoqdk.supabase.co";
+const DEFAULT_PUBLISHABLE_KEY = "sb_publishable_dp59K9pbPMbZUnpO8bWrmg_X6tlUMyN";
+
 let client: SupabaseClient | null | undefined;
 
 export function getSupabase(): SupabaseClient | null {
   if (client !== undefined) return client;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || DEFAULT_PUBLISHABLE_KEY;
   client = url && key ? createClient(url, key) : null;
   return client;
 }

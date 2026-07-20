@@ -27,8 +27,12 @@ import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
+import { needsProfile, useAccountInfo } from "@/lib/use-account";
+import { CreateProfileWall } from "./auth/AccountCard";
 import { UnverifiedBanner } from "./CitationChips";
+import { LoadingScreen } from "./LoadingScreen";
 import { JoinCourseGate } from "./path/JoinCourseGate";
+import { RightRail } from "./path/RightRail";
 import { SectionHeader } from "./path/SectionHeader";
 import { SkillPath, type LessonRow } from "./path/SkillPath";
 
@@ -44,8 +48,8 @@ export function HomeClient() {
   const state = useLearnerState();
   const [joinRefresh, setJoinRefresh] = useState(0);
   const enrolled = useEnrolledCourse(joinRefresh);
-  if (!state || enrolled === "loading")
-    return <p className="p-4 text-sm text-app-muted">Loading your plan…</p>;
+  const account = useAccountInfo();
+  if (!state || enrolled === "loading") return <LoadingScreen label="Loading your plan…" />;
 
   // D-022: in cloud mode a student without a course sees the join gate — the
   // econ demo is no longer the default. Without Supabase env (sandbox/CI) the
@@ -116,12 +120,21 @@ export function HomeClient() {
   const headerHref = currentLesson ? `/lesson/${currentLesson.id}` : null;
 
   return (
-    <div className="sp">
+    <div className="mx-auto flex max-w-5xl justify-center gap-8">
+      <div className="sp min-w-0 max-w-xl flex-1">
       <SectionHeader eyebrow={view.eyebrow} title={headerTitle} href={headerHref} />
 
       <div className="mt-4">
         <UnverifiedBanner />
       </div>
+
+      {/* Duolingo's signature signup moment: guests see the create-profile
+          wall right on the path until they have a real account */}
+      {needsProfile(account) && (
+        <div className="mt-4">
+          <CreateProfileWall compact />
+        </div>
+      )}
 
       {!state.profile.onboarded && (
         <Link
@@ -179,6 +192,9 @@ export function HomeClient() {
       </p>
 
       <SkillPath rows={rows} dueReviewReason={dueReviewReason} mascotSrc="/art-v2/eco-point.webp" />
+      </div>
+
+      <RightRail state={state} />
     </div>
   );
 }

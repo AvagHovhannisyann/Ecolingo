@@ -64,14 +64,45 @@
   overflow: hidden;
 }
 .progressFill {
+  position: relative;
   height: 100%;
   border-radius: 999px;
   background: var(--duo-green);
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12), inset 0 4px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12);
+}
+/* the glossy cap: a lighter rounded strip floating near the top of the fill */
+.progressFill::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+/* hide the cap while the fill is too narrow to hold it */
+.progressFill[style*="width: 0%"]::after {
+  display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
   .progressFill {
     transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* a soft shine sweeps the fill once whenever progress advances */
+  .progressPulse {
+    animation: fill-shine 550ms ease-out;
+  }
+  @keyframes fill-shine {
+    0% {
+      filter: brightness(1);
+    }
+    35% {
+      filter: brightness(1.25);
+    }
+    100% {
+      filter: brightness(1);
+    }
   }
 }
 .hearts {
@@ -81,6 +112,83 @@
   font-weight: 800;
   color: var(--duo-red-text);
   flex: 0 0 auto;
+}
+
+/* ---- character-speaks (mascot + speech bubble + audio button) ----------- */
+.speaks {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.speaksChar {
+  width: 84px;
+  height: 84px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 18px;
+  border: 2px solid var(--app-border);
+}
+.bubble {
+  position: relative;
+  flex: 1 1 auto;
+  border: 2px solid var(--app-border);
+  border-radius: 16px;
+  background: var(--app-surface);
+  padding: 0.9rem 1rem;
+}
+/* bubble tail pointing at the character */
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  bottom: 22px;
+  width: 14px;
+  height: 14px;
+  background: var(--app-surface);
+  border-left: 2px solid var(--app-border);
+  border-bottom: 2px solid var(--app-border);
+  transform: rotate(45deg);
+}
+.bubbleText {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--app-text);
+}
+.speakBtn {
+  float: right;
+  margin: -0.15rem -0.25rem 0.25rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  border: 2px solid var(--app-border);
+  color: var(--duo-blue);
+  background: var(--app-surface-2);
+}
+.speakBtn:hover {
+  background: var(--app-surface);
+}
+.speakBtn:focus-visible {
+  outline: 3px solid var(--duo-blue);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .speaks {
+    animation: speaks-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes speaks-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 /* ---- feedback strip (the signature Duolingo moment) --------------------- */

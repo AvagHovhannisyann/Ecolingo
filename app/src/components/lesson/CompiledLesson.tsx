@@ -14,12 +14,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
 import { LessonPlayer } from "../LessonPlayer";
+import { LoadingScreen } from "../LoadingScreen";
 
 export function CompiledLesson({ lessonId }: { lessonId: string }) {
   const enrolled = useEnrolledCourse();
 
-  if (enrolled === "loading")
-    return <p className="p-4 text-sm text-app-muted">Loading your lesson…</p>;
+  if (enrolled === "loading") return <LoadingScreen label="Loading your lesson…" />;
 
   const lesson =
     typeof enrolled === "object" ? enrolled.lessons.find((l) => l.id === lessonId) : undefined;

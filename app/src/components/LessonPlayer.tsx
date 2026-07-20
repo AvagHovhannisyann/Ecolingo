@@ -35,6 +35,7 @@ import { SolowLab } from "./SolowLab";
 import { QuestionCard } from "./QuestionCard";
 import { ExplainPanel } from "./ExplainPanel";
 import { GroundedCitationChips, UnverifiedBanner } from "./CitationChips";
+import { CharacterSpeaks } from "./lesson/CharacterSpeaks";
 import { LessonShell } from "./lesson/LessonShell";
 import { FeedbackStrip } from "./lesson/FeedbackStrip";
 import { QuitModal } from "./lesson/QuitModal";
@@ -238,12 +239,22 @@ export function LessonPlayer({
   let footer: React.ReactNode = null;
 
   if (step.type === "core_idea" || step.type === "intuition") {
+    // Character-speaks: the cast (Duolingo-style ensemble) takes turns —
+    // which character teaches this concept is a stable hash of its slug, so
+    // a concept always keeps its teacher across sessions.
+    const CAST = ["/art-v2/eco-wave.webp", "/art-cast/pip.webp", "/art-cast/lumi.webp", "/art-cast/bo.webp"];
+    let castHash = 0;
+    for (let i = 0; i < lesson.conceptSlug.length; i++) castHash = (castHash * 31 + lesson.conceptSlug.charCodeAt(i)) | 0;
+    const speaker = CAST[Math.abs(castHash) % CAST.length];
     body = (
       <div>
         {heading}
-        <p className="mt-3 text-lg leading-relaxed text-app">
-          {simpler && step.body.simpler ? step.body.simpler : step.body.standard}
-        </p>
+        {/* character-speaks presentation: a cast character delivers the line
+            in a speech bubble with an optional read-aloud button (Web Speech) */}
+        <CharacterSpeaks
+          text={simpler && step.body.simpler ? step.body.simpler : step.body.standard}
+          characterSrc={speaker}
+        />
         <GroundedCitationChips
           conceptSlug={lesson.conceptSlug}
           fallback={course.citations.filter((c) => step.citationIds.includes(c.id))}
