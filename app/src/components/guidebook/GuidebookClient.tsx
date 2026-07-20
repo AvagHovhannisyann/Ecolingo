@@ -11,7 +11,7 @@
 
 import Link from "next/link";
 import { concepts as demoConcepts, course as demoCourse } from "@/content/active-course";
-import { useEnrolledCourse } from "@/lib/enrolled-course";
+import { useLearnerCourse } from "@/lib/enrolled-course";
 import { useLearnerState } from "@/lib/learner-store";
 import { AmbientArt } from "../AmbientHero";
 import { LoadingScreen } from "../LoadingScreen";
@@ -19,7 +19,7 @@ import { JoinCourseGate } from "../path/JoinCourseGate";
 
 export function GuidebookClient() {
   const state = useLearnerState();
-  const enrolled = useEnrolledCourse();
+  const enrolled = useLearnerCourse();
   if (!state || enrolled === "loading") return <LoadingScreen label="Opening your guidebook…" />;
   if (enrolled === "none") return <JoinCourseGate onJoined={() => window.location.reload()} />;
 

@@ -14,7 +14,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { course, concepts as demoConcepts } from "@/content/active-course";
 import { worlds } from "@/content/econ13210/worlds";
-import { useEnrolledCourse } from "@/lib/enrolled-course";
+import { useLearnerCourse } from "@/lib/enrolled-course";
 import { useLearnerState } from "@/lib/learner-store";
 import { LoadingScreen } from "../LoadingScreen";
 import { JoinCourseGate } from "../path/JoinCourseGate";
@@ -49,7 +49,7 @@ function ProgressBar({ label, done, total }: { label: string; done: number; tota
 
 export function SectionsClient() {
   const state = useLearnerState();
-  const enrolled = useEnrolledCourse();
+  const enrolled = useLearnerCourse();
   if (!state || enrolled === "loading") return <LoadingScreen label="Loading your sections…" />;
   if (enrolled === "none") return <JoinCourseGate onJoined={() => window.location.reload()} />;
 
@@ -76,7 +76,9 @@ export function SectionsClient() {
             key: enrolled.courseId,
             eyebrow: "Section 1",
             title: enrolled.courseTitle,
-            tagline: `${enrolled.lessons.length} lessons, compiled from your teacher's materials and ratified by them.`,
+            tagline: enrolled.isSample
+              ? `${enrolled.lessons.length} playable lessons — a built-in sample course so you can explore the full experience.`
+              : `${enrolled.lessons.length} lessons, compiled from your teacher's materials and ratified by them.`,
             art: "/art-v2/world-solow-header.webp",
             done: enrolled.lessons.filter((l) => doneIds.has(l.id)).length,
             total: enrolled.lessons.length,
@@ -86,7 +88,9 @@ export function SectionsClient() {
             key: "coming",
             eyebrow: "Next",
             title: "More sections on the way",
-            tagline: "Your teacher can compile and publish more units — they appear here the moment they're ratified.",
+            tagline: enrolled.isSample
+              ? "Join a real class with a teacher's code, or wait for more sample units — they appear here."
+              : "Your teacher can compile and publish more units — they appear here the moment they're ratified.",
             art: "/art-v2/world-locked-teaser.webp",
             done: 0,
             total: 0,

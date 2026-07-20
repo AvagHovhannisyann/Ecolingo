@@ -17,9 +17,11 @@
  */
 
 import { useEffect, useState } from "react";
-import type { Concept, ConceptEdge, Lesson } from "./engine/types";
+import type { Concept, ConceptEdge, Equation, Lesson, Question } from "./engine/types";
 import { fetchEnrolledCompiledPlan } from "./course";
 import { getSupabase } from "./supabase";
+import { useAccountInfo, isTester, type AccountState } from "./use-account";
+import { SAMPLE_ENROLLED_PLAN } from "@/content/sample-course";
 
 export interface EnrolledPlan {
   courseId: string;
@@ -32,6 +34,14 @@ export interface EnrolledPlan {
   /** AI-designed roadmap units (goal title + lesson ids), when the ratified
    *  plan carries them; older plans without units fall back to client chunking. */
   units: { title: string; lessonIds: string[] }[];
+  /** Lesson-scoped questions (guided/mastery steps). Empty for AI-compiled
+   *  plans today; the sample course carries a full set so lessons are playable. */
+  questions: Question[];
+  /** Lesson-scoped equations (math steps). Empty for AI-compiled plans today. */
+  equations: Equation[];
+  /** True only for the built-in SAMPLE course shown to tester accounts, so the
+   *  UI can label it honestly as demo/test content (never a real enrollment). */
+  isSample?: boolean;
 }
 
 export type EnrolledCourseState = "loading" | "cloudless" | "none" | EnrolledPlan;
@@ -64,6 +74,9 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
       return { title, lessonIds: ids };
     })
     .filter((u) => u.title !== "" && u.lessonIds.length > 0);
+  // Questions/equations are optional (AI-compiled plans omit them today).
+  const questions = Array.isArray(draft.questions) ? (draft.questions as Question[]) : [];
+  const equations = Array.isArray(draft.equations) ? (draft.equations as Equation[]) : [];
   return {
     courseId,
     courseTitle,
@@ -73,7 +86,20 @@ export function parseStoredPlan(courseId: string, courseTitle: string, raw: unkn
     edges,
     lessons,
     units,
+    questions,
+    equations,
   };
+}
+
+/**
+ * Compose the raw enrolled state with the tester sample fallback: a
+ * designated tester who is signed in but NOT enrolled sees the built-in
+ * sample course (so the whole learner experience — roadmap, lessons,
+ * sections, guidebook — can be observed) instead of the empty join gate.
+ * Pure so it can be unit-tested without React. Everyone else is unaffected.
+ */
+export function applyTesterSample(state: EnrolledCourseState, tester: boolean): EnrolledCourseState {
+  return state === "none" && tester ? SAMPLE_ENROLLED_PLAN : state;
 }
 
 export function useEnrolledCourse(refreshKey = 0): EnrolledCourseState {
@@ -104,4 +130,17 @@ export function useEnrolledCourse(refreshKey = 0): EnrolledCourseState {
 
   if (getSupabase() === null) return "cloudless";
   return result && result.key === refreshKey ? result.value : "loading";
+}
+
+/**
+ * The course a LEARNER surface should render: the real enrolled course, or —
+ * for a designated tester with no enrollment — the built-in sample course.
+ * Drop-in replacement for useEnrolledCourse on the learner surfaces (home,
+ * sections, guidebook, compiled lesson).
+ */
+export function useLearnerCourse(refreshKey = 0): EnrolledCourseState {
+  const enrolled = useEnrolledCourse(refreshKey);
+  const account: AccountState = useAccountInfo();
+  const tester = account.phase === "ready" && isTester(account.info);
+  return applyTesterSample(enrolled, tester);
 }

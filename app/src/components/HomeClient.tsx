@@ -26,7 +26,7 @@ import type { Concept, ConceptEdge, Lesson } from "@/lib/engine/types";
 import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
-import { useEnrolledCourse } from "@/lib/enrolled-course";
+import { useLearnerCourse } from "@/lib/enrolled-course";
 import { needsProfile, useAccountInfo } from "@/lib/use-account";
 import { CreateProfileWall } from "./auth/AccountCard";
 import { UnverifiedBanner } from "./CitationChips";
@@ -49,9 +49,13 @@ interface CourseView {
 export function HomeClient() {
   const state = useLearnerState();
   const [joinRefresh, setJoinRefresh] = useState(0);
-  const enrolled = useEnrolledCourse(joinRefresh);
+  const enrolled = useLearnerCourse(joinRefresh);
   const account = useAccountInfo();
   if (!state || enrolled === "loading") return <LoadingScreen label="Loading your plan…" />;
+
+  // A designated tester with no real enrollment is shown the built-in sample
+  // course (isSample) so the whole learner experience is observable.
+  const isSample = typeof enrolled === "object" && enrolled.isSample === true;
 
   // D-022: in cloud mode a student without a course sees the join gate — the
   // econ demo is no longer the default. Without Supabase env (sandbox/CI) the
@@ -62,7 +66,7 @@ export function HomeClient() {
     enrolled === "cloudless"
       ? { eyebrow: "Section 1 · Solow growth", concepts, edges: conceptEdges, lessons: course.lessons, units: [] }
       : {
-          eyebrow: `Your course · ${enrolled.courseTitle}`,
+          eyebrow: isSample ? `Sample course · ${enrolled.courseTitle}` : `Your course · ${enrolled.courseTitle}`,
           concepts: enrolled.concepts,
           edges: enrolled.edges,
           lessons: enrolled.lessons,
@@ -126,6 +130,20 @@ export function HomeClient() {
     <div className="mx-auto flex max-w-5xl justify-center gap-8">
       <div className="sp min-w-0 max-w-xl flex-1">
       <SectionHeader eyebrow={view.eyebrow} title={headerTitle} href={headerHref} />
+
+      {isSample && (
+        <div
+          className="mt-4 flex items-start gap-3 rounded-2xl border-2 border-[var(--duo-gold)] bg-[color:rgba(255,200,0,0.08)] p-4"
+          role="note"
+        >
+          <span aria-hidden="true" className="text-xl">🧪</span>
+          <p className="text-sm">
+            <strong className="text-[var(--duo-gold)]">Test mode — sample course.</strong> You aren&apos;t enrolled in a
+            class, so this is a built-in Solow-growth demo to explore the full experience: the roadmap, lessons,
+            sections and guidebook. Join a real class anytime with a teacher&apos;s code from your profile.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4">
         <UnverifiedBanner />
