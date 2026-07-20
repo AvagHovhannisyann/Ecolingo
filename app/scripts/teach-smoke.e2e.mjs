@@ -36,8 +36,8 @@ try {
   log("teacher workspace loads");
 
   // 2) material ingestion still works (content-independent sectionize)
-  await page.click('button:has-text("Try the sample lecture")');
-  await page.waitForSelector("text=Lecture 4 — The Solow Growth Model");
+  await page.click('button:has-text("Try a sample document")');
+  await page.waitForSelector("text=Sample notes — Photosynthesis");
   log("sample material ingests and lists its sections");
 
   // 3) the course compiler entry point is reachable
