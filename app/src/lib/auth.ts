@@ -98,6 +98,29 @@ export async function signInWithEmail(email: string, password: string): Promise<
   return { ok: true, userId: data.user.id };
 }
 
+/** Duolingo's "FORGOT?" — email a recovery link that lands on /auth/reset. */
+export async function requestPasswordReset(email: string): Promise<{ ok: boolean; message: string }> {
+  const supabase = getSupabase();
+  if (!supabase)
+    return { ok: false, message: "Accounts aren't available in this environment — progress stays on this device." };
+  const e = email.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return { ok: false, message: "Enter your email above first, then tap FORGOT." };
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset` : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(e, redirectTo ? { redirectTo } : undefined);
+  if (error) return { ok: false, message: mapAuthError(error.message).message };
+  return { ok: true, message: "Check your email — we sent you a link to reset your password." };
+}
+
+/** Complete a recovery: set the new password on the recovery session. */
+export async function completePasswordReset(password: string): Promise<AuthResult> {
+  const supabase = getSupabase();
+  if (!supabase) return UNAVAILABLE;
+  if (password.length < 8) return { ok: false, reason: "weak_password", message: "Password needs at least 8 characters." };
+  const { data, error } = await supabase.auth.updateUser({ password });
+  if (error) return mapAuthError(error.message);
+  return { ok: true, userId: data.user?.id ?? "" };
+}
+
 export async function signOut(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) return;

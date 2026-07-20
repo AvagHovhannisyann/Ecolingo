@@ -36,10 +36,10 @@ export function LessonComplete({
   return (
     <div className="flex min-h-[calc(100dvh-8.5rem)] flex-col items-center justify-center py-6 text-center">
       <AmbientArt
-        videoSrc="/art-v2/eco-celebrate.mp4"
+        videoSrc="/art-cast/eco-cheer-loop.mp4"
         imageSrc="/art-v2/eco-celebrate.webp"
-        width={512}
-        height={512}
+        width={480}
+        height={480}
         className="art-enter h-40 w-40 rounded-3xl object-cover"
       />
       <h2

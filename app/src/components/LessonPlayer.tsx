@@ -239,14 +239,21 @@ export function LessonPlayer({
   let footer: React.ReactNode = null;
 
   if (step.type === "core_idea" || step.type === "intuition") {
+    // Character-speaks: the cast (Duolingo-style ensemble) takes turns —
+    // which character teaches this concept is a stable hash of its slug, so
+    // a concept always keeps its teacher across sessions.
+    const CAST = ["/art-v2/eco-wave.webp", "/art-cast/pip.webp", "/art-cast/lumi.webp", "/art-cast/bo.webp"];
+    let castHash = 0;
+    for (let i = 0; i < lesson.conceptSlug.length; i++) castHash = (castHash * 31 + lesson.conceptSlug.charCodeAt(i)) | 0;
+    const speaker = CAST[Math.abs(castHash) % CAST.length];
     body = (
       <div>
         {heading}
-        {/* character-speaks presentation: Eco delivers the line in a speech
-            bubble with an optional read-aloud button (Web Speech) */}
+        {/* character-speaks presentation: a cast character delivers the line
+            in a speech bubble with an optional read-aloud button (Web Speech) */}
         <CharacterSpeaks
           text={simpler && step.body.simpler ? step.body.simpler : step.body.standard}
-          characterSrc={step.type === "core_idea" ? "/art-v2/eco-wave.webp" : "/art-v2/eco-books.webp"}
+          characterSrc={speaker}
         />
         <GroundedCitationChips
           conceptSlug={lesson.conceptSlug}

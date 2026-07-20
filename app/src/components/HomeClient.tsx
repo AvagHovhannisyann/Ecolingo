@@ -27,6 +27,8 @@ import { buildReviewQueue, dueNow, planToday } from "@/lib/engine/scheduler";
 import { updatePlan } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
+import { needsProfile, useAccountInfo } from "@/lib/use-account";
+import { CreateProfileWall } from "./auth/AccountCard";
 import { UnverifiedBanner } from "./CitationChips";
 import { LoadingScreen } from "./LoadingScreen";
 import { JoinCourseGate } from "./path/JoinCourseGate";
@@ -46,6 +48,7 @@ export function HomeClient() {
   const state = useLearnerState();
   const [joinRefresh, setJoinRefresh] = useState(0);
   const enrolled = useEnrolledCourse(joinRefresh);
+  const account = useAccountInfo();
   if (!state || enrolled === "loading") return <LoadingScreen label="Loading your plan…" />;
 
   // D-022: in cloud mode a student without a course sees the join gate — the
@@ -124,6 +127,14 @@ export function HomeClient() {
       <div className="mt-4">
         <UnverifiedBanner />
       </div>
+
+      {/* Duolingo's signature signup moment: guests see the create-profile
+          wall right on the path until they have a real account */}
+      {needsProfile(account) && (
+        <div className="mt-4">
+          <CreateProfileWall compact />
+        </div>
+      )}
 
       {!state.profile.onboarded && (
         <Link

@@ -6,11 +6,11 @@
  * as a teacher. This replaces the old econ demo as the cloud default.
  */
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { joinCourseByCode } from "@/lib/course";
 import { playSfx } from "@/lib/sfx";
+import { AmbientArt } from "../AmbientHero";
 
 export function JoinCourseGate({ onJoined }: { onJoined: () => void }) {
   const [code, setCode] = useState("");
@@ -39,12 +39,12 @@ export function JoinCourseGate({ onJoined }: { onJoined: () => void }) {
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center py-10 text-center">
-      <Image
-        src="/art-v2/eco-wave.webp"
-        alt=""
-        width={160}
-        height={160}
-        priority
+      {/* Higgsfield wave loop greets the new student (still on reduced motion) */}
+      <AmbientArt
+        videoSrc="/art-cast/eco-wave-loop.mp4"
+        imageSrc="/art-v2/eco-wave.webp"
+        width={480}
+        height={480}
         className="h-40 w-40 rounded-3xl object-cover"
       />
       <h1 className="mt-4 text-2xl font-extrabold">Join your course</h1>

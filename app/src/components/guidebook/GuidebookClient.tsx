@@ -9,6 +9,7 @@
  * (GATE-001).
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { concepts as demoConcepts, course as demoCourse } from "@/content/active-course";
 import { useEnrolledCourse } from "@/lib/enrolled-course";
@@ -35,11 +36,24 @@ export function GuidebookClient() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <p className="text-xs font-extrabold uppercase tracking-widest text-app-muted">Guidebook</p>
-      <h1 className="mt-1 text-2xl font-extrabold">{view.title}</h1>
-      <p className="mt-1 text-sm text-app-muted">
-        The key ideas in this section, in the order the path teaches them.
-      </p>
+      <div className="flex items-center gap-4">
+        {/* Lumi the owl — the guidebook's librarian */}
+        <Image
+          src="/art-cast/lumi.webp"
+          alt=""
+          role="presentation"
+          width={96}
+          height={96}
+          className="h-20 w-20 shrink-0 rounded-2xl border-2 border-[color:var(--app-border)] object-cover"
+        />
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-widest text-app-muted">Guidebook</p>
+          <h1 className="mt-1 text-2xl font-extrabold">{view.title}</h1>
+          <p className="mt-1 text-sm text-app-muted">
+            The key ideas in this section, in the order the path teaches them.
+          </p>
+        </div>
+      </div>
 
       {entries.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-[color:var(--app-border)] p-4 text-sm text-app-muted">

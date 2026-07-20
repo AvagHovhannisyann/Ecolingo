@@ -137,7 +137,7 @@ export function SkillPath({ rows, dueReviewReason, mascotSrc }: SkillPathProps) 
               captionHint={hint}
               jumpHref={isJump ? `/lesson/${lesson.id}` : undefined}
               jumpLabel={isJump ? `Jump ahead to ${lesson.title}` : undefined}
-              mascotSrc={isJump ? "/art-v2/eco-think.webp" : undefined}
+              mascotSrc={isJump ? "/art-cast/bo.webp" : undefined}
               mascotSide={offsetX > 0 ? "left" : "right"}
             />
           );

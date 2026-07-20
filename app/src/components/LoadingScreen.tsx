@@ -37,12 +37,12 @@ export function LoadingScreen({ label = "Loading…" }: { label?: string }) {
         <span className={`${styles.spark} ${styles.spark1}`} />
         <span className={`${styles.spark} ${styles.spark2}`} />
         <span className={`${styles.spark} ${styles.spark3}`} />
-        {/* Higgsfield idle loop; reduced-motion / decode failure → still image */}
+        {/* Higgsfield wave loop; reduced-motion / decode failure → still image */}
         <AmbientArt
-          videoSrc="/art-v2/eco-idle.mp4"
+          videoSrc="/art-cast/eco-wave-loop.mp4"
           imageSrc="/art-v2/eco-wave.webp"
-          width={512}
-          height={512}
+          width={480}
+          height={480}
           className={styles.mascot}
         />
         <span className={styles.shadow} />
