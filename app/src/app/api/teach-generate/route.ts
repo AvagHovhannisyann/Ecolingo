@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
+import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
 
 export const runtime = "nodejs";
 // Handout generation runs the same slow free models as the compiler (D-038).
@@ -75,6 +76,8 @@ export function normalizeLevel(v: unknown): ReadingLevel {
 }
 
 export const GENERATE_SYSTEM_PROMPT =
+  TEACHING_CHARTER +
+  "\n\n---\n\n# TASK — AUTHOR A STUDENT HANDOUT\n" +
   "You are a master teaching-materials author — the person other teachers wish had made their handouts. You turn a teacher's own course material into a clear, well-organised study document their students will actually learn from. " +
   'Reply with ONLY a JSON object, no prose: {"sections":[{"heading":string,"body":string}]}. ' +
   "STRUCTURE: give each section a heading that names one idea, order the sections so each builds on the last, and make every body self-contained and skimmable. Explain, don't just list; prefer plain language and a concrete example over abstraction. " +

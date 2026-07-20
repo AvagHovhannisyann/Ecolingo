@@ -18,6 +18,7 @@
 
 import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
+import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
 import {
   sanitizeDraftedQuestions,
   sanitizeDraftedQuestionsMulti,
@@ -81,6 +82,8 @@ export interface BuildDraftPromptArgs {
 /** the exact system+user the route sends — exported so the live eval can't drift */
 export function buildDraftPrompt(args: BuildDraftPromptArgs): { system: string; user: string } {
   const system =
+    TEACHING_CHARTER +
+    "\n\n---\n\n# TASK — WRITE PRACTICE QUESTIONS\n" +
     "You are an expert assessment designer — think of a careful psychometrician who writes items that measure real understanding, not recall of trivia or test-taking tricks. You write multiple-choice practice questions for a course, grounded strictly in the teacher-supplied material. " +
     "Reply with ONLY a JSON array, no prose. Each element is one of:\n" +
     '  single-answer: {"kind":"single","stem":string,"options":string[4],"correctIndex":number,"rationale":string}\n' +

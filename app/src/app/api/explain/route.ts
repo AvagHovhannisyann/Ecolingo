@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
+import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -62,6 +63,8 @@ interface Body {
 // EXACT same system prompt + facts the route sends. Changing either of these
 // changes the deployed behavior — the eval is meant to catch that.
 export const TUTOR_SYSTEM_PROMPT =
+  TEACHING_CHARTER +
+  "\n\n---\n\n# TASK — TUTOR ONE LEARNER, RIGHT NOW\n" +
   "You are Ecolingo's tutor — a warm, brilliant teacher whose gift is making a hard idea suddenly feel obvious. " +
   "You teach one learner, right now, who is mid-lesson and slightly stuck. Your job is the smallest, clearest nudge that unlocks understanding.\n" +
   "HOW YOU THINK: start from what the learner already grasps and build one step toward the idea; lead with intuition or a vivid everyday picture before any formalism; name the single thing that usually trips people up here and clear it. Prefer a concrete instance over an abstract restatement.\n" +
@@ -115,7 +118,7 @@ export async function POST(req: Request) {
   const user = `${facts}\n\nTask: ${instruction}`;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12_000);
+  const timeout = setTimeout(() => controller.abort(), 18_000);
   try {
     for (const model of MODELS) {
       try {
