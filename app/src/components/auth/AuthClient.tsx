@@ -71,6 +71,14 @@ export function AuthClient() {
         : await signInWithEmail(email, password);
     if (!result.ok) {
       setBusy(false);
+      // "Confirm your email" isn't a failure — it's the next step. Show it as a
+      // positive notice, flip to the login tab, and keep the email prefilled.
+      if (result.reason === "confirm_email") {
+        setNotice(result.message);
+        setMode("login");
+        setPassword("");
+        return;
+      }
       return setError(result.message);
     }
     playSfx("complete");

@@ -24,7 +24,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Concept, EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
+import type { Concept, Equation, EvidenceEvent, Lesson, LessonStep, Question, QuestionStep } from "@/lib/engine/types";
 import type { ScoreResult } from "@/lib/engine/scoring";
 import { pickQuestion } from "@/lib/engine/adaptive";
 import { course, getConcept } from "@/content/active-course";
@@ -60,12 +60,16 @@ export function LessonPlayer({
   lesson,
   extraConcepts = [],
   extraQuestions = [],
+  extraEquations = [],
 }: {
   lesson: Lesson;
   /** D-022: plan-scoped concepts/questions for compiled courses — checked
    *  before the static content module so enrolled-course lessons play. */
   extraConcepts?: Concept[];
   extraQuestions?: Question[];
+  /** plan-scoped equations (sample course / future compiled math) — checked
+   *  before the static content module so math steps and explain panels resolve. */
+  extraEquations?: Equation[];
 }) {
   const state = useLearnerState();
   const [stepIndex, setStepIndex] = useState(0);
@@ -109,8 +113,11 @@ export function LessonPlayer({
   // than someone else's formula.
   // No built-in course equations remain (D-022); compiled lessons never carry
   // approved LaTeX. The explain panel simply gets no equation.
-  const lessonEquation =
-    course.equations.find((e) => e.conceptSlug === lesson.conceptSlug) ?? null;
+  const findEquationByConcept = (slug: string) =>
+    extraEquations.find((e) => e.conceptSlug === slug) ??
+    course.equations.find((e) => e.conceptSlug === slug) ??
+    null;
+  const lessonEquation = findEquationByConcept(lesson.conceptSlug);
   const step = steps[stepIndex];
 
   // ---- adaptive question resolution (D-020) --------------------------------
@@ -306,7 +313,10 @@ export function LessonPlayer({
     // Resolve from the active course's equations (empty now that there is no
     // built-in course; compiled lessons emit no math steps). If absent, the
     // step degrades to its heading rather than throwing.
-    const eq = course.equations.find((e) => e.id === step.equationId) ?? null;
+    const eq =
+      extraEquations.find((e) => e.id === step.equationId) ??
+      course.equations.find((e) => e.id === step.equationId) ??
+      null;
     body = eq === null ? (
       <div>{heading}</div>
     ) : (
@@ -343,9 +353,7 @@ export function LessonPlayer({
     const qStep = step as QuestionStep;
     const resolved = resolvedQuestions[qStep.id];
     const q = resolved?.question;
-    const questionEquation = q
-      ? course.equations.find((e) => e.conceptSlug === q.conceptSlug) ?? null
-      : null;
+    const questionEquation = q ? findEquationByConcept(q.conceptSlug) : null;
     body = !q ? (
       <div>{heading}</div>
     ) : (

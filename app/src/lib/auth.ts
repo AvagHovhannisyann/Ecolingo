@@ -21,7 +21,14 @@ export type Role = "teacher" | "student";
 
 export type AuthResult =
   | { ok: true; userId: string }
-  | { ok: false; reason: "unavailable" | "invalid" | "exists" | "weak_password" | "error"; message: string };
+  | {
+      ok: false;
+      reason: "unavailable" | "invalid" | "exists" | "weak_password" | "rate_limited" | "confirm_email" | "error";
+      message: string;
+    };
+
+/** Where a pending (email-confirmation) role is stashed until first login. */
+const pendingRoleKey = (email: string) => `eco:pending-role:${email.trim().toLowerCase()}`;
 
 export interface AccountInfo {
   userId: string;
@@ -48,6 +55,20 @@ export function mapAuthError(message: string): Exclude<AuthResult, { ok: true }>
     return { ok: false, reason: "weak_password", message: "Password needs at least 8 characters." };
   if (m.includes("invalid login credentials") || m.includes("invalid email or password"))
     return { ok: false, reason: "invalid", message: "Email or password is incorrect." };
+  if (m.includes("email not confirmed") || m.includes("not confirmed"))
+    return {
+      ok: false,
+      reason: "confirm_email",
+      message: "Confirm your email first — check your inbox for the link, then log in.",
+    };
+  // Supabase's built-in mailer is rate-limited; a burst of sign-ups trips it
+  // (error_code over_email_send_rate_limit / "email rate limit exceeded").
+  if (m.includes("rate limit") || m.includes("over_email_send") || m.includes("too many requests"))
+    return {
+      ok: false,
+      reason: "rate_limited",
+      message: "The email service is busy right now (rate-limited). Wait a minute and try again.",
+    };
   if (m.includes("provider is not enabled") || m.includes("unsupported provider"))
     return {
       ok: false,
@@ -86,12 +107,53 @@ export async function signUpWithEmail(email: string, password: string, role: Rol
     if (error) return mapAuthError(error.message);
     userId = data.user?.id ?? null;
     if (!userId) return { ok: false, reason: "error", message: "Sign-up did not return a user." };
+    // When "Confirm email" is ON, signUp returns NO session — the account
+    // exists but must be verified before login, and RLS blocks writing the
+    // profile now. Stash the chosen role so first login applies it, and tell
+    // the learner to confirm (an honest state, not the old broken half-success).
+    if (!data.session) {
+      stashPendingRole(email, role, displayName);
+      return {
+        ok: false,
+        reason: "confirm_email",
+        message: "Almost there! Check your email for a confirmation link, then come back and log in.",
+      };
+    }
   }
 
   // Role + name live on the owner-scoped profiles row (D-022 migration).
   const saved = await saveProfile(userId, role, displayName);
   if (!saved) return { ok: false, reason: "error", message: "Account created, but saving your role failed — set it again in Settings." };
   return { ok: true, userId };
+}
+
+/** Remember the role chosen at signup so first login can apply it. */
+function stashPendingRole(email: string, role: Role, displayName: string): void {
+  try {
+    window.localStorage.setItem(pendingRoleKey(email), JSON.stringify({ role, displayName }));
+  } catch {
+    /* private mode / no storage — role can be set later in Settings */
+  }
+}
+
+/** Apply and clear any role stashed at signup for this email (post-confirmation login). */
+async function applyPendingRole(email: string, userId: string): Promise<void> {
+  let stored: { role: Role; displayName: string } | null = null;
+  try {
+    const raw = window.localStorage.getItem(pendingRoleKey(email));
+    if (raw) stored = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (!stored) return;
+  const ok = await saveProfile(userId, stored.role, stored.displayName ?? "");
+  if (ok) {
+    try {
+      window.localStorage.removeItem(pendingRoleKey(email));
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /** Upsert the owner-scoped profiles row. Shared by email signup and the OAuth callback. */
@@ -127,6 +189,9 @@ export async function signInWithEmail(email: string, password: string): Promise<
   if (!supabase) return UNAVAILABLE;
   const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
   if (error) return mapAuthError(error.message);
+  // First login after a confirmation-required signup: apply the role they
+  // picked back then (their profile has none yet).
+  await applyPendingRole(email, data.user.id);
   return { ok: true, userId: data.user.id };
 }
 

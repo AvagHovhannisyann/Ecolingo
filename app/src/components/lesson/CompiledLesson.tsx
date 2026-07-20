@@ -12,12 +12,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEnrolledCourse } from "@/lib/enrolled-course";
+import { useLearnerCourse } from "@/lib/enrolled-course";
 import { LessonPlayer } from "../LessonPlayer";
 import { LoadingScreen } from "../LoadingScreen";
 
 export function CompiledLesson({ lessonId }: { lessonId: string }) {
-  const enrolled = useEnrolledCourse();
+  const enrolled = useLearnerCourse();
 
   if (enrolled === "loading") return <LoadingScreen label="Loading your lesson…" />;
 
@@ -42,7 +42,12 @@ export function CompiledLesson({ lessonId }: { lessonId: string }) {
   return (
     <>
       <h1 className="sr-only">{lesson.title}</h1>
-      <LessonPlayer lesson={lesson} extraConcepts={enrolled.concepts} extraQuestions={[]} />
+      <LessonPlayer
+        lesson={lesson}
+        extraConcepts={enrolled.concepts}
+        extraQuestions={enrolled.questions}
+        extraEquations={enrolled.equations}
+      />
     </>
   );
 }
