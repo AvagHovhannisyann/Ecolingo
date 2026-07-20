@@ -24,11 +24,12 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export const MODELS = [
-  // Verified against the live OpenRouter catalog: the strongest free models,
-  // strongest first. The 550B ultra reads ~1M tokens of teacher material in
-  // one pass; each fallback keeps the pipeline alive if a tier is saturated.
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
+  // FAST-FIRST (D-040): the 120B "super" answers a full compile in ~10s with
+  // throughput routing, vs the 550B "ultra" at ~24s — and the compile is
+  // latency-bound on the free tier, so lead with the fast, strong model and
+  // keep the others as fallbacks. Quality is ample; the teacher reviews the draft.
+  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
   "tencent/hy3:free",
   "google/gemma-4-31b-it:free",
 ];
@@ -125,9 +126,9 @@ export const COMPILE_SYSTEM_PROMPT =
   "\n\n---\n\n# TASK — COMPILE A COURSE\n" +
   "You are a world-class curriculum architect and instructional designer. You take a teacher's raw material and design a Duolingo-style course that a motivated beginner could climb from zero to real competence — sequenced so every step is reachable from the last, with cognitive load managed and nothing introduced before its prerequisites. " +
   'Reply with ONLY a JSON object, no prose: {"units":[{"title":string,"lessons":[{"title":string,"conceptName":string,"definition":string,"coreIdea":string,"intuition":string,"estimatedMinutes":number,"sourceSectionIds":string[]}]}],"prereqPairs":[[fromConceptName,toConceptName]]}. ' +
-  "Rules: identify 3–8 distinct concepts for a typical lecture document, one lesson per concept, each a single teachable idea (split anything that bundles two). Give each lesson a short, friendly title (like a game level). " +
+  "Rules: identify 3–6 distinct concepts for a typical document, one lesson per concept, each a single teachable idea (split anything that bundles two). Give each lesson a short, friendly title (like a game level). " +
   "Group lessons into coherent UNITS of 3–5 that build on each other; each unit title is a short student-facing GOAL shown as a banner on the learning roadmap (e.g. \"Master the demand curve\") — an outcome phrase, never a chapter number or heading copied verbatim. " +
-  "definition, coreIdea and intuition must be grounded ONLY in the provided source text — never introduce outside facts, numbers, or claims. coreIdea is 1–2 sentences stating the concept plainly; intuition is a short everyday analogy or mental picture. " +
+  "definition, coreIdea and intuition must be grounded ONLY in the provided source text — never introduce outside facts, numbers, or claims. Keep EACH of definition, coreIdea and intuition to ONE concise sentence: definition states the concept plainly, intuition gives a short everyday analogy or mental picture. Be brief — a tight plan is better than a long one. " +
   "sourceSectionIds must be chosen ONLY from the exact section ids given. " +
   "prereqPairs lists ordered [before, after] concept-name pairs ONLY where the source implies one concept must be understood before another; omit weak or speculative dependencies and never create a cycle.";
 
@@ -168,10 +169,12 @@ export async function POST(req: Request) {
     .map((s) => ({
       id: typeof s.id === "string" ? s.id : "",
       heading: typeof s.heading === "string" ? s.heading : "",
-      text: typeof s.text === "string" ? s.text.slice(0, 1200) : "",
+      text: typeof s.text === "string" ? s.text.slice(0, 650) : "",
     }))
     .filter((s) => s.id && s.text)
-    .slice(0, 30); // bound the prompt
+    .slice(0, 22); // bound the prompt: fewer, shorter sections keep the free
+    // models fast enough to answer within the function budget (D-040). The
+    // model only distils 3–8 concepts regardless, so this doesn't lose the plan.
   if (sections.length === 0) return NextResponse.json({ plan: empty });
 
   const allowedSectionIds = new Set(sections.map((s) => s.id));
@@ -179,44 +182,53 @@ export async function POST(req: Request) {
   const system = appendStyle(baseSystem, body.style);
   const user = mode === "clarify" ? buildClarifyUser(sections) : buildCompileUser(sections, context);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45_000);
-  try {
-    for (const model of MODELS) {
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          signal: controller.signal,
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
-          body: JSON.stringify({
-            model,
-            max_tokens: 2200,
-            temperature: 0.3,
-            messages: [
-              { role: "system", content: system },
-              { role: "user", content: user },
-            ],
-          }),
-        });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const content: string = data?.choices?.[0]?.message?.content ?? "";
-        const parsed = extractJsonObject(content);
-        if (parsed === null) continue;
-        if (mode === "clarify") {
-          const questions = sanitizeClarifyQuestions(parsed);
-          if (questions.length === 0) continue;
-          return NextResponse.json({ questions, model });
-        }
-        const { plan } = sanitizeCoursePlan(parsed, allowedSectionIds);
-        // a valid parse that sanitizes to zero usable units is still a legitimate answer
-        return NextResponse.json({ plan, model });
-      } catch {
-        if (controller.signal.aborted) break;
+  // PER-MODEL timeout with a global deadline (D-040). Free models vary wildly
+  // in latency minute to minute; a single shared timeout burns the whole budget
+  // on a slow primary and never reaches the fallbacks. Instead each model gets a
+  // bounded slice, so a hung model is dropped fast and the next one gets a real
+  // chance — all within the function's maxDuration.
+  const deadline = Date.now() + 55_000;
+  for (const model of MODELS) {
+    const remaining = deadline - Date.now();
+    if (remaining < 8_000) break; // not enough time left for another honest attempt
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Math.min(32_000, remaining));
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1100,
+          temperature: 0.3,
+          // Route to the fastest available provider for this free model — the
+          // compile is latency-bound on the free tier (D-040).
+          provider: { sort: "throughput" },
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+        }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const content: string = data?.choices?.[0]?.message?.content ?? "";
+      const parsed = extractJsonObject(content);
+      if (parsed === null) continue;
+      if (mode === "clarify") {
+        const questions = sanitizeClarifyQuestions(parsed);
+        if (questions.length === 0) continue;
+        return NextResponse.json({ questions, model });
       }
+      const { plan } = sanitizeCoursePlan(parsed, allowedSectionIds);
+      // a valid parse that sanitizes to zero usable units is still a legitimate answer
+      return NextResponse.json({ plan, model });
+    } catch {
+      // per-model timeout or network error → move on to the next model
+    } finally {
+      clearTimeout(timeout);
     }
-    return NextResponse.json({ error: "upstream_unavailable", plan: empty }, { status: 502 });
-  } finally {
-    clearTimeout(timeout);
   }
+  return NextResponse.json({ error: "upstream_unavailable", plan: empty }, { status: 502 });
 }

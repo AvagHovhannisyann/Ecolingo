@@ -29,8 +29,8 @@ export const MODELS = [
   // Verified against the live OpenRouter catalog: the strongest free models,
   // strongest first. The 550B ultra reads ~1M tokens of teacher material in
   // one pass; each fallback keeps the pipeline alive if a tier is saturated.
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
+  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
   "tencent/hy3:free",
   "google/gemma-4-31b-it:free",
 ];
@@ -132,6 +132,7 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify({
             model,
+            provider: { sort: "throughput" },
             max_tokens: 220,
             temperature: 0.3,
             messages: [
