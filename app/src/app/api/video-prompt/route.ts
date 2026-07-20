@@ -17,8 +17,8 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export const MODELS = [
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
+  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
   "tencent/hy3:free",
   "google/gemma-4-31b-it:free",
 ];
@@ -101,6 +101,7 @@ export async function POST(req: Request) {
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
           body: JSON.stringify({
             model,
+            provider: { sort: "throughput" },
             max_tokens: 120,
             temperature: 0.8,
             messages: [
