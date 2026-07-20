@@ -14,12 +14,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { DAILY_QUESTS, questProgress } from "@/lib/engine/economy";
 import type { LearnerState } from "@/lib/learner-state";
-import { useAccountInfo } from "@/lib/use-account";
+import { hasTeacherAccess, useAccountInfo } from "@/lib/use-account";
 
 export function RightRail({ state }: { state: LearnerState }) {
   const account = useAccountInfo();
-  // Teacher-only slot (D-023): students shouldn't be steered at the workspace.
-  const isTeacher = account.phase === "ready" && account.info?.role === "teacher";
+  // Teacher-only slot (D-023); designated testers see everything too.
+  const isTeacher = hasTeacherAccess(account);
   const nowISO = new Date().toISOString();
   const quests = DAILY_QUESTS.slice(0, 2).map((q) => ({
     quest: q,

@@ -15,7 +15,7 @@ import {
   LearnIcon, QuestsIcon, ProfileIcon, TeachIcon,
   ReviewIcon, LabsIcon, BankIcon, ExamIcon, SettingsIcon, MoreIcon,
 } from "./icons";
-import { useAccountInfo } from "@/lib/use-account";
+import { hasTeacherAccess, useAccountInfo } from "@/lib/use-account";
 import { isNavActive } from "./Sidebar";
 
 const TABS = [
@@ -46,9 +46,8 @@ export function MobileTabBar() {
   const pathname = usePathname();
   const account = useAccountInfo();
   const [sheetOpen, setSheetOpen] = useState(false);
-  // Teacher workspace is teacher-only (D-023): students never see the entry.
-  const isTeacher = account.phase === "ready" && account.info?.role === "teacher";
-  const sheet = SHEET.filter((n) => n.href !== "/teach" || isTeacher);
+  // Teacher-only entry (D-023); designated testers see everything too.
+  const sheet = SHEET.filter((n) => n.href !== "/teach" || hasTeacherAccess(account));
   const sheetActive = sheet.some((s) => isNavActive(pathname, s.href));
 
   useEffect(() => {
