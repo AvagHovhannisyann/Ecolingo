@@ -42,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "higgsfield-websites/SKILL.md",
       "computedHash": "527dc01892642ead378d342680108e3524cdf719b78657b19ccbed7ba3b40dd8"
+    },
+    "watch-video": {
+      "source": "Newuxtreme/watch-video-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "5c8973563808b6cadfba93792f74e5617f2c55f524eb681c7f0e53887b7d75b0"
     }
   }
 }
