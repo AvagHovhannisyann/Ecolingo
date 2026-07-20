@@ -40,6 +40,18 @@ export interface AiTool {
  */
 export const AI_TOOLS: AiTool[] = [
   {
+    id: "video_generator",
+    label: "Video studio",
+    description: "Generate a short illustrative clip with an open-source text-to-video model (Wan 2.2 / Hunyuan).",
+    glyph: "🎬",
+    status: "live",
+    // NOT grounded: a generated clip is illustrative motion, never a factual
+    // source — the toolkit labels it as generative so it's never mistaken for
+    // grounded course content.
+    grounded: false,
+    action: { kind: "route", href: "/teach/video" },
+  },
+  {
     id: "exam_builder",
     label: "Exam & quiz builder",
     description: "Assemble a printable test from your question bank, with a separate answer key.",
