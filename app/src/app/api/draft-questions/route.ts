@@ -158,7 +158,10 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             model,
             provider: { sort: "throughput" },
-            max_tokens: 1100,
+            // Reasoning free models spend completion tokens thinking before the
+            // JSON array; too small a budget starves the actual answer to empty
+            // (D-041). Headroom for reasoning + the questions. Cost unaffected ($0).
+            max_tokens: 3000,
             temperature: 0.4,
             messages: [
               { role: "system", content: system },

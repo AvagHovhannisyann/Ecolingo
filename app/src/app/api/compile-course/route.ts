@@ -200,7 +200,14 @@ export async function POST(req: Request) {
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
         body: JSON.stringify({
           model,
-          max_tokens: 1100,
+          // The strong free models are REASONING models: they spend completion
+          // tokens "thinking" (reasoning_tokens) BEFORE emitting the JSON, and
+          // those count against max_tokens. At 1100 the reasoning alone (~1800
+          // tokens on a real compile) exhausted the budget and the model
+          // returned EMPTY content even on a successful 200 — the teacher then
+          // saw "nothing usable". Give enough headroom for reasoning + the JSON
+          // plan. Cost is unaffected (these are $0 free models) (D-041).
+          max_tokens: 3000,
           temperature: 0.3,
           // Route to the fastest available provider for this free model — the
           // compile is latency-bound on the free tier (D-040).

@@ -178,7 +178,10 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             model,
             provider: { sort: "throughput" },
-            max_tokens: 2000,
+            // Reasoning free models burn completion tokens thinking before the
+            // JSON; too small a budget returns empty content on a 200 (D-041).
+            // Headroom for reasoning + a full multi-section handout. Cost $0.
+            max_tokens: 3500,
             temperature: 0.3,
             messages: [
               { role: "system", content: system },

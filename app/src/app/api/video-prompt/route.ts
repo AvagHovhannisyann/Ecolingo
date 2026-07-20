@@ -102,7 +102,11 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             model,
             provider: { sort: "throughput" },
-            max_tokens: 120,
+            // Output is one short line (the sanitizer caps it), but reasoning
+            // free models spend completion tokens thinking first — at 120 the
+            // reasoning starved the actual prompt to empty (D-041). Headroom for
+            // reasoning + the short line. Cost unaffected ($0 free models).
+            max_tokens: 800,
             temperature: 0.8,
             messages: [
               { role: "system", content: VIDEO_PROMPT_SYSTEM },

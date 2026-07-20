@@ -133,7 +133,13 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             model,
             provider: { sort: "throughput" },
-            max_tokens: 220,
+            // The output is short prose (the instruction caps it), but the free
+            // models are REASONING models that spend completion tokens thinking
+            // first — at 220 the reasoning ate the whole budget and the tutor
+            // returned empty, forcing the deterministic fallback every time
+            // (D-041). Give reasoning room; the model still keeps the answer
+            // short per the instruction. Cost unaffected ($0 free models).
+            max_tokens: 1200,
             temperature: 0.3,
             messages: [
               { role: "system", content: system },
