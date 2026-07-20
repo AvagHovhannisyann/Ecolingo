@@ -425,40 +425,55 @@ export function TeachClient() {
 
   if (!teacher) return <LoadingScreen label="Loading teacher workspace…" />;
 
-  const ingest = (title: string, raw: string) => {
-    setUploadError(null);
+  /** Sectionize + store one document. Returns an error message, or null on success. */
+  const addDocFromText = (title: string, raw: string): string | null => {
     const doc = sectionize(title.trim() || "Untitled upload", raw, new Date().toISOString());
-    if (doc.sections.length === 0) {
-      setUploadError("That file looks empty — nothing to sectionize.");
-      return;
-    }
+    if (doc.sections.length === 0) return "looks empty — nothing to sectionize";
     mutateTeacherState((s) => addDoc(s, doc));
+    return null;
   };
 
-  const onFile = async (file: File) => {
+  // Text ingestion for the sample / paste buttons (single, with its own error UI).
+  const ingest = (title: string, raw: string) => {
     setUploadError(null);
+    const err = addDocFromText(title, raw);
+    if (err) setUploadError(`That file ${err}.`);
+  };
+
+  /** Read one uploaded file into a document. Returns an error message or null. */
+  const readOneFile = async (file: File): Promise<string | null> => {
     const baseTitle = file.name.replace(/\.(md|txt|markdown|pdf)$/i, "");
     if (/\.pdf$/i.test(file.name)) {
-      setBusy("Reading PDF…");
       try {
         const text = await extractPdfText(file);
-        if (!text.trim()) {
-          setUploadError("No selectable text found in that PDF — it may be a scan. Try an OCR'd file or paste the text.");
-          return;
-        }
-        ingest(baseTitle, text);
+        if (!text.trim()) return `${file.name}: no selectable text (a scan?) — paste it instead`;
+        return addDocFromText(baseTitle, text) ? `${file.name}: looks empty` : null;
       } catch {
-        setUploadError("Couldn't read that PDF. Try re-exporting it, or paste the text instead.");
-      } finally {
-        setBusy(null);
+        return `${file.name}: couldn't read that PDF`;
       }
-      return;
     }
     if (!/\.(md|txt|markdown)$/i.test(file.name)) {
-      setUploadError("Uploads are .pdf, .md, or .txt. For a scanned PDF, paste the text instead.");
-      return;
+      return `${file.name}: only .pdf, .md, or .txt`;
     }
-    ingest(baseTitle, await file.text());
+    return addDocFromText(baseTitle, await file.text()) ? `${file.name}: looks empty` : null;
+  };
+
+  /** Ingest one OR several files picked at once, with progress + a combined report. */
+  const onFiles = async (files: File[]) => {
+    setUploadError(null);
+    const errors: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      setBusy(files.length > 1 ? `Reading ${i + 1} of ${files.length}…` : "Reading…");
+      const err = await readOneFile(files[i]);
+      if (err) errors.push(err);
+    }
+    setBusy(null);
+    if (errors.length) {
+      const ok = files.length - errors.length;
+      setUploadError(
+        (ok > 0 ? `Added ${ok} of ${files.length}. ` : "") + `Couldn't add: ${errors.join("; ")}.`,
+      );
+    }
   };
 
   const docs: TeacherDoc[] = teacher.docs;
@@ -496,19 +511,20 @@ export function TeachClient() {
           <span className="text-app-muted">Step 1 ·</span> Add your materials
         </h2>
         <p className="mt-1 text-sm text-app-muted">
-          Upload lecture notes, a syllabus, or a reading (PDF, .md, or .txt). Ecolingo splits it into sections the
-          compiler can build from. You can add several files.
+          Upload lecture notes, a syllabus, or readings (PDF, .md, or .txt) — pick several at once. Ecolingo splits
+          each into sections the compiler can build from.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
             ref={fileRef}
             type="file"
             accept=".pdf,.md,.txt,.markdown"
-            aria-label="Upload a course document (PDF, .md, or .txt)"
+            multiple
+            aria-label="Upload course documents (PDF, .md, or .txt) — you can select several at once"
             className="sr-only"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onFile(f);
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              if (files.length) void onFiles(files);
               e.target.value = "";
             }}
           />
@@ -518,7 +534,7 @@ export function TeachClient() {
             disabled={busy !== null}
             className="btn-primary min-h-12 px-5 text-white disabled:opacity-50"
           >
-            {busy ?? "Upload PDF / .md / .txt"}
+            {busy ?? "Upload files — PDF / .md / .txt"}
           </button>
           <button
             type="button"
