@@ -3,8 +3,9 @@
 /**
  * Reusable read-aloud button (D-033). Drop it next to any written text — a
  * question stem, a tutor explanation — and clicking it speaks that text with
- * the shared voice engine (our own Kokoro model when configured, browser Web
- * Speech otherwise). Accessible, SSR-safe, and never throws into the UI.
+ * the shared self-contained voice engine (lib/tts) — the device's built-in
+ * voice, or our own from-scratch synth; no server, API, or dependency.
+ * Accessible, SSR-safe, and never throws into the UI.
  */
 
 import { useEffect, useState, useSyncExternalStore } from "react";

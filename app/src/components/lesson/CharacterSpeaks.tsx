@@ -3,8 +3,9 @@
 /**
  * Character-speaks presentation (Duolingo-style: a character beside a speech
  * bubble, with a speaker button that reads the line aloud). Audio is the
- * shared voice engine (lib/tts): our own Kokoro model when configured, browser
- * Web Speech otherwise — so it always works. Each character has its OWN voice.
+ * shared self-contained voice engine (lib/tts): the device's built-in voice, or
+ * our own from-scratch Web Audio synth — no server, API, or dependency. Each
+ * character has its OWN voice.
  *
  * While speaking, the character "talks": its body squashes and stretches in
  * time with the audio's amplitude (a `--talk` CSS variable set every frame), so
