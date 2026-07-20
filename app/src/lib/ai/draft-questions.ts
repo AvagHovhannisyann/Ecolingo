@@ -8,12 +8,15 @@
  */
 
 import type { DraftQuestion } from "../engine/authored";
+import type { TeachingStyle } from "../engine/teaching-style";
 
 export async function draftQuestionsForConcept(input: {
   conceptName: string;
   definition: string;
   sectionText: string;
   count?: number;
+  /** D-029: shape the drafted questions to the teacher's voice */
+  style?: TeachingStyle | null;
 }): Promise<DraftQuestion[]> {
   try {
     const res = await fetch("/api/draft-questions", {

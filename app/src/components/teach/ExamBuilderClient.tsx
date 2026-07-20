@@ -61,11 +61,11 @@ export function ExamBuilderClient() {
         <div className="card mt-4 p-4">
           <p className="text-sm font-bold">Your question bank is empty.</p>
           <p className="mt-1 text-sm text-app-muted">
-            Draft and approve questions first — open the course compiler, generate questions per concept, and
-            confirm each answer. Approved questions land in your bank and become available here.
+            Draft and approve questions first in the question factory — generate questions per concept and confirm
+            each answer. Approved questions land in your bank and become available here.
           </p>
-          <Link href="/teach/compile" className="btn-primary mt-3 inline-block min-h-12 px-5 py-3 text-white">
-            Go to the course compiler
+          <Link href="/teach/questions" className="btn-primary mt-3 inline-block min-h-12 px-5 py-3 text-white">
+            Open the question factory
           </Link>
         </div>
       ) : (

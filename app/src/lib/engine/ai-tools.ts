@@ -78,11 +78,11 @@ export const AI_TOOLS: AiTool[] = [
   {
     id: "question_factory",
     label: "Question factory",
-    description: "Draft single-answer and select-all questions per concept; you confirm every key.",
+    description: "Draft questions per concept, confirm each answer, and fill your exam bank.",
     glyph: "❓",
     status: "live",
     grounded: true,
-    action: { kind: "route", href: "/teach/compile" },
+    action: { kind: "route", href: "/teach/questions" },
   },
   {
     id: "source_suggester",
