@@ -4,6 +4,8 @@ import {
   buildPlot,
   defaultParams,
   getFamily,
+  sanitizeGraphSpec,
+  graphCatalogText,
   type PlotView,
 } from "../graph";
 
@@ -69,5 +71,51 @@ describe("buildPlot", () => {
     const plot = buildPlot(lin, { m: 0, b: 3 }, VIEW);
     expect(plot.yRange[1]).toBeGreaterThan(plot.yRange[0]);
     expect(plot.pixels.every((px) => Number.isFinite(px.py))).toBe(true);
+  });
+});
+
+describe("sanitizeGraphSpec (D-048)", () => {
+  it("accepts a known family, clamps params to range, fills labels", () => {
+    const spec = sanitizeGraphSpec({
+      familyId: "power",
+      params: { A: 2, alpha: 99 }, // alpha out of range (max 2)
+      title: "Diminishing returns",
+      xLabel: "capital per worker",
+      yLabel: "output",
+    })!;
+    expect(spec.familyId).toBe("power");
+    expect(spec.params.A).toBe(2);
+    expect(spec.params.alpha).toBe(2); // clamped to max
+    expect(spec.title).toBe("Diminishing returns");
+    expect(spec.xLabel).toBe("capital per worker");
+  });
+
+  it("rejects an unknown family", () => {
+    expect(sanitizeGraphSpec({ familyId: "not-real", params: {} })).toBeNull();
+    expect(sanitizeGraphSpec(null)).toBeNull();
+    expect(sanitizeGraphSpec("nope")).toBeNull();
+  });
+
+  it("fills missing params with the family defaults and labels with x/y", () => {
+    const spec = sanitizeGraphSpec({ familyId: "linear" })!;
+    const def = defaultParams(getFamily("linear")!);
+    expect(spec.params).toEqual(def);
+    expect(spec.xLabel).toBe("x");
+    expect(spec.yLabel).toBe("y");
+    expect(spec.title).toBe("Figure 1");
+  });
+
+  it("ignores non-numeric param values, keeping the default", () => {
+    const spec = sanitizeGraphSpec({ familyId: "linear", params: { m: "steep", b: 3 } })!;
+    expect(spec.params.m).toBe(defaultParams(getFamily("linear")!).m); // default kept
+    expect(spec.params.b).toBe(3);
+  });
+});
+
+describe("graphCatalogText (D-048)", () => {
+  it("lists every family with its id, formula and param ranges", () => {
+    const text = graphCatalogText();
+    for (const f of FUNCTION_FAMILIES) expect(text).toContain(`id "${f.id}"`);
+    expect(text).toContain("0.1..2"); // power alpha range
   });
 });

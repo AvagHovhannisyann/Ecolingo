@@ -96,7 +96,7 @@ export const AI_TOOLS: AiTool[] = [
   {
     id: "accurate_graphs",
     label: "Accurate graphs",
-    description: "Code-rendered, interactive graphs from real functions — never an AI sketch.",
+    description: "Describe a graph or set parameters — code-rendered exactly from real functions, labelled, never an AI sketch.",
     glyph: "📈",
     status: "live",
     grounded: true,

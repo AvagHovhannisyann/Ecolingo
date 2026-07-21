@@ -18,18 +18,25 @@ export function FunctionPlot({
   family,
   params,
   title,
+  xLabel,
+  yLabel,
   view = DEFAULT_PLOT_VIEW,
 }: {
   family: FunctionFamily;
   params: Record<string, number>;
   title: string;
+  /** axis labels (D-048) — shown on the figure so it's never unlabelled */
+  xLabel?: string;
+  yLabel?: string;
   view?: PlotView;
 }) {
   const plot = buildPlot(family, params, view);
   const { width, height, padding } = view;
+  const axisDesc =
+    xLabel || yLabel ? ` Axes: x = ${xLabel || "x"}, y = ${yLabel || "y"}.` : "";
   const desc = `${family.label} curve, ${family.formula}, over x from ${fmt(plot.xRange[0])} to ${fmt(
     plot.xRange[1],
-  )}.`;
+  )}.${axisDesc}`;
 
   return (
     <svg
@@ -65,6 +72,26 @@ export function FunctionPlot({
 
       {/* the computed curve */}
       <path d={plot.path} fill="none" stroke="#7c3aed" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+
+      {/* axis labels (D-048) */}
+      {xLabel && (
+        <text x={(padding + (width - padding)) / 2} y={height - 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="#111827">
+          {xLabel}
+        </text>
+      )}
+      {yLabel && (
+        <text
+          x={12}
+          y={(padding + (height - padding)) / 2}
+          textAnchor="middle"
+          fontSize={12}
+          fontWeight={600}
+          fill="#111827"
+          transform={`rotate(-90 12 ${(padding + (height - padding)) / 2})`}
+        >
+          {yLabel}
+        </text>
+      )}
     </svg>
   );
 }
