@@ -13,27 +13,17 @@
 import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
 import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
+import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-// Primary is chosen for the free tier's reliability+latency (see D-010); the
-// rest are availability fallbacks. The deterministic provider is the client's
-// final fallback, so total failure here is still safe.
-//
-// Exported (with the system prompt, mode table, and facts builder below) so the
-// opt-in live eval harness can exercise the REAL contract instead of a fork
-// that could silently drift from what ships. Exporting is inert at runtime —
-// no behavior change (GATE-009 fallback semantics are untouched).
-export const MODELS = [
-  // Verified against the live OpenRouter catalog: the strongest free models,
-  // strongest first. The 550B ultra reads ~1M tokens of teacher material in
-  // one pass; each fallback keeps the pipeline alive if a tier is saturated.
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "tencent/hy3:free",
-  "google/gemma-4-31b-it:free",
-];
+// The provider chain (Groq primary, OpenRouter free fallback) lives in
+// lib/ai/providers. The deterministic provider is the client's final fallback,
+// so total failure here is still safe. Re-exported as MODELS (the OpenRouter
+// list) so the opt-in live eval harness can exercise the REAL contract instead
+// of a fork that could silently drift from what ships.
+export const MODELS = OPENROUTER_MODELS;
 
 export const MODE_INSTRUCTION: Record<string, string> = {
   simpler: "Re-explain the concept in the simplest possible language, 1–2 sentences.",
@@ -91,8 +81,7 @@ export function buildFacts(body: Body): string {
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) {
+  if (!hasAnyProvider()) {
     // no provider configured → tell the client to use its deterministic fallback
     return NextResponse.json({ error: "no_provider" }, { status: 503 });
   }
@@ -120,21 +109,27 @@ export async function POST(req: Request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 18_000);
   try {
-    for (const model of MODELS) {
+    for (const attempt of llmAttempts()) {
       try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const res = await fetch(attempt.url, {
           method: "POST",
           signal: controller.signal,
           headers: {
-            Authorization: `Bearer ${key}`,
+            Authorization: `Bearer ${attempt.apiKey}`,
             "Content-Type": "application/json",
             "X-Title": "Ecolingo",
           },
           body: JSON.stringify({
-            model,
-            provider: { sort: "throughput" },
-            max_tokens: 220,
+            model: attempt.model,
+            // The output is short prose (the instruction caps it), but the
+            // models are REASONING models that spend completion tokens thinking
+            // first — at 220 the reasoning ate the whole budget and the tutor
+            // returned empty, forcing the deterministic fallback every time
+            // (D-041). Give reasoning room; the model still keeps the answer
+            // short per the instruction. Cost unaffected ($0 free models).
+            max_tokens: 1200,
             temperature: 0.3,
+            ...attempt.extraBody,
             messages: [
               { role: "system", content: system },
               { role: "user", content: user },
@@ -144,7 +139,7 @@ export async function POST(req: Request) {
         if (!res.ok) continue; // 429/5xx → try the next model
         const data = await res.json();
         const text: string = data?.choices?.[0]?.message?.content?.trim() ?? "";
-        if (text) return NextResponse.json({ text, model });
+        if (text) return NextResponse.json({ text, model: attempt.model });
       } catch {
         // abort or network error → try next model (or fall through to 502)
         if (controller.signal.aborted) break;

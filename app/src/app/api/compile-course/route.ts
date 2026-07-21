@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { sanitizeCoursePlan, type DraftCoursePlan } from "@/lib/engine/compile-course";
 import { appendStyle } from "@/lib/engine/teaching-style";
 import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
+import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 // Compiling a whole course from many sections is slow (tens of seconds on the
@@ -23,16 +24,10 @@ export const runtime = "nodejs";
 // teacher sees "the AI provider didn't answer" (D-038).
 export const maxDuration = 60;
 
-export const MODELS = [
-  // FAST-FIRST (D-040): the 120B "super" answers a full compile in ~10s with
-  // throughput routing, vs the 550B "ultra" at ~24s — and the compile is
-  // latency-bound on the free tier, so lead with the fast, strong model and
-  // keep the others as fallbacks. Quality is ample; the teacher reviews the draft.
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "tencent/hy3:free",
-  "google/gemma-4-31b-it:free",
-];
+// The provider chain (Groq primary — powerful open models with high free
+// headroom — then the OpenRouter free models) lives in lib/ai/providers.
+// Re-exported as MODELS (the OpenRouter list) for the opt-in live eval harness.
+export const MODELS = OPENROUTER_MODELS;
 
 interface InSection {
   id?: unknown;
@@ -152,9 +147,8 @@ export function buildCompileUser(
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENROUTER_API_KEY;
   const empty: DraftCoursePlan = { units: [], prereqPairs: [] };
-  if (!key) return NextResponse.json({ error: "no_provider", plan: empty }, { status: 503 });
+  if (!hasAnyProvider()) return NextResponse.json({ error: "no_provider", plan: empty }, { status: 503 });
 
   let body: { sections?: InSection[]; mode?: unknown; context?: unknown; style?: unknown };
   try {
@@ -188,23 +182,30 @@ export async function POST(req: Request) {
   // bounded slice, so a hung model is dropped fast and the next one gets a real
   // chance — all within the function's maxDuration.
   const deadline = Date.now() + 55_000;
-  for (const model of MODELS) {
+  for (const attempt of llmAttempts()) {
     const remaining = deadline - Date.now();
     if (remaining < 8_000) break; // not enough time left for another honest attempt
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Math.min(32_000, remaining));
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const res = await fetch(attempt.url, {
         method: "POST",
         signal: controller.signal,
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
+        headers: { Authorization: `Bearer ${attempt.apiKey}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
         body: JSON.stringify({
-          model,
-          max_tokens: 1100,
+          model: attempt.model,
+          // The strong reasoning models spend completion tokens "thinking"
+          // (reasoning_tokens) BEFORE emitting the JSON, and those count against
+          // max_tokens. At 1100 the reasoning alone (~1800 tokens on a real
+          // compile) exhausted the budget and the model returned EMPTY content
+          // even on a successful 200 — the teacher then saw "nothing usable".
+          // Give enough headroom for reasoning + the JSON plan. Cost unaffected
+          // (these are $0 free models) (D-041).
+          max_tokens: 3000,
           temperature: 0.3,
-          // Route to the fastest available provider for this free model — the
-          // compile is latency-bound on the free tier (D-040).
-          provider: { sort: "throughput" },
+          // OpenRouter-only knobs (e.g. throughput routing) ride on extraBody;
+          // Groq must not receive them.
+          ...attempt.extraBody,
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
@@ -219,11 +220,11 @@ export async function POST(req: Request) {
       if (mode === "clarify") {
         const questions = sanitizeClarifyQuestions(parsed);
         if (questions.length === 0) continue;
-        return NextResponse.json({ questions, model });
+        return NextResponse.json({ questions, model: attempt.model });
       }
       const { plan } = sanitizeCoursePlan(parsed, allowedSectionIds);
       // a valid parse that sanitizes to zero usable units is still a legitimate answer
-      return NextResponse.json({ plan, model });
+      return NextResponse.json({ plan, model: attempt.model });
     } catch {
       // per-model timeout or network error → move on to the next model
     } finally {

@@ -17,7 +17,7 @@
  *      contract + provider-failure chain (GATE-009).
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DeterministicExplainProvider,
   LLMExplainProvider,
@@ -79,6 +79,12 @@ const FABRICATION_PAYLOADS = [
   "As proven in your textbook chapter 4, doi:10.1000/fake, footnote [12].",
   "Source: Lecture 12 slide 88; also en.wikipedia.org/wiki/Solow_model.",
 ];
+
+// These tests assert the OpenRouter contract; keep Groq (the newer primary
+// provider) out of the chain so ambient GROQ_API_KEY can't reorder attempts.
+beforeEach(() => {
+  vi.stubEnv("GROQ_API_KEY", "");
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

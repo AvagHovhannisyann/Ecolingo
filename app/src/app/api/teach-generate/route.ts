@@ -14,17 +14,16 @@
 import { NextResponse } from "next/server";
 import { appendStyle } from "@/lib/engine/teaching-style";
 import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
+import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 // Handout generation runs the same slow free models as the compiler (D-038).
 export const maxDuration = 60;
 
-export const MODELS = [
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "tencent/hy3:free",
-  "google/gemma-4-31b-it:free",
-];
+// The provider chain (Groq primary, OpenRouter free fallback) lives in
+// lib/ai/providers. Re-exported as MODELS (the OpenRouter list) for parity with
+// the other AI routes and the opt-in live evals.
+export const MODELS = OPENROUTER_MODELS;
 
 export type GenerateMode =
   | "study_guide"
@@ -142,8 +141,7 @@ interface InSection {
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return NextResponse.json({ error: "no_provider", sections: [] }, { status: 503 });
+  if (!hasAnyProvider()) return NextResponse.json({ error: "no_provider", sections: [] }, { status: 503 });
 
   let body: { mode?: unknown; sections?: InSection[]; style?: unknown; level?: unknown };
   try {
@@ -169,17 +167,20 @@ export async function POST(req: Request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
-    for (const model of MODELS) {
+    for (const attempt of llmAttempts()) {
       try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const res = await fetch(attempt.url, {
           method: "POST",
           signal: controller.signal,
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
+          headers: { Authorization: `Bearer ${attempt.apiKey}`, "Content-Type": "application/json", "X-Title": "Ecolingo" },
           body: JSON.stringify({
-            model,
-            provider: { sort: "throughput" },
-            max_tokens: 2000,
+            model: attempt.model,
+            // Reasoning models burn completion tokens thinking before the JSON;
+            // too small a budget returns empty content on a 200 (D-041).
+            // Headroom for reasoning + a full multi-section handout. Cost $0.
+            max_tokens: 3500,
             temperature: 0.3,
+            ...attempt.extraBody,
             messages: [
               { role: "system", content: system },
               { role: "user", content: user },
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
         if (parsed === null) continue;
         const guideSections = sanitizeGuide(parsed);
         if (guideSections.length === 0) continue;
-        return NextResponse.json({ sections: guideSections, model, mode });
+        return NextResponse.json({ sections: guideSections, model: attempt.model, mode });
       } catch {
         if (controller.signal.aborted) break;
       }
