@@ -14,23 +14,34 @@ import { generateHandout } from "@/lib/ai/teach-generate";
 import { useTeachingStyle } from "@/lib/teaching-style-store";
 import { savePrintable } from "@/lib/teach/printable-store";
 
+/** concrete target audiences, each mapped to the simpler/advanced axis + a
+ *  specific reader the prompt aims at. */
+const TARGETS: { key: string; label: string; level: "simpler" | "advanced"; audience: string }[] = [
+  { key: "elementary", label: "Elementary (Gr 3–5)", level: "simpler", audience: "an elementary student around grade 3–5" },
+  { key: "middle", label: "Middle school (Gr 6–8)", level: "simpler", audience: "a middle-school student (grade 6–8)" },
+  { key: "esl", label: "Plain English / ESL", level: "simpler", audience: "an English-language learner — use plain, common words" },
+  { key: "highschool", label: "High school", level: "advanced", audience: "a high-school student" },
+  { key: "undergrad", label: "Undergraduate", level: "advanced", audience: "a first-year undergraduate" },
+];
+
 export function ReadingLevelClient() {
   const router = useRouter();
   const style = useTeachingStyle();
   const [passage, setPassage] = useState("");
-  const [level, setLevel] = useState<"simpler" | "advanced">("simpler");
+  const [targetKey, setTargetKey] = useState("middle");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const run = async () => {
     if (passage.trim().length < 20) return;
+    const target = TARGETS.find((t) => t.key === targetKey) ?? TARGETS[1];
     setBusy(true);
     setNote(null);
     const outcome = await generateHandout(
       "reading_level",
       [{ heading: "Passage", text: passage.trim() }],
       style,
-      { level },
+      { level: target.level, audience: target.audience },
     );
     setBusy(false);
     if (!outcome.ok) {
@@ -43,7 +54,7 @@ export function ReadingLevelClient() {
     }
     savePrintable({
       kind: "handout",
-      title: level === "advanced" ? "Passage (advanced)" : "Passage (simplified)",
+      title: `Passage — ${target.label}`,
       mode: "reading_level",
       sourceTitle: passage.trim().slice(0, 60),
       model: outcome.model,
@@ -66,26 +77,22 @@ export function ReadingLevelClient() {
 
       <div className="card mt-4 p-4">
         <fieldset>
-          <legend className="text-sm font-bold">Target level</legend>
-          <div className="mt-2 flex gap-2">
-            {(
-              [
-                ["simpler", "Simpler"],
-                ["advanced", "More advanced"],
-              ] as ["simpler" | "advanced", string][]
-            ).map(([v, lbl]) => (
+          <legend className="text-sm font-bold">Target reader</legend>
+          <p className="text-xs text-app-muted">Pick who this should be readable by — the facts never change.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {TARGETS.map((t) => (
               <button
-                key={v}
+                key={t.key}
                 type="button"
-                aria-pressed={level === v}
-                onClick={() => setLevel(v)}
+                aria-pressed={targetKey === t.key}
+                onClick={() => setTargetKey(t.key)}
                 className={`min-h-11 rounded-xl border-2 px-3 text-sm font-bold ${
-                  level === v
+                  targetKey === t.key
                     ? "border-[var(--model-blue)] bg-[var(--model-blue-tint)] text-[var(--model-blue-text)]"
                     : "border-[color:var(--app-border)]"
                 }`}
               >
-                {lbl}
+                {t.label}
               </button>
             ))}
           </div>

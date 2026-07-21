@@ -119,10 +119,21 @@ export function sanitizeGuide(raw: unknown): GuideSection[] {
   return out;
 }
 
+/** extra, per-mode knobs (all optional, all sanitized) that refine the task. */
+export interface GenerateOptions {
+  /** reading_level: a concrete target audience, e.g. "a middle-school student" */
+  audience?: string;
+  /** rubric: how many performance levels the descriptors should span (2–5) */
+  rubricLevels?: number;
+  /** rubric: total points the criteria should sum to (assign per-criterion weights) */
+  rubricPoints?: number;
+}
+
 export function buildGenerateUser(
   mode: GenerateMode,
   sections: { heading: string; text: string }[],
   level?: ReadingLevel,
+  opts: GenerateOptions = {},
 ): string {
   const material = sections.map((s) => `### ${s.heading}\n${s.text}`).join("\n\n");
   let task = MODE_INSTRUCTION[mode];
@@ -131,6 +142,13 @@ export function buildGenerateUser(
       level === "advanced"
         ? " Target a MORE ADVANCED reader: you may use precise terminology and assume strong background."
         : " Target a SIMPLER reader: use short sentences and plain words a beginner can follow; define any term you must keep.";
+    if (opts.audience) task += ` Aim it specifically at ${opts.audience}.`;
+  }
+  if (mode === "rubric" && opts.rubricLevels) {
+    task += ` Use exactly ${opts.rubricLevels} performance levels, from strongest to weakest, and describe each level for every criterion.`;
+    if (opts.rubricPoints) {
+      task += ` Give each criterion a point value in its heading (e.g. "Evidence (8 pts)") so the criteria sum to ${opts.rubricPoints} total points.`;
+    }
   }
   return `MATERIAL:\n${material}\n\nTask: ${task}\n\nReturn the JSON object.`;
 }
@@ -143,7 +161,15 @@ interface InSection {
 export async function POST(req: Request) {
   if (!hasAnyProvider()) return NextResponse.json({ error: "no_provider", sections: [] }, { status: 503 });
 
-  let body: { mode?: unknown; sections?: InSection[]; style?: unknown; level?: unknown };
+  let body: {
+    mode?: unknown;
+    sections?: InSection[];
+    style?: unknown;
+    level?: unknown;
+    audience?: unknown;
+    rubricLevels?: unknown;
+    rubricPoints?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -152,6 +178,12 @@ export async function POST(req: Request) {
 
   const mode = normalizeMode(body.mode);
   const level = normalizeLevel(body.level);
+  const genOpts: GenerateOptions = {};
+  if (typeof body.audience === "string" && body.audience.trim()) genOpts.audience = body.audience.trim().slice(0, 120);
+  const rl = Number(body.rubricLevels);
+  if (Number.isInteger(rl) && rl >= 2 && rl <= 5) genOpts.rubricLevels = rl;
+  const rp = Number(body.rubricPoints);
+  if (Number.isInteger(rp) && rp >= 1 && rp <= 1000) genOpts.rubricPoints = rp;
   const sections = (body.sections ?? [])
     .map((s) => ({
       heading: typeof s.heading === "string" ? s.heading.slice(0, 200) : "",
@@ -162,7 +194,7 @@ export async function POST(req: Request) {
   if (sections.length === 0) return NextResponse.json({ sections: [] });
 
   const system = appendStyle(GENERATE_SYSTEM_PROMPT, body.style);
-  const user = buildGenerateUser(mode, sections, level);
+  const user = buildGenerateUser(mode, sections, level, genOpts);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
