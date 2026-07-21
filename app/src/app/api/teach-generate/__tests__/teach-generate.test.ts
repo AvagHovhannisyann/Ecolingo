@@ -105,3 +105,34 @@ describe("route contract", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("buildGenerateUser — reading_level audience (D-047)", () => {
+  it("appends a concrete target audience when given", () => {
+    const u = buildGenerateUser("reading_level", [{ heading: "P", text: "the passage" }], "simpler", {
+      audience: "a middle-school student (grade 6–8)",
+    });
+    expect(u).toMatch(/SIMPLER reader/); // axis preserved
+    expect(u).toContain("Aim it specifically at a middle-school student (grade 6–8)");
+  });
+  it("omits the audience clause when not given (back-compat)", () => {
+    const u = buildGenerateUser("reading_level", [{ heading: "P", text: "x" }], "advanced");
+    expect(u).toMatch(/MORE ADVANCED reader/);
+    expect(u).not.toContain("Aim it specifically at");
+  });
+});
+
+describe("buildGenerateUser — rubric levels & points (D-047)", () => {
+  it("bakes the level count and total points into the rubric task", () => {
+    const u = buildGenerateUser("rubric", [{ heading: "A", text: "essay prompt" }], undefined, {
+      rubricLevels: 4,
+      rubricPoints: 100,
+    });
+    expect(u).toContain("exactly 4 performance levels");
+    expect(u).toContain("sum to 100 total points");
+  });
+  it("adds points only when a level count is present, and omits points when not given", () => {
+    const u = buildGenerateUser("rubric", [{ heading: "A", text: "x" }], undefined, { rubricLevels: 3 });
+    expect(u).toContain("exactly 3 performance levels");
+    expect(u).not.toContain("total points");
+  });
+});

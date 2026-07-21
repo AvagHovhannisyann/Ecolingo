@@ -31,12 +31,22 @@ import {
   type OwnedCourse,
   type RosterEntry,
 } from "@/lib/course";
-import { classConceptSummary, reteachRanking } from "@/lib/engine/class-analytics";
+import {
+  classConceptSummary,
+  classOverview,
+  overconfidenceRanking,
+  reteachRanking,
+  retentionRiskRanking,
+  studentRoster,
+} from "@/lib/engine/class-analytics";
+import { AttentionFlags } from "./analytics/AttentionFlags";
+import { ClassOverview } from "./analytics/ClassOverview";
 import { CourseSwitcher } from "./analytics/CourseSwitcher";
 import { DimensionBars } from "./analytics/DimensionBars";
 import { ReteachRanking } from "./analytics/ReteachRanking";
 import { EmptyCard, LoadingCard, OfflineCard } from "./analytics/StatusCards";
 import { StatTiles } from "./analytics/StatTiles";
+import { StudentRosterTable } from "./analytics/StudentRosterTable";
 import { StudentSpread } from "./analytics/StudentSpread";
 
 type Phase = "loading" | "offline" | "empty" | "data";
@@ -162,6 +172,10 @@ function DataView({
 }) {
   const summaries = useMemo(() => classConceptSummary(mastery, concepts), [mastery]);
   const ranking = useMemo(() => reteachRanking(summaries, concepts), [summaries]);
+  const overview = useMemo(() => classOverview(mastery, concepts), [mastery]);
+  const overconfident = useMemo(() => overconfidenceRanking(mastery, concepts), [mastery]);
+  const retentionRisk = useMemo(() => retentionRiskRanking(mastery, concepts), [mastery]);
+  const students = useMemo(() => studentRoster(mastery, roster, concepts), [mastery, roster]);
   const summaryBySlug = useMemo(
     () => new Map(summaries.map((s) => [s.conceptSlug, s])),
     [summaries],
@@ -197,13 +211,22 @@ function DataView({
       {/* b. summary stat tiles */}
       <StatTiles studentCount={roster.length} strugglingCount={strugglingCount} healthyCount={healthyCount} />
 
-      {/* c. reteach next — the star */}
+      {/* c. whole-class overview (coverage, engagement, weakest area) */}
+      <ClassOverview overview={overview} />
+
+      {/* d. reteach next — the star */}
       <ReteachRanking items={ranking} />
 
-      {/* d. student spread — labeled horizontal bars, per concept */}
+      {/* e. attention flags — overconfidence + fading retention (renders only if any) */}
+      <AttentionFlags overconfident={overconfident} retentionRisk={retentionRisk} />
+
+      {/* f. per-student roster — the student-centric view */}
+      <StudentRosterTable rows={students} />
+
+      {/* g. student spread — labeled horizontal bars, per concept */}
       <StudentSpread concepts={concepts} mastery={mastery} summaryBySlug={summaryBySlug} />
 
-      {/* e. per-concept dimension bars (§22) */}
+      {/* h. per-concept dimension bars (§22) */}
       <DimensionBars concepts={concepts} summaryBySlug={summaryBySlug} />
     </div>
   );

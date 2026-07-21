@@ -193,3 +193,55 @@ export function buildPlot(
 
   return { points, pixels, path, xRange: [xMin, xMax], yRange: [yMin, yMax], xTicks, yTicks };
 }
+
+// ---------------------------------------------------------------------------
+// AI-assisted spec (D-048) — the model MAPS a teacher's request onto a known
+// family + parameters + labels; it never draws. This sanitizer is the guard:
+// an unknown family is rejected, every parameter is clamped to its real range,
+// and labels are trimmed/capped, so a request can only ever produce a
+// mathematically exact, in-bounds figure.
+// ---------------------------------------------------------------------------
+
+export interface GraphSpec {
+  familyId: string;
+  params: Record<string, number>;
+  title: string;
+  xLabel: string;
+  yLabel: string;
+}
+
+export function sanitizeGraphSpec(raw: unknown): GraphSpec | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const family = getFamily(typeof r.familyId === "string" ? r.familyId : "");
+  if (!family) return null;
+
+  const params = defaultParams(family);
+  const rawParams =
+    r.params && typeof r.params === "object" ? (r.params as Record<string, unknown>) : {};
+  for (const p of family.params) {
+    const v = Number(rawParams[p.key]);
+    if (Number.isFinite(v)) params[p.key] = Math.max(p.min, Math.min(p.max, v));
+  }
+
+  const str = (v: unknown, max: number, fallback: string) =>
+    (typeof v === "string" && v.trim() ? v.trim() : fallback).slice(0, max);
+
+  return {
+    familyId: family.id,
+    params,
+    title: str(r.title, 80, "Figure 1"),
+    xLabel: str(r.xLabel, 40, "x"),
+    yLabel: str(r.yLabel, 40, "y"),
+  };
+}
+
+/** A compact, model-facing catalogue of the families + their parameter ranges. */
+export function graphCatalogText(families: readonly FunctionFamily[] = FUNCTION_FAMILIES): string {
+  return families
+    .map((f) => {
+      const ps = f.params.map((p) => `${p.key} (${p.label}, ${p.min}..${p.max})`).join(", ");
+      return `- id "${f.id}": ${f.label}, ${f.formula}; params: ${ps}`;
+    })
+    .join("\n");
+}

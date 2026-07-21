@@ -96,7 +96,7 @@ export const AI_TOOLS: AiTool[] = [
   {
     id: "accurate_graphs",
     label: "Accurate graphs",
-    description: "Code-rendered, interactive graphs from real functions — never an AI sketch.",
+    description: "Describe a graph or set parameters — code-rendered exactly from real functions, labelled, never an AI sketch.",
     glyph: "📈",
     status: "live",
     grounded: true,
@@ -105,7 +105,7 @@ export const AI_TOOLS: AiTool[] = [
   {
     id: "flashcards",
     label: "Flashcards",
-    description: "Fill-in-the-blank flashcards generated from your approved sections.",
+    description: "An interactive flip-card deck from your material — study term ⇄ answer, sorting into know / still learning.",
     glyph: "🃏",
     status: "live",
     grounded: true,

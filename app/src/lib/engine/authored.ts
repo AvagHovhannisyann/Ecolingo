@@ -13,7 +13,7 @@ import type { McMultiQuestion, McSingleQuestion, NumericQuestion } from "./types
 import { stableId } from "./ingest";
 
 /** the difficulty tier a batch was generated at (D-020 question factory) */
-export type QuestionTier = "easy" | "hard" | "mixed";
+export type QuestionTier = "easy" | "medium" | "hard" | "mixed";
 
 export interface DraftQuestion {
   stem: string;
@@ -303,6 +303,8 @@ export function tierParams(tier: QuestionTier): { difficulty: 1 | 2 | 3 | 4 | 5;
   switch (tier) {
     case "easy":
       return { difficulty: 2, transferDistance: 0 };
+    case "medium":
+      return { difficulty: 3, transferDistance: 0 };
     case "hard":
       return { difficulty: 4, transferDistance: 1 };
     case "mixed":

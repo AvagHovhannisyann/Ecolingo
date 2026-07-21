@@ -14,6 +14,7 @@ import { recordEvidence } from "@/lib/learner-state";
 import { mutateLearnerState, useLearnerState } from "@/lib/learner-store";
 import { useTeacherState } from "@/lib/teacher-store";
 import { usePublishedQuestions } from "@/lib/published-questions";
+import { filterQuestions, type DifficultyBucket } from "@/lib/engine/question-bank";
 import { playSfx } from "@/lib/sfx";
 import { fireConfetti } from "@/lib/confetti";
 import { QuestionCard } from "./QuestionCard";
@@ -36,6 +37,9 @@ export function BankClient() {
   const published = usePublishedQuestions();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [attemptKey, setAttemptKey] = useState(0);
+  // D-044: let students narrow the bank by difficulty and topic (concept).
+  const [diffFilter, setDiffFilter] = useState<DifficultyBucket | "all">("all");
+  const [topicFilter, setTopicFilter] = useState<string>("all");
   if (!state) return <LoadingScreen label="Loading question bank…" />;
 
   // teacher-ratified AI drafts (D-014) join the bank next to the seed content;
@@ -97,6 +101,11 @@ export function BankClient() {
     );
   }
 
+  // topics that actually have at least one question (so the filter never offers
+  // an empty concept), preserving course order.
+  const topicsWithQuestions = concepts.filter((c) => allQuestions.some((q) => q.conceptSlug === c.slug));
+  const visible = filterQuestions(allQuestions, { difficulty: diffFilter, topic: topicFilter });
+
   return (
     <div>
       <div className="relative overflow-hidden rounded-2xl border border-[color:var(--app-border)]">
@@ -115,8 +124,60 @@ export function BankClient() {
         </div>
       </div>
 
+      {/* D-044: difficulty + topic filters */}
+      <div className="mt-4 flex flex-wrap items-end gap-4">
+        <div>
+          <span className="block text-xs font-bold text-app-muted">Difficulty</span>
+          <div className="mt-1 flex flex-wrap gap-1.5" role="group" aria-label="Filter by difficulty">
+            {(
+              [
+                ["all", "All"],
+                ["easy", "Easy"],
+                ["medium", "Medium"],
+                ["hard", "Hard"],
+              ] as [DifficultyBucket | "all", string][]
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={diffFilter === v}
+                onClick={() => setDiffFilter(v)}
+                className={`min-h-9 rounded-lg border px-2.5 text-xs font-bold ${
+                  diffFilter === v
+                    ? "border-[var(--model-blue)] bg-[var(--model-blue-tint)] text-[var(--model-blue-text)]"
+                    : "border-[color:var(--app-border)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="text-xs font-bold text-app-muted">
+          Topic
+          <select
+            value={topicFilter}
+            onChange={(e) => setTopicFilter(e.target.value)}
+            className="mt-1 block min-h-9 rounded-lg border border-[color:var(--app-border)] bg-app p-1.5 text-xs font-normal text-app"
+          >
+            <option value="all">All topics</option>
+            {topicsWithQuestions.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {visible.length === 0 && (
+        <p className="mt-4 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm text-app-muted" role="status">
+          No questions match this filter. Try a different difficulty or topic.
+        </p>
+      )}
+
       {concepts.map((c) => {
-        const qs = allQuestions.filter((q) => q.conceptSlug === c.slug);
+        const qs = visible.filter((q) => q.conceptSlug === c.slug);
         if (qs.length === 0) return null;
         const m = state.masteryBySlug[c.slug];
         return (

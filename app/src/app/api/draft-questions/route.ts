@@ -51,7 +51,7 @@ export function extractJsonArray(s: string): unknown {
 }
 
 function normalizeTier(v: unknown): QuestionTier {
-  return v === "easy" || v === "hard" || v === "mixed" ? v : "mixed";
+  return v === "easy" || v === "medium" || v === "hard" || v === "mixed" ? v : "mixed";
 }
 
 /** the tier-specific instruction that shapes difficulty + cognitive demand */
@@ -59,6 +59,8 @@ function tierInstruction(tier: QuestionTier): string {
   switch (tier) {
     case "easy":
       return "Make these EASY (difficulty 1–2): recall and recognition of the definition and key terms, tested in the same context they were taught. Short stems, one clearly correct answer.";
+    case "medium":
+      return "Make these MEDIUM (difficulty 3): understanding and straightforward application — the learner must use the concept correctly in a familiar context, not merely recognize the definition. One clearly correct answer, distractors that catch shallow understanding.";
     case "hard":
       return "Make these HARD (difficulty 4–5): application and transfer to a NEW situation not stated verbatim in the source — the learner must reason with the concept, not just recognize it. Distractors should encode tempting but wrong lines of reasoning.";
     case "mixed":
@@ -133,7 +135,10 @@ export async function POST(req: Request) {
   const conceptName = typeof body.conceptName === "string" ? body.conceptName : "";
   const definition = typeof body.definition === "string" ? body.definition : "";
   const sectionText = typeof body.sectionText === "string" ? body.sectionText.slice(0, 1500) : "";
-  const count = Math.min(Math.max(typeof body.count === "number" ? body.count : 3, 1), 8);
+  // Per-CALL batch cap. The factory reaches a large bank (up to 100) by looping
+  // this route across concepts/batches, so each call stays a modest, high-quality
+  // batch rather than one giant low-quality dump (D-044).
+  const count = Math.min(Math.max(typeof body.count === "number" ? body.count : 3, 1), 12);
   const tier = normalizeTier(body.tier);
   if (!conceptName || !definition)
     return NextResponse.json({ error: "bad_request", drafts: [], multiDrafts: [] }, { status: 400 });
@@ -155,8 +160,9 @@ export async function POST(req: Request) {
             model: attempt.model,
             // Reasoning models spend completion tokens thinking before the JSON
             // array; too small a budget starves the actual answer to empty
-            // (D-041). Headroom for reasoning + the questions. Cost unaffected ($0).
-            max_tokens: 3000,
+            // (D-041). Headroom for reasoning + a full batch of questions. Cost
+            // unaffected ($0).
+            max_tokens: 4500,
             temperature: 0.4,
             ...attempt.extraBody,
             messages: [

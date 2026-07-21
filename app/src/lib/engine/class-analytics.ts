@@ -42,6 +42,10 @@ export const DIMENSION_LABELS: Record<MasteryDimension, string> = {
 export const STRUGGLING_CONCEPTUAL = 0.4;
 export const MISCONCEPTION_ACTIVE = 0.5;
 export const STRONG_CONCEPTUAL = 0.7;
+/** confidence at/above which a self-report counts as "confident" (calibration). */
+export const HIGH_CONFIDENCE = 0.7;
+/** retention strength below which a learned concept is fading (review risk). */
+export const RETENTION_RISK = 0.5;
 
 /** Round a 0–1 fraction to a whole percentage. Kept here so JSX renders no math. */
 export function pct(value: number): number {
@@ -242,6 +246,247 @@ export function reteachRanking(
       return a.avgConceptual - b.avgConceptual; // lower mastery first
     }
     return a.conceptSlug < b.conceptSlug ? -1 : a.conceptSlug > b.conceptSlug ? 1 : 0;
+  });
+}
+
+// ===========================================================================
+// Class overview (D-045) — a calm, honest health read at the top of the page.
+// ===========================================================================
+
+export interface ClassOverview {
+  totalStudents: number;
+  /** students with at least one evidence event anywhere in the course */
+  activeStudents: number;
+  conceptsTotal: number;
+  /** concepts at least one student has practiced */
+  conceptsCovered: number;
+  /** fraction of (student × concept) cells with evidence, 0–1 */
+  coverage: number;
+  /** class-wide per-dimension mean over ALL evidence cells (§22 preserved) */
+  avgByDimension: Record<MasteryDimension, number>;
+  /** lowest class-wide dimension; null when nobody has practiced */
+  weakestDimension: MasteryDimension | null;
+  weakestDimensionValue: number;
+}
+
+/**
+ * Whole-class overview. Averages are taken over evidence cells only (never
+ * diluted by not-started cells), consistent with `classConceptSummary`.
+ */
+export function classOverview(
+  mastery: ClassMastery,
+  concepts: readonly Pick<Concept, "slug">[],
+): ClassOverview {
+  const studentIds = Object.keys(mastery);
+  const totalStudents = studentIds.length;
+  const conceptsTotal = concepts.length;
+
+  const coveredSlugs = new Set<string>();
+  const activeIds = new Set<string>();
+  const dimSums = zeroVector();
+  let evidenceCells = 0;
+
+  for (const userId of studentIds) {
+    for (const concept of concepts) {
+      const state = mastery[userId]?.[concept.slug];
+      if (!hasEvidence(state)) continue;
+      evidenceCells++;
+      coveredSlugs.add(concept.slug);
+      activeIds.add(userId);
+      for (const dim of MASTERY_DIMENSIONS) dimSums[dim] += state[dim];
+    }
+  }
+
+  const avg = zeroVector();
+  if (evidenceCells > 0) for (const dim of MASTERY_DIMENSIONS) avg[dim] = dimSums[dim] / evidenceCells;
+
+  let weakestDimension: MasteryDimension | null = null;
+  if (evidenceCells > 0) {
+    weakestDimension = MASTERY_DIMENSIONS[0];
+    for (const dim of MASTERY_DIMENSIONS) if (avg[dim] < avg[weakestDimension]) weakestDimension = dim;
+  }
+
+  const totalCells = totalStudents * conceptsTotal;
+  return {
+    totalStudents,
+    activeStudents: activeIds.size,
+    conceptsTotal,
+    conceptsCovered: coveredSlugs.size,
+    coverage: totalCells > 0 ? evidenceCells / totalCells : 0,
+    avgByDimension: avg,
+    weakestDimension,
+    weakestDimensionValue: weakestDimension ? avg[weakestDimension] : 0,
+  };
+}
+
+// ===========================================================================
+// Attention flags (D-045) — overconfidence + fading retention, per concept.
+// Both use signals the mastery model already captures but the page ignored.
+// ===========================================================================
+
+export interface ConceptFlag {
+  conceptSlug: string;
+  conceptName: string;
+  /** students with evidence who trip this flag */
+  count: number;
+  /** students with evidence for this concept (the denominator) */
+  studentsWithEvidence: number;
+  /** learner-readable justification rendered verbatim (§22) */
+  reason: string;
+}
+
+function sortFlags(a: ConceptFlag, b: ConceptFlag): number {
+  if (a.count !== b.count) return b.count - a.count;
+  return a.conceptSlug < b.conceptSlug ? -1 : a.conceptSlug > b.conceptSlug ? 1 : 0;
+}
+
+/**
+ * Concepts where students are OVERCONFIDENT: they self-report confidence at or
+ * above HIGH_CONFIDENCE yet score below the conceptual floor. Only flagged
+ * concepts (count > 0) are returned, most students first. This is exactly the
+ * cohort that won't ask for help, so surfacing it is high-value.
+ */
+export function overconfidenceRanking(
+  mastery: ClassMastery,
+  concepts: readonly Pick<Concept, "slug" | "name">[],
+): ConceptFlag[] {
+  const out: ConceptFlag[] = [];
+  for (const concept of concepts) {
+    let count = 0;
+    let withEvidence = 0;
+    for (const userId of Object.keys(mastery)) {
+      const state = mastery[userId]?.[concept.slug];
+      if (!hasEvidence(state)) continue;
+      withEvidence++;
+      if (state.confidence >= HIGH_CONFIDENCE && state.conceptual < STRUGGLING_CONCEPTUAL) count++;
+    }
+    if (count > 0) {
+      out.push({
+        conceptSlug: concept.slug,
+        conceptName: concept.name,
+        count,
+        studentsWithEvidence: withEvidence,
+        reason: `${count} of ${withEvidence} who've practiced feel confident but score below ${pct(
+          STRUGGLING_CONCEPTUAL,
+        )}% conceptual — likely overconfident, and unlikely to ask for help.`,
+      });
+    }
+  }
+  return out.sort(sortFlags);
+}
+
+/**
+ * Concepts at risk of being FORGOTTEN: students who reached the conceptual floor
+ * (they did learn it) but whose retention strength has decayed below
+ * RETENTION_RISK. A short spaced review re-anchors these before a test.
+ */
+export function retentionRiskRanking(
+  mastery: ClassMastery,
+  concepts: readonly Pick<Concept, "slug" | "name">[],
+): ConceptFlag[] {
+  const out: ConceptFlag[] = [];
+  for (const concept of concepts) {
+    let count = 0;
+    let withEvidence = 0;
+    for (const userId of Object.keys(mastery)) {
+      const state = mastery[userId]?.[concept.slug];
+      if (!hasEvidence(state)) continue;
+      withEvidence++;
+      if (state.conceptual >= STRUGGLING_CONCEPTUAL && state.retentionStrength < RETENTION_RISK) count++;
+    }
+    if (count > 0) {
+      out.push({
+        conceptSlug: concept.slug,
+        conceptName: concept.name,
+        count,
+        studentsWithEvidence: withEvidence,
+        reason: `${count} of ${withEvidence} learned this but their retention has faded below ${pct(
+          RETENTION_RISK,
+        )}% — a quick review will re-anchor it before it's lost.`,
+      });
+    }
+  }
+  return out.sort(sortFlags);
+}
+
+// ===========================================================================
+// Per-student roster (D-045) — the student-centric view the page lacked.
+// ===========================================================================
+
+export type StudentStatus = "struggling" | "not_started" | "on_track";
+
+export interface StudentRow {
+  userId: string;
+  /** short, non-PII handle for display (UUIDs are anonymous) */
+  shortId: string;
+  conceptsStarted: number;
+  conceptsTotal: number;
+  coverage: number;
+  /** mean conceptual over STARTED concepts (0 when none started) */
+  avgConceptual: number;
+  strugglingConcepts: number;
+  /** most recent evidence timestamp across concepts (ISO) or null */
+  lastActiveAt: string | null;
+  status: StudentStatus;
+}
+
+const STATUS_RANK: Record<StudentStatus, number> = {
+  struggling: 0,
+  not_started: 1,
+  on_track: 2,
+};
+
+/**
+ * One row per enrolled student, most-needing-attention first. The student set is
+ * the UNION of the roster (so enrolled-but-never-started learners appear) and
+ * any mastery keys. Deterministic: sorted by status tier, then more struggling
+ * concepts first, then lower average, then userId.
+ */
+export function studentRoster(
+  mastery: ClassMastery,
+  roster: readonly { userId: string }[],
+  concepts: readonly Pick<Concept, "slug">[],
+): StudentRow[] {
+  const ids = new Set<string>(Object.keys(mastery));
+  for (const r of roster) ids.add(r.userId);
+
+  const rows: StudentRow[] = [];
+  for (const userId of ids) {
+    let started = 0;
+    let conceptualSum = 0;
+    let strugglingConcepts = 0;
+    let lastActiveAt: string | null = null;
+    for (const concept of concepts) {
+      const state = mastery[userId]?.[concept.slug];
+      if (!hasEvidence(state)) continue;
+      started++;
+      conceptualSum += state.conceptual;
+      if (isStruggling(state)) strugglingConcepts++;
+      if (state.lastEvidenceAt && (lastActiveAt === null || state.lastEvidenceAt > lastActiveAt)) {
+        lastActiveAt = state.lastEvidenceAt;
+      }
+    }
+    const status: StudentStatus =
+      started === 0 ? "not_started" : strugglingConcepts > 0 ? "struggling" : "on_track";
+    rows.push({
+      userId,
+      shortId: userId.replace(/-/g, "").slice(0, 6) || userId,
+      conceptsStarted: started,
+      conceptsTotal: concepts.length,
+      coverage: concepts.length > 0 ? started / concepts.length : 0,
+      avgConceptual: started > 0 ? conceptualSum / started : 0,
+      strugglingConcepts,
+      lastActiveAt,
+      status,
+    });
+  }
+
+  return rows.sort((a, b) => {
+    const tier = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+    if (tier !== 0) return tier;
+    if (a.strugglingConcepts !== b.strugglingConcepts) return b.strugglingConcepts - a.strugglingConcepts;
+    if (a.avgConceptual !== b.avgConceptual) return a.avgConceptual - b.avgConceptual;
+    return a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0;
   });
 }
 

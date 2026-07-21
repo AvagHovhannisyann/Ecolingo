@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPacingPlan, orderedLessons } from "../pacing";
+import { buildPacingPlan, buildPacingPlanByClasses, orderedLessons } from "../pacing";
 import type { CourseDraft } from "../compile-course";
 import type { Lesson } from "../types";
 
@@ -58,5 +58,56 @@ describe("buildPacingPlan", () => {
     const plan = buildPacingPlan(d, 50);
     expect(plan.classes).toHaveLength(1);
     expect(plan.classes[0].items[0].minutes).toBe(90);
+  });
+});
+
+describe("buildPacingPlan — over-length flag", () => {
+  it("flags a lesson longer than a whole class", () => {
+    const big: CourseDraft = {
+      concepts: [], edges: [],
+      lessons: [lesson("a", 15), lesson("big", 90), lesson("c", 15)],
+      units: [{ title: "U", lessonIds: ["a", "big", "c"] }],
+    } as unknown as CourseDraft;
+    const plan = buildPacingPlan(big, 50);
+    const all = plan.classes.flatMap((c) => c.items);
+    const flagged = all.filter((l) => l.overLength);
+    expect(flagged.map((l) => l.lessonTitle)).toEqual(["Lesson big"]);
+    // the 90-min lesson sits alone in its own class
+    const bigClass = plan.classes.find((c) => c.items.some((i) => i.overLength))!;
+    expect(bigClass.items).toHaveLength(1);
+  });
+});
+
+describe("buildPacingPlanByClasses", () => {
+  it("produces exactly N classes, order preserved, balanced by minutes", () => {
+    const plan = buildPacingPlanByClasses(draft, 2); // 4 lessons, 75 min total
+    expect(plan.classes).toHaveLength(2);
+    // order never changes
+    expect(plan.classes.flatMap((c) => c.items.map((i) => i.lessonTitle))).toEqual([
+      "Lesson a", "Lesson b", "Lesson c", "Lesson d",
+    ]);
+    // both classes carry at least one lesson and roughly half the minutes
+    for (const c of plan.classes) expect(c.items.length).toBeGreaterThan(0);
+    expect(plan.totalMinutes).toBe(75);
+  });
+
+  it("never leaves a class empty — caps effective classes at the lesson count", () => {
+    const plan = buildPacingPlanByClasses(draft, 10); // only 4 lessons
+    expect(plan.classes).toHaveLength(4);
+    for (const c of plan.classes) expect(c.items).toHaveLength(1);
+  });
+
+  it("N=1 puts everything in one class", () => {
+    const plan = buildPacingPlanByClasses(draft, 1);
+    expect(plan.classes).toHaveLength(1);
+    expect(plan.classes[0].items).toHaveLength(4);
+    expect(plan.classes[0].totalMinutes).toBe(75);
+  });
+
+  it("accounts for every lesson's minutes across the classes", () => {
+    const plan = buildPacingPlanByClasses(draft, 3);
+    const sum = plan.classes.reduce((s, c) => s + c.totalMinutes, 0);
+    expect(sum).toBe(75);
+    expect(plan.classes).toHaveLength(3);
   });
 });

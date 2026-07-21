@@ -18,11 +18,13 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { sectionize, type DocSection } from "@/lib/engine/ingest";
 import {
   sanitizeCoursePlan,
   planToCourseDraft,
+  estimateCompileSeconds,
+  formatCompileEstimate,
   type CoursePlanSanitizeResult,
   type DraftCoursePlan,
   type DroppedPrereqReason,
@@ -50,8 +52,17 @@ const DROP_REASON_LABEL: Record<DroppedPrereqReason, string> = {
 
 type Phase = "input" | "clarify" | "compiling" | "review" | "error";
 
+/** sentinel source-selection value meaning "every uploaded document". */
+const ALL_DOCS = "__all__";
+
+/** "0:07" / "3:42" — elapsed mm:ss for the live compile timer. */
+function formatElapsed(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 interface CompileError {
-  kind: "no_provider" | "upstream" | "network" | "empty";
+  kind: "no_provider" | "upstream" | "network" | "empty" | "timeout";
   message: string;
 }
 
@@ -63,7 +74,9 @@ export function CompileCourseClient() {
 
   // ── source selection ────────────────────────────────────────────────────
   const [mode, setMode] = useState<"docs" | "paste">("docs");
-  const [selectedDocId, setSelectedDocId] = useState<string>("");
+  // Default to compiling EVERYTHING the teacher uploaded — the AI reads all of
+  // it and drafts one whole course. They can narrow to a single document.
+  const [selectedDocId, setSelectedDocId] = useState<string>(ALL_DOCS);
   const [pasteTitle, setPasteTitle] = useState("");
   const [pasted, setPasted] = useState("");
 
@@ -99,9 +112,36 @@ export function CompileCourseClient() {
       const doc = sectionize(pasteTitle.trim() || "Pasted material", pasted, new Date(0).toISOString());
       return { sourceTitle: doc.title, sections: doc.sections };
     }
+    // "All documents": the AI reads every uploaded doc and drafts one course.
+    // Section ids are globally unique (each carries its doc's hash), so simply
+    // concatenating is safe.
+    if (selectedDocId === ALL_DOCS && docs.length > 0) {
+      const allSections = docs.flatMap((d) => d.sections);
+      const title =
+        docs.length === 1 ? docs[0].title : `All uploaded material · ${docs.length} documents`;
+      return { sourceTitle: title, sections: allSections };
+    }
     const doc = docs.find((d) => d.id === selectedDocId) ?? docs[0];
     return { sourceTitle: doc?.title ?? "", sections: doc?.sections ?? [] };
   }, [mode, pasted, pasteTitle, docs, selectedDocId]);
+
+  // Deterministic, honest time estimate from the amount of material — shown
+  // before and during the compile so a multi-minute wait reads as the AI
+  // working, not a crash.
+  const estimate = useMemo(() => {
+    const totalChars = sections.reduce((n, s) => n + s.text.length, 0);
+    return estimateCompileSeconds(totalChars, sections.length);
+  }, [sections]);
+
+  // Live elapsed seconds while compiling (so the wait visibly progresses). The
+  // counter is reset in the compile handler; this effect only drives the tick.
+  const [elapsedSec, setElapsedSec] = useState(0);
+  useEffect(() => {
+    if (phase !== "compiling") return;
+    const started = Date.now();
+    const id = setInterval(() => setElapsedSec(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
 
   const headingBySection = useMemo(() => {
     const m = new Map<string, string>();
@@ -149,12 +189,20 @@ export function CompileCourseClient() {
 
   const compile = async () => {
     setPhase("compiling");
+    setElapsedSec(0);
     setError(null);
     setResult(null);
     const allowed = new Set(sections.map((s) => s.id));
+    // Drafting a whole course can take minutes — wait well past the estimate
+    // before giving up, but not forever (a truly dead connection should surface
+    // an honest message rather than hang). Aligned to the server's max budget.
+    const controller = new AbortController();
+    const clientBudgetMs = Math.min(840_000, Math.max(300_000, (estimate.highSeconds + 180) * 1000));
+    const clientTimeout = setTimeout(() => controller.abort(), clientBudgetMs);
     try {
       const res = await fetch("/api/compile-course", {
         method: "POST",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sections: sections.map((s) => ({ id: s.id, heading: s.heading, text: s.text })),
@@ -206,12 +254,22 @@ export function CompileCourseClient() {
       setChecked(initChecked);
       setCompiledTitle(sourceTitle);
       setPhase("review");
-    } catch {
-      setError({
-        kind: "network",
-        message: "Couldn't reach the compiler just now — check your connection and try again.",
-      });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setError({
+          kind: "timeout",
+          message:
+            "The draft is taking longer than one request allows for this much material. Your sections are unchanged — try compiling one document at a time, or fewer at once, and it will finish faster.",
+        });
+      } else {
+        setError({
+          kind: "network",
+          message: "Couldn't reach the compiler just now — check your connection and try again.",
+        });
+      }
       setPhase("error");
+    } finally {
+      clearTimeout(clientTimeout);
     }
   };
 
@@ -287,8 +345,8 @@ export function CompileCourseClient() {
 
       <h1 className="mt-2 text-2xl font-bold">Compile a course</h1>
       <p className="mt-1 text-sm text-app">
-        Turn your uploaded material into a draft course — units, lessons, and the order to learn them in. The AI
-        writes the draft; you review and approve it.
+        Turn all your uploaded material into a draft course — units, lessons, and the order to learn them in. The AI
+        reads everything and writes the draft; you review and approve it. A big upload can take several minutes.
       </p>
       <p className="mt-2 rounded-xl bg-[color:rgba(177,140,255,0.16)] p-3 text-sm text-[var(--lavender-text)]">
         ✦ {PROVENANCE}
@@ -423,20 +481,27 @@ export function CompileCourseClient() {
             ) : (
               <div className="mt-3">
                 <label htmlFor="compile-doc" className="block text-sm font-medium">
-                  Document
+                  Material to compile
                 </label>
                 <select
                   id="compile-doc"
                   className="mt-1 min-h-12 w-full rounded-xl border border-[color:var(--app-border)] bg-app p-2 text-sm text-app"
-                  value={selectedDocId || docs[0].id}
+                  value={selectedDocId || ALL_DOCS}
                   onChange={(e) => setSelectedDocId(e.target.value)}
                 >
+                  <option value={ALL_DOCS}>
+                    All uploaded documents — {docs.length} doc{docs.length === 1 ? "" : "s"},{" "}
+                    {docs.reduce((n, d) => n + d.sections.length, 0)} sections
+                  </option>
                   {docs.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.title} — {d.sections.length} sections
+                      Just: {d.title} — {d.sections.length} sections
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-app-muted">
+                  The AI reads everything you pick and drafts one whole course from it.
+                </p>
               </div>
             ))}
 
@@ -474,7 +539,7 @@ export function CompileCourseClient() {
                 <span className="stat-chip ml-1 align-middle text-xs">{sections.length}</span>
               </h3>
               <ul className="mt-2 space-y-1">
-                {sections.map((s) => (
+                {sections.slice(0, 40).map((s) => (
                   <li
                     key={s.id}
                     className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-[color:var(--app-border)] px-3 py-2 text-sm"
@@ -486,6 +551,18 @@ export function CompileCourseClient() {
                   </li>
                 ))}
               </ul>
+              {sections.length > 40 && (
+                <p className="mt-1 text-xs text-app-muted">
+                  + {sections.length - 40} more section{sections.length - 40 === 1 ? "" : "s"} — all of them are sent to the AI.
+                </p>
+              )}
+              {phase !== "compiling" && (
+                <p className="mt-3 rounded-xl bg-[color:var(--app-surface-2)] p-3 text-sm text-app-muted" role="note">
+                  ⏱ Reading this much material and drafting the course usually takes{" "}
+                  <strong className="text-app">{formatCompileEstimate(estimate)}</strong>. Keep this tab open while
+                  the AI works — a long wait here is normal, not an error.
+                </p>
+              )}
             </div>
           )}
 
@@ -503,10 +580,24 @@ export function CompileCourseClient() {
                   : "Continue — tell the AI about your class"}
             </button>
             {phase === "compiling" && (
-              <p className="mt-2 text-xs text-app-muted" role="status">
-                Asking the AI to draft a course plan from {sections.length} section
-                {sections.length === 1 ? "" : "s"}…
-              </p>
+              <div
+                className="mt-3 rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="flex items-center gap-2 text-sm font-bold text-app">
+                  <span
+                    className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--app-border)] border-t-[var(--model-blue)]"
+                    aria-hidden
+                  />
+                  Drafting your course from {sections.length} section{sections.length === 1 ? "" : "s"}…
+                </p>
+                <p className="mt-1 text-xs text-app-muted">
+                  {formatElapsed(elapsedSec)} elapsed · expected {formatCompileEstimate(estimate)}. The AI is reading
+                  everything and designing the units — keep this tab open; it can take several minutes for large
+                  uploads.
+                </p>
+              </div>
             )}
           </div>
 

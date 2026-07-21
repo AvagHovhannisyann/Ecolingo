@@ -7,7 +7,7 @@
  * On any error returns [] (GATE-009).
  */
 
-import type { DraftQuestion } from "../engine/authored";
+import type { DraftQuestion, QuestionTier } from "../engine/authored";
 import type { TeachingStyle } from "../engine/teaching-style";
 
 export async function draftQuestionsForConcept(input: {
@@ -15,6 +15,8 @@ export async function draftQuestionsForConcept(input: {
   definition: string;
   sectionText: string;
   count?: number;
+  /** D-044: difficulty tier that shapes the batch (easy/medium/hard/mixed) */
+  tier?: QuestionTier;
   /** D-029: shape the drafted questions to the teacher's voice */
   style?: TeachingStyle | null;
 }): Promise<DraftQuestion[]> {

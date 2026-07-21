@@ -16,13 +16,28 @@ export async function generateHandout(
   mode: string,
   sections: { heading: string; text: string }[],
   style?: TeachingStyle | null,
-  opts?: { level?: "simpler" | "advanced" },
+  opts?: {
+    level?: "simpler" | "advanced";
+    /** reading_level: concrete target audience */
+    audience?: string;
+    /** rubric: number of performance levels + total points */
+    rubricLevels?: number;
+    rubricPoints?: number;
+  },
 ): Promise<GenerateOutcome> {
   try {
     const res = await fetch("/api/teach-generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, sections, style: style ?? undefined, level: opts?.level }),
+      body: JSON.stringify({
+        mode,
+        sections,
+        style: style ?? undefined,
+        level: opts?.level,
+        audience: opts?.audience,
+        rubricLevels: opts?.rubricLevels,
+        rubricPoints: opts?.rubricPoints,
+      }),
     });
     if (res.status === 503) return { ok: false, reason: "no_provider" };
     if (!res.ok) return { ok: false, reason: "error" };
