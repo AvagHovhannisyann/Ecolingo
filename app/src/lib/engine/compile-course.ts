@@ -97,9 +97,52 @@ export function generatedQuestionId(conceptSlug: string, n: number): string {
 // Caps (bound the compiled course so a runaway model can't explode it)
 // ---------------------------------------------------------------------------
 
-const MAX_UNITS = 6;
+// A compiled course can span several months, so the unit cap is generous — a
+// runaway model is still bounded, but a real semester's worth of units fits.
+const MAX_UNITS = 24;
 const MAX_LESSONS_PER_UNIT = 8;
 const MAX_ESTIMATED_MINUTES = 60;
+
+// ---------------------------------------------------------------------------
+// Compile-time estimate (display-only, deterministic)
+// ---------------------------------------------------------------------------
+
+export interface CompileTimeEstimate {
+  /** low/high wall-clock seconds the teacher should expect to wait */
+  lowSeconds: number;
+  highSeconds: number;
+}
+
+/**
+ * Deterministic, display-only estimate of how long a compile will take, from
+ * the amount of material. The AI reads every section and drafts a WHOLE course,
+ * so the wait scales with total text: a short handout is seconds, a semester of
+ * readings is minutes. This is never a promise — just an honest expectation the
+ * UI shows so a multi-minute wait reads as "the AI is working," not an error.
+ */
+export function estimateCompileSeconds(totalChars: number, sectionCount: number): CompileTimeEstimate {
+  const base = 15; // model spin-up + reasoning tokens before any output appears
+  const perChar = 1 / 850; // ~0.85k chars/sec of reading + drafting on the free models
+  const perSection = 1.2; // each section is one more thing to place in the plan
+  const mid = base + Math.max(0, totalChars) * perChar + Math.max(0, sectionCount) * perSection;
+  return { lowSeconds: Math.max(10, Math.round(mid * 0.6)), highSeconds: Math.max(20, Math.round(mid * 1.8)) };
+}
+
+/** "about 30–60 seconds" / "about 2–4 minutes" — a friendly range for the UI. */
+export function formatCompileEstimate(est: CompileTimeEstimate): string {
+  const human = (seconds: number): { value: number; unit: "second" | "minute" } =>
+    seconds < 90
+      ? { value: Math.max(5, Math.round(seconds / 5) * 5), unit: "second" }
+      : { value: Math.max(1, Math.round(seconds / 60)), unit: "minute" };
+  const label = (v: number, unit: "second" | "minute") => `${v} ${unit}${v === 1 ? "" : "s"}`;
+  const lo = human(est.lowSeconds);
+  const hi = human(est.highSeconds);
+  if (lo.unit === hi.unit) {
+    if (lo.value === hi.value) return `about ${label(lo.value, lo.unit)}`;
+    return `about ${lo.value}–${label(hi.value, hi.unit)}`;
+  }
+  return `about ${label(lo.value, lo.unit)}–${label(hi.value, hi.unit)}`;
+}
 
 function asString(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";

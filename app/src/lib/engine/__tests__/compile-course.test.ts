@@ -5,6 +5,8 @@ import {
   planToCourseDraft,
   isSolowAdjacent,
   generatedQuestionId,
+  estimateCompileSeconds,
+  formatCompileEstimate,
   type DraftCoursePlan,
 } from "../compile-course";
 import { scoreAnswer } from "../scoring";
@@ -94,11 +96,11 @@ describe("sanitizeCoursePlan — structural validation", () => {
     expect(plan.units[0].lessons[0].sourceSectionIds).toEqual(["doc-s2", "doc-s3"]);
   });
 
-  it("caps to ≤6 units and ≤8 lessons/unit", () => {
+  it("caps to ≤24 units and ≤8 lessons/unit", () => {
     const manyLessons = Array.from({ length: 12 }, (_, i) => lesson(`Concept ${i}`));
-    const manyUnits = Array.from({ length: 9 }, (_, u) => ({ title: `U${u}`, lessons: [lesson(`U${u} C`)] }));
+    const manyUnits = Array.from({ length: 30 }, (_, u) => ({ title: `U${u}`, lessons: [lesson(`U${u} C`)] }));
     const capUnits = sanitizeCoursePlan({ units: manyUnits, prereqPairs: [] }, allowed);
-    expect(capUnits.plan.units).toHaveLength(6);
+    expect(capUnits.plan.units).toHaveLength(24);
     const capLessons = sanitizeCoursePlan({ units: [{ title: "U", lessons: manyLessons }], prereqPairs: [] }, allowed);
     expect(capLessons.plan.units[0].lessons).toHaveLength(8);
   });
@@ -314,5 +316,39 @@ describe("compiled lessons are consistent with the deterministic scorer", () => 
   it("a resolved guided question scores through engine/scoring", () => {
     const q = makeQ("q-gen-x-1", "x", 2);
     expect(scoreAnswer(q, { type: "mc_single", optionId: "a" }).correct).toBe(true);
+  });
+});
+
+describe("estimateCompileSeconds — honest, monotonic compile-time estimate", () => {
+  it("more material never estimates a shorter wait", () => {
+    const small = estimateCompileSeconds(2_000, 3);
+    const big = estimateCompileSeconds(200_000, 60);
+    expect(big.lowSeconds).toBeGreaterThan(small.lowSeconds);
+    expect(big.highSeconds).toBeGreaterThan(small.highSeconds);
+  });
+  it("low ≤ high, and both stay positive even for empty input", () => {
+    const zero = estimateCompileSeconds(0, 0);
+    expect(zero.lowSeconds).toBeGreaterThan(0);
+    expect(zero.highSeconds).toBeGreaterThanOrEqual(zero.lowSeconds);
+    const neg = estimateCompileSeconds(-100, -5);
+    expect(neg.lowSeconds).toBeGreaterThan(0);
+  });
+  it("a big corpus lands in the minutes, not seconds", () => {
+    const est = estimateCompileSeconds(240_000, 80);
+    expect(est.highSeconds).toBeGreaterThan(120);
+  });
+});
+
+describe("formatCompileEstimate — friendly range for the UI", () => {
+  it("renders sub-90s waits in seconds", () => {
+    expect(formatCompileEstimate({ lowSeconds: 20, highSeconds: 45 })).toMatch(/second/);
+  });
+  it("renders multi-minute waits in minutes", () => {
+    const s = formatCompileEstimate({ lowSeconds: 150, highSeconds: 360 });
+    expect(s).toMatch(/minute/);
+    expect(s).toContain("about");
+  });
+  it("collapses an equal range to a single value", () => {
+    expect(formatCompileEstimate({ lowSeconds: 30, highSeconds: 30 })).toBe("about 30 seconds");
   });
 });

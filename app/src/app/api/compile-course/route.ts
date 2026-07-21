@@ -19,10 +19,23 @@ import { TEACHING_CHARTER } from "@/lib/ai/teaching-charter";
 import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
-// Compiling a whole course from many sections is slow (tens of seconds on the
-// free models). Without this, the platform kills the function early and the
-// teacher sees "the AI provider didn't answer" (D-038).
-export const maxDuration = 60;
+// Compiling a WHOLE multi-month course from a lot of material is genuinely slow:
+// the model reads every section and reasons before emitting a large plan, which
+// can take minutes. We ask the platform for as long as it will give us. Vercel
+// clamps this to the project's plan ceiling (e.g. ~300s Hobby, up to ~800s on
+// Fluid Compute Pro), so this is "run as long as the host allows," not a literal
+// promise of 800s. A single request cannot exceed that host ceiling; a true
+// 20-minute compile of a very large corpus needs a background worker, which is
+// noted as follow-up. At 60s the function was killed mid-draft and the teacher
+// saw "the AI provider didn't answer" even though nothing was wrong (D-043).
+export const maxDuration = 800;
+
+// Bound the prompt so it stays within the model's context window while still
+// reading FAR more than the old 22×650 (~14k chars). These let a real semester
+// of readings reach the model (D-043).
+const MAX_SECTIONS = 100;
+const MAX_SECTION_CHARS = 4000;
+const MAX_TOTAL_CHARS = 260_000; // ~65k tokens of source, leaving room for output
 
 // The provider chain (Groq primary — powerful open models with high free
 // headroom — then the OpenRouter free models) lives in lib/ai/providers.
@@ -121,7 +134,7 @@ export const COMPILE_SYSTEM_PROMPT =
   "\n\n---\n\n# TASK — COMPILE A COURSE\n" +
   "You are a world-class curriculum architect and instructional designer. You take a teacher's raw material and design a Duolingo-style course that a motivated beginner could climb from zero to real competence — sequenced so every step is reachable from the last, with cognitive load managed and nothing introduced before its prerequisites. " +
   'Reply with ONLY a JSON object, no prose: {"units":[{"title":string,"lessons":[{"title":string,"conceptName":string,"definition":string,"coreIdea":string,"intuition":string,"estimatedMinutes":number,"sourceSectionIds":string[]}]}],"prereqPairs":[[fromConceptName,toConceptName]]}. ' +
-  "Rules: identify 3–6 distinct concepts for a typical document, one lesson per concept, each a single teachable idea (split anything that bundles two). Give each lesson a short, friendly title (like a game level). " +
+  "Rules: size the course to the MATERIAL. Identify every distinct concept the sources genuinely teach — a short handout may yield only 3–6, but a whole term's worth of readings should become a full multi-unit course (build as many units as the material and the teacher's expected length justify, up to about two dozen units). One lesson per concept, each a single teachable idea (split anything that bundles two). Do not pad with concepts the sources don't cover, and do not compress a large syllabus into a handful of lessons. Give each lesson a short, friendly title (like a game level). " +
   "Group lessons into coherent UNITS of 3–5 that build on each other; each unit title is a short student-facing GOAL shown as a banner on the learning roadmap (e.g. \"Master the demand curve\") — an outcome phrase, never a chapter number or heading copied verbatim. " +
   "definition, coreIdea and intuition must be grounded ONLY in the provided source text — never introduce outside facts, numbers, or claims. Keep EACH of definition, coreIdea and intuition to ONE concise sentence: definition states the concept plainly, intuition gives a short everyday analogy or mental picture. Be brief — a tight plan is better than a long one. " +
   "sourceSectionIds must be chosen ONLY from the exact section ids given. " +
@@ -159,16 +172,26 @@ export async function POST(req: Request) {
   const mode = body.mode === "clarify" ? "clarify" : "compile";
   const context = sanitizeTeacherContext(body.context);
 
-  const sections = (body.sections ?? [])
+  const candidates = (body.sections ?? [])
     .map((s) => ({
       id: typeof s.id === "string" ? s.id : "",
       heading: typeof s.heading === "string" ? s.heading : "",
-      text: typeof s.text === "string" ? s.text.slice(0, 650) : "",
+      text: typeof s.text === "string" ? s.text.slice(0, MAX_SECTION_CHARS) : "",
     }))
     .filter((s) => s.id && s.text)
-    .slice(0, 22); // bound the prompt: fewer, shorter sections keep the free
-    // models fast enough to answer within the function budget (D-040). The
-    // model only distils 3–8 concepts regardless, so this doesn't lose the plan.
+    .slice(0, MAX_SECTIONS);
+  // Keep sections in order until the total-character budget is spent, so a large
+  // upload is read broadly rather than truncated to its first few sections.
+  const sections: { id: string; heading: string; text: string }[] = [];
+  let totalChars = 0;
+  for (const s of candidates) {
+    if (totalChars >= MAX_TOTAL_CHARS) break;
+    const room = MAX_TOTAL_CHARS - totalChars;
+    const text = s.text.length > room ? s.text.slice(0, room) : s.text;
+    if (text.length < 1) break;
+    sections.push({ ...s, text });
+    totalChars += text.length;
+  }
   if (sections.length === 0) return NextResponse.json({ plan: empty });
 
   const allowedSectionIds = new Set(sections.map((s) => s.id));
@@ -176,17 +199,20 @@ export async function POST(req: Request) {
   const system = appendStyle(baseSystem, body.style);
   const user = mode === "clarify" ? buildClarifyUser(sections) : buildCompileUser(sections, context);
 
-  // PER-MODEL timeout with a global deadline (D-040). Free models vary wildly
-  // in latency minute to minute; a single shared timeout burns the whole budget
-  // on a slow primary and never reaches the fallbacks. Instead each model gets a
-  // bounded slice, so a hung model is dropped fast and the next one gets a real
-  // chance — all within the function's maxDuration.
-  const deadline = Date.now() + 55_000;
+  // PER-MODEL timeout with a global deadline (D-040/D-043). Free models vary
+  // wildly in latency minute to minute; a single shared timeout burns the whole
+  // budget on a slow primary and never reaches the fallbacks. Instead each model
+  // gets a bounded slice (up to ~4 min — long enough to draft a big course, but
+  // still droppable if it hangs), so a stuck model is abandoned and the next one
+  // gets a real chance — all within the function's maxDuration. The deadline is
+  // derived from maxDuration with a margin so the route always returns JSON
+  // rather than being hard-killed by the host mid-write.
+  const deadline = Date.now() + (maxDuration - 20) * 1000;
   for (const attempt of llmAttempts()) {
     const remaining = deadline - Date.now();
-    if (remaining < 8_000) break; // not enough time left for another honest attempt
+    if (remaining < 15_000) break; // not enough time left for another honest attempt
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Math.min(32_000, remaining));
+    const timeout = setTimeout(() => controller.abort(), Math.min(240_000, remaining));
     try {
       const res = await fetch(attempt.url, {
         method: "POST",
@@ -198,10 +224,11 @@ export async function POST(req: Request) {
           // (reasoning_tokens) BEFORE emitting the JSON, and those count against
           // max_tokens. At 1100 the reasoning alone (~1800 tokens on a real
           // compile) exhausted the budget and the model returned EMPTY content
-          // even on a successful 200 — the teacher then saw "nothing usable".
-          // Give enough headroom for reasoning + the JSON plan. Cost unaffected
-          // (these are $0 free models) (D-041).
-          max_tokens: 3000,
+          // even on a successful 200 — the teacher then saw "nothing usable"
+          // (D-041). A whole multi-month course (up to 24 units) is also a large
+          // JSON payload, so give generous room for reasoning + the full plan.
+          // Cost unaffected (these are $0 free models) (D-043).
+          max_tokens: 12000,
           temperature: 0.3,
           // OpenRouter-only knobs (e.g. throughput routing) ride on extraBody;
           // Groq must not receive them.

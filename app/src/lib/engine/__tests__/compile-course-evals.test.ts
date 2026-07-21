@@ -273,17 +273,17 @@ describe("GATE-002 the compiled plan is ALWAYS a DAG, even under adversarial edg
     expect(fullwidthFirst.droppedLessons).toBe(1);
   });
 
-  it("caps hold under a 100-unit / 50-lesson-per-unit flood (≤6 units, ≤8 lessons/unit)", () => {
+  it("caps hold under a 100-unit / 50-lesson-per-unit flood (≤24 units, ≤8 lessons/unit)", () => {
     const floodUnits = Array.from({ length: 100 }, (_, u) => ({
       title: `Flood unit ${u}`,
       lessons: Array.from({ length: 50 }, (_, l) => lesson(`Flood concept ${u}-${l}`)),
     }));
     const { plan, droppedUnits, droppedLessons } = sanitizeCoursePlan({ units: floodUnits, prereqPairs: [] }, allowed);
-    expect(plan.units).toHaveLength(6);
+    expect(plan.units).toHaveLength(24);
     for (const u of plan.units) expect(u.lessons.length).toBeLessThanOrEqual(8);
-    expect(droppedUnits).toBe(94);
-    // each of the 6 surviving units had 50 lessons, only 8 kept ⇒ 42 dropped each
-    expect(droppedLessons).toBe(6 * 42);
+    expect(droppedUnits).toBe(76);
+    // each of the 24 surviving units had 50 lessons, only 8 kept ⇒ 42 dropped each
+    expect(droppedLessons).toBe(24 * 42);
     // all surviving slugs are still unique despite the flood
     const allSlugs = plan.units.flatMap((u) => u.lessons.map((l) => l.conceptSlug));
     expect(new Set(allSlugs).size).toBe(allSlugs.length);
@@ -558,6 +558,6 @@ describe("route contract — end-to-end sanitizer immunity through the REAL rout
     vi.stubEnv("OPENROUTER_API_KEY", "k");
     const res = await POST(makeReq({ sections: [{ id: "doc-s1", heading: "H", text: "text" }] }));
     const { plan } = (await res.json()) as { plan: DraftCoursePlan };
-    expect(plan.units).toHaveLength(6); // MAX_UNITS enforced through the real route
+    expect(plan.units).toHaveLength(24); // MAX_UNITS enforced through the real route
   });
 });
