@@ -105,7 +105,7 @@ export const AI_TOOLS: AiTool[] = [
   {
     id: "flashcards",
     label: "Flashcards",
-    description: "Fill-in-the-blank flashcards generated from your approved sections.",
+    description: "An interactive flip-card deck from your material — study term ⇄ answer, sorting into know / still learning.",
     glyph: "🃏",
     status: "live",
     grounded: true,

@@ -66,7 +66,9 @@ export function AiToolkitCard() {
       generatedAtISO: new Date().toISOString(),
       sections: outcome.sections,
     });
-    router.push("/teach/print");
+    // Flashcards open as an interactive study deck (D-046); the printable copy is
+    // still saved above, so "print" remains available from the study page.
+    router.push(mode === "flashcards" ? "/teach/flashcards" : "/teach/print");
   };
 
   const onActivate = (tool: AiTool) => {
