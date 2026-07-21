@@ -14,6 +14,8 @@ export interface PacedLesson {
   unitTitle: string;
   lessonTitle: string;
   minutes: number;
+  /** true when this single lesson is longer than a whole class (minutes mode) */
+  overLength?: boolean;
 }
 
 export interface PacedClass {
@@ -69,7 +71,8 @@ export function buildPacingPlan(draft: CourseDraft, minutesPerClass: number): Pa
   };
   for (const l of lessons) {
     if (cur.length > 0 && curMin + l.minutes > cap) flush();
-    cur.push(l);
+    // a lesson longer than a whole class fills its own — flag it honestly
+    cur.push(l.minutes > cap ? { ...l, overLength: true } : l);
     curMin += l.minutes;
   }
   flush();
@@ -77,5 +80,49 @@ export function buildPacingPlan(draft: CourseDraft, minutesPerClass: number): Pa
     classes,
     totalMinutes: lessons.reduce((n, l) => n + l.minutes, 0),
     minutesPerClass: cap,
+  };
+}
+
+/**
+ * Pack the ordered lessons into EXACTLY `numClasses` sessions (the "I have N
+ * classes — fit the course" direction the toolkit advertises), balancing
+ * minutes while never reordering. Each class gets at least one lesson, so the
+ * effective class count is capped at the number of lessons. Deterministic.
+ */
+export function buildPacingPlanByClasses(draft: CourseDraft, numClasses: number): PacingPlan {
+  const lessons = orderedLessons(draft);
+  const n = lessons.length;
+  const totalMinutes = lessons.reduce((s, l) => s + l.minutes, 0);
+  const k = Math.max(1, Math.min(Math.trunc(numClasses) || 1, Math.max(1, n)));
+
+  const classes: PacedClass[] = [];
+  let li = 0;
+  for (let c = 0; c < k && li < n; c++) {
+    const classesLeft = k - c;
+    // reserve at least one lesson for each of the remaining classes after this
+    const maxTake = n - li - (classesLeft - 1);
+    const remMinutes = lessons.slice(li).reduce((s, l) => s + l.minutes, 0);
+    const target = remMinutes / classesLeft; // even split of what's left
+    const items: PacedLesson[] = [];
+    let mins = 0;
+    do {
+      items.push(lessons[li]);
+      mins += lessons[li].minutes;
+      li++;
+    } while (li < n && items.length < maxTake && mins + lessons[li].minutes <= target + 1e-9);
+    classes.push({ index: c + 1, items, totalMinutes: mins });
+  }
+  // safety: append any remainder to the last class (shouldn't trigger)
+  while (li < n) {
+    const last = classes[classes.length - 1];
+    last.items.push(lessons[li]);
+    last.totalMinutes += lessons[li].minutes;
+    li++;
+  }
+
+  return {
+    classes,
+    totalMinutes,
+    minutesPerClass: classes.length > 0 ? Math.round(totalMinutes / classes.length) : 0,
   };
 }
