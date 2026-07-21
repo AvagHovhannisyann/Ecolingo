@@ -44,7 +44,7 @@ const MODE_INSTRUCTION: Record<GenerateMode, string> = {
   flashcards:
     "Produce FLASHCARDS: each heading is the FRONT of a card (a short question or a term to recall), each body is the BACK (the concise, correct answer). Make one card per key fact or term in the material; ground every card strictly in it and never invent facts.",
   misconceptions:
-    "Produce a MISCONCEPTIONS guide: for each concept in the material, a heading naming the concept and a body stating the single most common misconception students hold about it and how to correct it. Ground the correction in the material; never invent facts.",
+    "Produce a MISCONCEPTIONS guide: for each concept in the material, a heading naming the concept, and a body covering the ONE or TWO most common misconceptions students actually hold about it. For EACH misconception, write three labelled parts in the body as plain sentences: \"Misconception: <what students wrongly believe>. Why it sticks: <the intuitive but flawed reasoning that leads there>. Correct it: <the accurate account, plus a concrete way to show or check it>.\" Ground every correction strictly in the material; never invent facts. Prefer specific, diagnosable misconceptions over vague ones.",
   rubric:
     "Produce a GRADING RUBRIC for the assignment or prompt described in the material: each heading is one criterion being assessed, and its body describes what distinguishes performance levels (Excellent / Proficient / Developing) for that criterion. Keep criteria specific to the assignment; do not invent requirements the prompt doesn't imply.",
   reading_level:
