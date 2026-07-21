@@ -15,8 +15,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { assembleExam, type DifficultyOrder } from "@/lib/engine/exam";
+import { filterQuestions, type DifficultyBucket } from "@/lib/engine/question-bank";
 import { useTeacherState } from "@/lib/teacher-store";
 import { savePrintable } from "@/lib/teach/printable-store";
+import { loadCompiledPlan } from "@/components/teach-compile/plan-store";
 import { LoadingScreen } from "../LoadingScreen";
 
 export function ExamBuilderClient() {
@@ -28,15 +30,25 @@ export function ExamBuilderClient() {
   const [order, setOrder] = useState<DifficultyOrder>("as_is");
   const [shuffle, setShuffle] = useState(false);
   const [includeKey, setIncludeKey] = useState(true);
+  // D-044: build a targeted exam by filtering the bank first.
+  const [diffFilter, setDiffFilter] = useState<DifficultyBucket | "all">("all");
+  const [topicFilter, setTopicFilter] = useState<string>("all");
 
   if (!teacher) return <LoadingScreen label="Loading your question bank…" />;
 
   const bank = teacher.authoredQuestions;
+  // name lookup for the topic dropdown (falls back to the slug if no plan is loaded)
+  const slugName = new Map((loadCompiledPlan()?.draft.concepts ?? []).map((c) => [c.slug, c.name]));
+  const topicsInBank = [...new Set(bank.map((q) => q.conceptSlug))];
+  const filteredBank = filterQuestions(bank, { difficulty: diffFilter, topic: topicFilter });
+  const maxCount = filteredBank.length;
+
   const build = () => {
-    const exam = assembleExam(bank, {
+    const n = Math.max(1, Math.min(count, maxCount));
+    const exam = assembleExam(filteredBank, {
       title,
       instructions,
-      count,
+      count: n,
       order,
       shuffle,
       seed: Date.now() % 100000,
@@ -71,8 +83,61 @@ export function ExamBuilderClient() {
       ) : (
         <div className="card mt-4 space-y-4 p-4">
           <p className="text-sm text-app-muted">
-            <span className="stat-chip">{bank.length}</span> question{bank.length === 1 ? "" : "s"} in your bank.
+            <span className="stat-chip">{bank.length}</span> question{bank.length === 1 ? "" : "s"} in your bank
+            {(diffFilter !== "all" || topicFilter !== "all") && (
+              <>
+                {" "}
+                · <span className="stat-chip">{maxCount}</span> match your filter
+              </>
+            )}
+            .
           </p>
+
+          {/* D-044: narrow the bank before assembling */}
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <span className="block text-sm font-bold">Difficulty</span>
+              <div className="mt-1 flex flex-wrap gap-1.5" role="group" aria-label="Filter by difficulty">
+                {(
+                  [
+                    ["all", "All"],
+                    ["easy", "Easy"],
+                    ["medium", "Medium"],
+                    ["hard", "Hard"],
+                  ] as [DifficultyBucket | "all", string][]
+                ).map(([v, label]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={diffFilter === v}
+                    onClick={() => setDiffFilter(v)}
+                    className={`min-h-9 rounded-lg border px-2.5 text-xs font-bold ${
+                      diffFilter === v
+                        ? "border-[var(--model-blue)] bg-[var(--model-blue-tint)] text-[var(--model-blue-text)]"
+                        : "border-[color:var(--app-border)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="text-sm font-bold">
+              Topic
+              <select
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="mt-1 block min-h-9 rounded-lg border border-[color:var(--app-border)] bg-app p-1.5 text-xs font-normal text-app"
+              >
+                <option value="all">All topics</option>
+                {topicsInBank.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {slugName.get(slug) ?? slug}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <div>
             <label htmlFor="exam-title" className="block text-sm font-bold">
@@ -102,15 +167,15 @@ export function ExamBuilderClient() {
 
           <div>
             <label htmlFor="exam-count" className="block text-sm font-bold">
-              How many questions? <span className="font-normal text-app-muted">(max {bank.length})</span>
+              How many questions? <span className="font-normal text-app-muted">(max {maxCount})</span>
             </label>
             <input
               id="exam-count"
               type="number"
               min={1}
-              max={bank.length}
+              max={maxCount}
               value={count}
-              onChange={(e) => setCount(Math.max(1, Math.min(bank.length, Number(e.target.value) || 1)))}
+              onChange={(e) => setCount(Math.max(1, Math.min(maxCount, Number(e.target.value) || 1)))}
               className="mt-1 block w-32 rounded-xl border-2 border-[color:var(--app-border)] bg-[color:var(--app-surface-2)] p-3 text-sm"
             />
           </div>
@@ -153,9 +218,19 @@ export function ExamBuilderClient() {
             </label>
           </div>
 
-          <button type="button" onClick={build} className="btn-primary min-h-12 px-5 py-3 text-white">
+          <button
+            type="button"
+            onClick={build}
+            disabled={maxCount === 0}
+            className="btn-primary min-h-12 px-5 py-3 text-white disabled:opacity-50"
+          >
             Build printable exam →
           </button>
+          {maxCount === 0 && (
+            <p className="text-sm text-app-muted" role="status">
+              No questions match this filter — widen the difficulty or topic.
+            </p>
+          )}
         </div>
       )}
     </div>
