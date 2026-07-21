@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   bucketConceptual,
   classConceptSummary,
+  classOverview,
+  overconfidenceRanking,
+  retentionRiskRanking,
+  studentRoster,
   DIMENSION_LABELS,
   MASTERY_DIMENSIONS,
   reteachRanking,
@@ -231,5 +235,95 @@ describe("class-analytics — studentSpread + bucketConceptual", () => {
       u1: { "steady-state": mastery("steady-state", { evidenceCount: 3 }) },
     };
     expect(studentSpread(cm, "golden-rule")).toEqual([]);
+  });
+});
+
+describe("class-analytics — classOverview (D-045)", () => {
+  it("empty class → zeros and null weakest dimension", () => {
+    const o = classOverview({}, concepts);
+    expect(o).toMatchObject({
+      totalStudents: 0,
+      activeStudents: 0,
+      conceptsCovered: 0,
+      coverage: 0,
+      weakestDimension: null,
+      weakestDimensionValue: 0,
+    });
+  });
+
+  it("computes coverage, active students and the class-wide weakest dimension", () => {
+    // set every dimension explicitly so transfer is unambiguously the lowest
+    // (otherwise the initialMastery defaults would dominate the comparison).
+    const dims = { conceptual: 0.8, procedural: 0.8, graphInterpretation: 0.8, formulaRecall: 0.8 };
+    const cm: ClassMastery = {
+      u1: {
+        "steady-state": mastery("steady-state", { ...dims, transfer: 0.2 }),
+        "golden-rule": mastery("golden-rule", { ...dims, conceptual: 0.6, transfer: 0.3 }),
+      },
+      u2: {
+        "steady-state": mastery("steady-state", { ...dims, conceptual: 0.4, transfer: 0.1 }),
+      },
+      u3: {}, // enrolled, never practiced
+    };
+    const o = classOverview(cm, concepts);
+    expect(o.totalStudents).toBe(3);
+    expect(o.activeStudents).toBe(2); // u3 has no evidence
+    expect(o.conceptsCovered).toBe(2); // production-function never touched
+    // 3 evidence cells out of 3 students × 3 concepts = 9
+    expect(o.coverage).toBeCloseTo(3 / 9, 6);
+    // transfer is the lowest dimension across cells
+    expect(o.weakestDimension).toBe("transfer");
+  });
+});
+
+describe("class-analytics — overconfidence & retention flags (D-045)", () => {
+  it("flags overconfident students (high confidence, low conceptual) and ranks by count", () => {
+    const cm: ClassMastery = {
+      u1: { "steady-state": mastery("steady-state", { conceptual: 0.2, confidence: 0.9 }) }, // overconfident
+      u2: { "steady-state": mastery("steady-state", { conceptual: 0.3, confidence: 0.8 }) }, // overconfident
+      u3: { "steady-state": mastery("steady-state", { conceptual: 0.2, confidence: 0.3 }) }, // struggling but NOT overconfident
+      u4: { "golden-rule": mastery("golden-rule", { conceptual: 0.1, confidence: 0.95 }) }, // overconfident, other concept
+    };
+    const flags = overconfidenceRanking(cm, concepts);
+    expect(flags.map((f) => f.conceptSlug)).toEqual(["steady-state", "golden-rule"]);
+    expect(flags[0].count).toBe(2);
+    expect(flags[0].studentsWithEvidence).toBe(3);
+    expect(flags[1].count).toBe(1);
+  });
+
+  it("flags fading retention only for concepts the student actually learned", () => {
+    const cm: ClassMastery = {
+      u1: { "steady-state": mastery("steady-state", { conceptual: 0.8, retentionStrength: 0.2 }) }, // learned, fading
+      u2: { "steady-state": mastery("steady-state", { conceptual: 0.2, retentionStrength: 0.1 }) }, // not learned → not a retention flag
+      u3: { "steady-state": mastery("steady-state", { conceptual: 0.9, retentionStrength: 0.9 }) }, // solid, no risk
+    };
+    const flags = retentionRiskRanking(cm, concepts);
+    expect(flags).toHaveLength(1);
+    expect(flags[0]).toMatchObject({ conceptSlug: "steady-state", count: 1, studentsWithEvidence: 3 });
+  });
+});
+
+describe("class-analytics — studentRoster (D-045)", () => {
+  it("one row per enrolled student incl. never-started, most-needing-attention first", () => {
+    const cm: ClassMastery = {
+      u1: {
+        "steady-state": mastery("steady-state", { conceptual: 0.2, lastEvidenceAt: "2026-07-19T00:00:00Z" }), // struggling
+        "golden-rule": mastery("golden-rule", { conceptual: 0.9 }),
+      },
+      u2: {
+        "steady-state": mastery("steady-state", { conceptual: 0.85 }),
+        "golden-rule": mastery("golden-rule", { conceptual: 0.75 }),
+      }, // on track
+    };
+    const roster = [{ userId: "u1" }, { userId: "u2" }, { userId: "u3" }]; // u3 never started
+    const rows = studentRoster(cm, roster, concepts);
+    // struggling first, then not_started, then on_track — same convention as the
+    // reteach ranking (a not-started learner outranks one who's doing fine).
+    expect(rows.map((r) => r.userId)).toEqual(["u1", "u3", "u2"]);
+    expect(rows[0]).toMatchObject({ status: "struggling", conceptsStarted: 2, strugglingConcepts: 1 });
+    expect(rows[0].lastActiveAt).toBe("2026-07-19T00:00:00Z");
+    expect(rows[1]).toMatchObject({ status: "not_started", conceptsStarted: 0, coverage: 0, lastActiveAt: null });
+    expect(rows[2]).toMatchObject({ status: "on_track", conceptsStarted: 2, strugglingConcepts: 0 });
+    expect(rows[2].avgConceptual).toBeCloseTo(0.8, 6);
   });
 });
