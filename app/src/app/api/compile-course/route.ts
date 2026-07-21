@@ -21,14 +21,16 @@ import { llmAttempts, hasAnyProvider, OPENROUTER_MODELS } from "@/lib/ai/provide
 export const runtime = "nodejs";
 // Compiling a WHOLE multi-month course from a lot of material is genuinely slow:
 // the model reads every section and reasons before emitting a large plan, which
-// can take minutes. We ask the platform for as long as it will give us. Vercel
-// clamps this to the project's plan ceiling (e.g. ~300s Hobby, up to ~800s on
-// Fluid Compute Pro), so this is "run as long as the host allows," not a literal
-// promise of 800s. A single request cannot exceed that host ceiling; a true
-// 20-minute compile of a very large corpus needs a background worker, which is
-// noted as follow-up. At 60s the function was killed mid-draft and the teacher
-// saw "the AI provider didn't answer" even though nothing was wrong (D-043).
-export const maxDuration = 800;
+// can take minutes. We ask the host for the longest it will run a single
+// function. This is the account's PLAN CEILING: Vercel VALIDATES maxDuration at
+// build time and FAILS the deployment if it exceeds the plan limit (800 did —
+// that broke the build), so this must stay at the deployable maximum. 300s is
+// the proven ceiling here (generate-video already ships 300s and deploys). A
+// single request cannot exceed this; a true 20-minute compile of a very large
+// corpus needs a background worker, noted as follow-up. At 60s the function was
+// killed mid-draft and the teacher saw "the AI provider didn't answer" even
+// though nothing was wrong (D-043).
+export const maxDuration = 300;
 
 // Bound the prompt so it stays within the model's context window while still
 // reading FAR more than the old 22×650 (~14k chars). These let a real semester
